@@ -1,0 +1,14 @@
+{
+    "name": "Piglings.Presentation",
+    "rootNamespace": "Piglings.Presentation",
+    "references": ["Piglings.Events", "Piglings.Runtime", "Piglings.Definitions", "Piglings.Simulation"],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

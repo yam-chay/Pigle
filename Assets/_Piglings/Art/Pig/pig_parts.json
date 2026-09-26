@@ -1,0 +1,509 @@
+{
+ "units": "pixels at 2x (canvas 840x1000); pivot_unity is normalized (0,0)=bottom-left of the cropped PNG",
+ "draw_order": "list order = back to front",
+ "parts": [
+  {
+   "name": "arm_L_lower",
+   "parent": "arm_L_upper",
+   "file": "arm_L_lower.png",
+   "hidden_by_default": false,
+   "offset_px": [
+    131,
+    576
+   ],
+   "size_px": [
+    106,
+    153
+   ],
+   "pivot_canvas_px": [
+    191.4,
+    621.8
+   ],
+   "pivot_unity": [
+    0.5701,
+    0.7005
+   ]
+  },
+  {
+   "name": "arm_L_upper",
+   "parent": "body",
+   "file": "arm_L_upper.png",
+   "hidden_by_default": false,
+   "offset_px": [
+    143,
+    512
+   ],
+   "size_px": [
+    113,
+    158
+   ],
+   "pivot_canvas_px": [
+    208,
+    560
+   ],
+   "pivot_unity": [
+    0.5752,
+    0.6962
+   ]
+  },
+  {
+   "name": "tail",
+   "parent": "body",
+   "file": "tail.png",
+   "hidden_by_default": false,
+   "offset_px": [
+    114,
+    688
+   ],
+   "size_px": [
+    84,
+    78
+   ],
+   "pivot_canvas_px": [
+    184,
+    704
+   ],
+   "pivot_unity": [
+    0.8333,
+    0.7949
+   ]
+  },
+  {
+   "name": "leg_L_shin",
+   "parent": "leg_L_thigh",
+   "file": "leg_L_shin.png",
+   "hidden_by_default": false,
+   "offset_px": [
+    277,
+    785
+   ],
+   "size_px": [
+    94,
+    146
+   ],
+   "pivot_canvas_px": [
+    324.0,
+    832.0
+   ],
+   "pivot_unity": [
+    0.5,
+    0.6781
+   ]
+  },
+  {
+   "name": "leg_L_thigh",
+   "parent": "body",
+   "file": "leg_L_thigh.png",
+   "hidden_by_default": false,
+   "offset_px": [
+    274,
+    734
+   ],
+   "size_px": [
+    100,
+    148
+   ],
+   "pivot_canvas_px": [
+    324,
+    784
+   ],
+   "pivot_unity": [
+    0.5,
+    0.6622
+   ]
+  },
+  {
+   "name": "leg_R_shin",
+   "parent": "leg_R_thigh",
+   "file": "leg_R_shin.png",
+   "hidden_by_default": false,
+   "offset_px": [
+    445,
+    785
+   ],
+   "size_px": [
+    94,
+    146
+   ],
+   "pivot_canvas_px": [
+    492.0,
+    832.0
+   ],
+   "pivot_unity": [
+    0.5,
+    0.6781
+   ]
+  },
+  {
+   "name": "leg_R_thigh",
+   "parent": "body",
+   "file": "leg_R_thigh.png",
+   "hidden_by_default": false,
+   "offset_px": [
+    442,
+    734
+   ],
+   "size_px": [
+    100,
+    148
+   ],
+   "pivot_canvas_px": [
+    492,
+    784
+   ],
+   "pivot_unity": [
+    0.5,
+    0.6622
+   ]
+  },
+  {
+   "name": "body",
+   "parent": null,
+   "file": "body.png",
+   "hidden_by_default": false,
+   "offset_px": [
+    144,
+    219
+   ],
+   "size_px": [
+    508,
+    633
+   ],
+   "pivot_canvas_px": [
+    400,
+    800
+   ],
+   "pivot_unity": [
+    0.5039,
+    0.0821
+   ]
+  },
+  {
+   "name": "face",
+   "parent": "body",
+   "file": "face.png",
+   "hidden_by_default": false,
+   "offset_px": [
+    284,
+    276
+   ],
+   "size_px": [
+    284,
+    195
+   ],
+   "pivot_canvas_px": [
+    410,
+    564
+   ],
+   "pivot_unity": [
+    0.4437,
+    -0.4769
+   ]
+  },
+  {
+   "name": "ear_L",
+   "parent": "face",
+   "file": "ear_L.png",
+   "hidden_by_default": false,
+   "offset_px": [
+    132,
+    135
+   ],
+   "size_px": [
+    215,
+    177
+   ],
+   "pivot_canvas_px": [
+    282,
+    268
+   ],
+   "pivot_unity": [
+    0.6977,
+    0.2486
+   ]
+  },
+  {
+   "name": "ear_R",
+   "parent": "face",
+   "file": "ear_R.png",
+   "hidden_by_default": false,
+   "offset_px": [
+    429,
+    147
+   ],
+   "size_px": [
+    196,
+    166
+   ],
+   "pivot_canvas_px": [
+    494,
+    268
+   ],
+   "pivot_unity": [
+    0.3316,
+    0.2711
+   ]
+  },
+  {
+   "name": "eye_L",
+   "parent": "face",
+   "file": "eye_L.png",
+   "hidden_by_default": false,
+   "offset_px": [
+    334,
+    320
+   ],
+   "size_px": [
+    44,
+    56
+   ],
+   "pivot_canvas_px": [
+    356,
+    348
+   ],
+   "pivot_unity": [
+    0.5,
+    0.5
+   ]
+  },
+  {
+   "name": "eye_R",
+   "parent": "face",
+   "file": "eye_R.png",
+   "hidden_by_default": false,
+   "offset_px": [
+    443,
+    306
+   ],
+   "size_px": [
+    42,
+    52
+   ],
+   "pivot_canvas_px": [
+    464,
+    332
+   ],
+   "pivot_unity": [
+    0.5,
+    0.5
+   ]
+  },
+  {
+   "name": "mouth_smile",
+   "parent": "face",
+   "file": "mouth_smile.png",
+   "hidden_by_default": false,
+   "offset_px": [
+    371,
+    455
+   ],
+   "size_px": [
+    118,
+    37
+   ],
+   "pivot_canvas_px": [
+    428,
+    472
+   ],
+   "pivot_unity": [
+    0.4831,
+    0.5405
+   ]
+  },
+  {
+   "name": "mouth_grin",
+   "parent": "face",
+   "file": "mouth_grin.png",
+   "hidden_by_default": true,
+   "offset_px": [
+    348,
+    452
+   ],
+   "size_px": [
+    168,
+    96
+   ],
+   "pivot_canvas_px": [
+    428,
+    472
+   ],
+   "pivot_unity": [
+    0.4762,
+    0.7917
+   ]
+  },
+  {
+   "name": "mouth_grit",
+   "parent": "face",
+   "file": "mouth_grit.png",
+   "hidden_by_default": true,
+   "offset_px": [
+    380,
+    456
+   ],
+   "size_px": [
+    96,
+    36
+   ],
+   "pivot_canvas_px": [
+    428,
+    472
+   ],
+   "pivot_unity": [
+    0.5,
+    0.5556
+   ]
+  },
+  {
+   "name": "mouth_o",
+   "parent": "face",
+   "file": "mouth_o.png",
+   "hidden_by_default": true,
+   "offset_px": [
+    404,
+    458
+   ],
+   "size_px": [
+    48,
+    60
+   ],
+   "pivot_canvas_px": [
+    428,
+    472
+   ],
+   "pivot_unity": [
+    0.5,
+    0.7667
+   ]
+  },
+  {
+   "name": "arm_R_lower",
+   "parent": "arm_R_upper",
+   "file": "arm_R_lower.png",
+   "hidden_by_default": false,
+   "offset_px": [
+    567,
+    560
+   ],
+   "size_px": [
+    106,
+    153
+   ],
+   "pivot_canvas_px": [
+    612.6,
+    605.8
+   ],
+   "pivot_unity": [
+    0.4299,
+    0.7005
+   ]
+  },
+  {
+   "name": "arm_R_upper",
+   "parent": "body",
+   "file": "arm_R_upper.png",
+   "hidden_by_default": false,
+   "offset_px": [
+    548,
+    496
+   ],
+   "size_px": [
+    113,
+    158
+   ],
+   "pivot_canvas_px": [
+    596,
+    544
+   ],
+   "pivot_unity": [
+    0.4248,
+    0.6962
+   ]
+  },
+  {
+   "name": "eye_L_closed",
+   "parent": "face",
+   "file": "eye_L_closed.png",
+   "hidden_by_default": true,
+   "offset_px": [
+    330,
+    340
+   ],
+   "size_px": [
+    52,
+    23
+   ],
+   "pivot_canvas_px": [
+    356,
+    348
+   ],
+   "pivot_unity": [
+    0.5,
+    0.6522
+   ]
+  },
+  {
+   "name": "eye_R_closed",
+   "parent": "face",
+   "file": "eye_R_closed.png",
+   "hidden_by_default": true,
+   "offset_px": [
+    439,
+    324
+   ],
+   "size_px": [
+    50,
+    23
+   ],
+   "pivot_canvas_px": [
+    464,
+    332
+   ],
+   "pivot_unity": [
+    0.5,
+    0.6522
+   ]
+  },
+  {
+   "name": "prop_stone",
+   "parent": null,
+   "file": "prop_stone.png",
+   "hidden_by_default": true,
+   "offset_px": [
+    386,
+    89
+   ],
+   "size_px": [
+    68,
+    62
+   ],
+   "pivot_canvas_px": [
+    420,
+    120
+   ],
+   "pivot_unity": [
+    0.5,
+    0.5
+   ]
+  }
+ ],
+ "suggested_bones": {
+  "note": "body is ONE sprite: skin it in Unity Skinning Editor with a hip->spine->head chain so the head can bob/tilt as a smooth bend; everything else is a rigid sprite parented to a bone",
+  "hip": [
+   410,
+   800
+  ],
+  "spine": [
+   410,
+   640
+  ],
+  "head": [
+   410,
+   564
+  ],
+  "head_tip": [
+   410,
+   300
+  ]
+ }
+}

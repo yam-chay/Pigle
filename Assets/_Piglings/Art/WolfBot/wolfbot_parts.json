@@ -1,0 +1,421 @@
+{
+ "units": "pixels at 3x (canvas 900x900); pivot_unity normalized (0,0)=bottom-left of cropped PNG",
+ "draw_order": "back to front",
+ "physics_note": "body collider = CircleCollider2D centered on body pivot, radius 58 canvas px (x3 = 174 px in PNG)",
+ "parts": [
+  {
+   "name": "tail_2",
+   "parent": "tail_1",
+   "file": "tail_2.png",
+   "hidden_by_default": false,
+   "detaches_on_death": true,
+   "offset_px": [
+    423,
+    660
+   ],
+   "size_px": [
+    54,
+    123
+   ],
+   "pivot_canvas_px": [
+    450.0,
+    687.0
+   ],
+   "pivot_unity": [
+    0.5,
+    0.7805
+   ]
+  },
+  {
+   "name": "tail_1",
+   "parent": "body",
+   "file": "tail_1.png",
+   "hidden_by_default": false,
+   "detaches_on_death": true,
+   "offset_px": [
+    419,
+    575
+   ],
+   "size_px": [
+    62,
+    143
+   ],
+   "pivot_canvas_px": [
+    450,
+    606
+   ],
+   "pivot_unity": [
+    0.5,
+    0.7832
+   ]
+  },
+  {
+   "name": "leg_L_lower",
+   "parent": "leg_L_upper",
+   "file": "leg_L_lower.png",
+   "hidden_by_default": false,
+   "detaches_on_death": true,
+   "offset_px": [
+    323,
+    640
+   ],
+   "size_px": [
+    75,
+    137
+   ],
+   "pivot_canvas_px": [
+    357.5,
+    674.4
+   ],
+   "pivot_unity": [
+    0.4597,
+    0.749
+   ]
+  },
+  {
+   "name": "leg_L_upper",
+   "parent": "body",
+   "file": "leg_L_upper.png",
+   "hidden_by_default": false,
+   "detaches_on_death": true,
+   "offset_px": [
+    317,
+    581
+   ],
+   "size_px": [
+    98,
+    134
+   ],
+   "pivot_canvas_px": [
+    378,
+    618
+   ],
+   "pivot_unity": [
+    0.6224,
+    0.7239
+   ]
+  },
+  {
+   "name": "leg_R_lower",
+   "parent": "leg_R_upper",
+   "file": "leg_R_lower.png",
+   "hidden_by_default": false,
+   "detaches_on_death": true,
+   "offset_px": [
+    502,
+    640
+   ],
+   "size_px": [
+    75,
+    137
+   ],
+   "pivot_canvas_px": [
+    542.5,
+    674.4
+   ],
+   "pivot_unity": [
+    0.5403,
+    0.749
+   ]
+  },
+  {
+   "name": "leg_R_upper",
+   "parent": "body",
+   "file": "leg_R_upper.png",
+   "hidden_by_default": false,
+   "detaches_on_death": true,
+   "offset_px": [
+    485,
+    581
+   ],
+   "size_px": [
+    98,
+    134
+   ],
+   "pivot_canvas_px": [
+    522,
+    618
+   ],
+   "pivot_unity": [
+    0.3776,
+    0.7239
+   ]
+  },
+  {
+   "name": "arm_L_lower",
+   "parent": "arm_L_upper",
+   "file": "arm_L_lower.png",
+   "hidden_by_default": false,
+   "detaches_on_death": true,
+   "offset_px": [
+    207,
+    271
+   ],
+   "size_px": [
+    88,
+    153
+   ],
+   "pivot_canvas_px": [
+    261.9,
+    390.2
+   ],
+   "pivot_unity": [
+    0.6234,
+    0.2206
+   ]
+  },
+  {
+   "name": "arm_L_upper",
+   "parent": "body",
+   "file": "arm_L_upper.png",
+   "hidden_by_default": false,
+   "detaches_on_death": true,
+   "offset_px": [
+    222,
+    351
+   ],
+   "size_px": [
+    126,
+    135
+   ],
+   "pivot_canvas_px": [
+    312,
+    450
+   ],
+   "pivot_unity": [
+    0.7143,
+    0.2667
+   ]
+  },
+  {
+   "name": "arm_R_lower",
+   "parent": "arm_R_upper",
+   "file": "arm_R_lower.png",
+   "hidden_by_default": false,
+   "detaches_on_death": true,
+   "offset_px": [
+    605,
+    271
+   ],
+   "size_px": [
+    88,
+    153
+   ],
+   "pivot_canvas_px": [
+    638.1,
+    390.2
+   ],
+   "pivot_unity": [
+    0.3766,
+    0.2206
+   ]
+  },
+  {
+   "name": "arm_R_upper",
+   "parent": "body",
+   "file": "arm_R_upper.png",
+   "hidden_by_default": false,
+   "detaches_on_death": true,
+   "offset_px": [
+    552,
+    351
+   ],
+   "size_px": [
+    126,
+    135
+   ],
+   "pivot_canvas_px": [
+    588,
+    450
+   ],
+   "pivot_unity": [
+    0.2857,
+    0.2667
+   ]
+  },
+  {
+   "name": "antenna",
+   "parent": "body",
+   "file": "antenna.png",
+   "hidden_by_default": false,
+   "detaches_on_death": true,
+   "offset_px": [
+    355,
+    182
+   ],
+   "size_px": [
+    71,
+    148
+   ],
+   "pivot_canvas_px": [
+    414,
+    318
+   ],
+   "pivot_unity": [
+    0.831,
+    0.0811
+   ]
+  },
+  {
+   "name": "ear_B",
+   "parent": "body",
+   "file": "ear_B.png",
+   "hidden_by_default": false,
+   "detaches_on_death": false,
+   "offset_px": [
+    482,
+    188
+   ],
+   "size_px": [
+    110,
+    176
+   ],
+   "pivot_canvas_px": [
+    540,
+    348
+   ],
+   "pivot_unity": [
+    0.5273,
+    0.0909
+   ]
+  },
+  {
+   "name": "body",
+   "parent": null,
+   "file": "body.png",
+   "hidden_by_default": false,
+   "detaches_on_death": false,
+   "offset_px": [
+    272,
+    302
+   ],
+   "size_px": [
+    356,
+    365
+   ],
+   "pivot_canvas_px": [
+    450,
+    480
+   ],
+   "pivot_unity": [
+    0.5,
+    0.5123
+   ]
+  },
+  {
+   "name": "ear_F",
+   "parent": "body",
+   "file": "ear_F.png",
+   "hidden_by_default": false,
+   "detaches_on_death": false,
+   "offset_px": [
+    308,
+    194
+   ],
+   "size_px": [
+    122,
+    170
+   ],
+   "pivot_canvas_px": [
+    366,
+    342
+   ],
+   "pivot_unity": [
+    0.4754,
+    0.1294
+   ]
+  },
+  {
+   "name": "eye_on",
+   "parent": "body",
+   "file": "eye_on.png",
+   "hidden_by_default": false,
+   "detaches_on_death": false,
+   "offset_px": [
+    356,
+    374
+   ],
+   "size_px": [
+    182,
+    62
+   ],
+   "pivot_canvas_px": [
+    450,
+    405
+   ],
+   "pivot_unity": [
+    0.5165,
+    0.5
+   ]
+  },
+  {
+   "name": "eye_red",
+   "parent": "body",
+   "file": "eye_red.png",
+   "hidden_by_default": true,
+   "detaches_on_death": false,
+   "offset_px": [
+    353,
+    371
+   ],
+   "size_px": [
+    188,
+    68
+   ],
+   "pivot_canvas_px": [
+    450,
+    405
+   ],
+   "pivot_unity": [
+    0.516,
+    0.5
+   ]
+  },
+  {
+   "name": "eye_x",
+   "parent": "body",
+   "file": "eye_x.png",
+   "hidden_by_default": true,
+   "detaches_on_death": false,
+   "offset_px": [
+    366,
+    381
+   ],
+   "size_px": [
+    162,
+    48
+   ],
+   "pivot_canvas_px": [
+    450,
+    405
+   ],
+   "pivot_unity": [
+    0.5185,
+    0.5
+   ]
+  },
+  {
+   "name": "sparks",
+   "parent": "body",
+   "file": "sparks.png",
+   "hidden_by_default": true,
+   "detaches_on_death": false,
+   "offset_px": [
+    270,
+    263
+   ],
+   "size_px": [
+    366,
+    407
+   ],
+   "pivot_canvas_px": [
+    450,
+    480
+   ],
+   "pivot_unity": [
+    0.4918,
+    0.4668
+   ]
+  }
+ ]
+}

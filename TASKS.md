@@ -1,0 +1,36 @@
+# TASKS — Piglings prototype
+
+☁ = cloud session OK (code/docs only) · 🖥 = local, needs the Unity editor (use Claude Code + unity-mcp)
+
+## M0 — Setup 🖥
+- [ ] SETUP.md steps 1–7
+
+## M1 — First chain 🖥
+- [ ] Playtest: stone → robot → its ball → second robot. HUD shows depth 1.
+- [ ] Note what feels off (fall speed, bounciness, spawn rate) in the Playtest log below.
+
+## M2 — Throw feel
+- [ ] ☁ M2.1 Port CCTD `ThrowSolver` (Reference/CCTD) into Simulation: aim by target point with an arc, not a straight line. Keep `ThrowController`'s public surface (`Thrown` event, `Launch` call).
+- [ ] ☁ M2.2 Port `TrajectoryView` into Presentation (reads aim from ThrowController, draws the arc). Presentation must not change state.
+- [ ] 🖥 M2.3 Wire both in Night.unity; tune throw speed so the whole wall is reachable from the hole.
+
+## M3 — Robots feel right 🖥
+- [ ] Animator for WolfBot: Climb (loop), Break (≈0.6 s: flail → X eyes → limbs collapse). Rebuild from the Wolf-Bot Rig Tester keyframes.
+- [ ] Animator for Pig: Idle (loop), Throw. From the Pig Rig Tester.
+- [ ] Tune `BreakDuration` — if chains feel slow, shorten the flail first.
+
+## M4 — Chains readable
+- [ ] ☁ M4.1 Rules: combo multiplier by depth; publish a `ChainScored` event with the final value. Add CoreCheck cases.
+- [ ] ☁ M4.2 Presentation: floating "+N" / depth popup on `RobotLostGrip`, bigger on `ChainClosed`. (Unity-side: list editor steps in the PR.)
+- [ ] 🖥 M4.3 Screen shake on depth ≥ 2.
+
+## M5 — Walls matter
+- [ ] 🖥 Wall_Straw / Wall_Brick definitions with different hold bounciness; A/B them in play.
+- [ ] ☁ Night end condition in Rules: N robots reached top = lose; survive X seconds = win. Events: `NightEnded`.
+
+## Open design questions (from the GDD — don't implement until decided)
+- One robot line per run vs. mixed swarm.
+- House modification mid-run vs. between runs.
+
+## Playtest log
+<!-- date · what you tried · what you felt · what to change -->
