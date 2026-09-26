@@ -41,4 +41,29 @@ namespace Piglings.Events
         public readonly ChainId Chain; public readonly int RobotsDropped; public readonly int MaxDepth;
         public ChainClosed(ChainId chain, int robotsDropped, int maxDepth) { Chain = chain; RobotsDropped = robotsDropped; MaxDepth = maxDepth; }
     }
+
+    /// <summary>
+    /// Published by the Rules layer right after RobotLostGrip: what that robot is worth on its own,
+    /// before the chain multiplier. Presentation shows it as the "+N" popup.
+    /// </summary>
+    public readonly struct RobotScored
+    {
+        public readonly GameId Robot; public readonly ChainId Chain; public readonly int Depth; public readonly int Points;
+        public RobotScored(GameId robot, ChainId chain, int depth, int points) { Robot = robot; Chain = chain; Depth = depth; Points = points; }
+    }
+
+    /// <summary>
+    /// Published by the Rules layer right after ChainClosed: the chain's final value.
+    /// Total = RobotPoints × Multiplier (rounded). Also published for misses, with zeros.
+    /// </summary>
+    public readonly struct ChainScored
+    {
+        public readonly ChainId Chain; public readonly int RobotsDropped; public readonly int MaxDepth;
+        public readonly int RobotPoints; public readonly float Multiplier; public readonly int Total;
+        public ChainScored(ChainId chain, int robotsDropped, int maxDepth, int robotPoints, float multiplier, int total)
+        {
+            Chain = chain; RobotsDropped = robotsDropped; MaxDepth = maxDepth;
+            RobotPoints = robotPoints; Multiplier = multiplier; Total = total;
+        }
+    }
 }

@@ -1,7 +1,7 @@
 {
     "name": "Piglings.Presentation",
     "rootNamespace": "Piglings.Presentation",
-    "references": ["Piglings.Events", "Piglings.Runtime", "Piglings.Definitions", "Piglings.Simulation"],
+    "references": ["Piglings.Events", "Piglings.Runtime", "Piglings.Definitions", "Piglings.Simulation", "Unity.TextMeshPro"],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,

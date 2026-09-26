@@ -20,8 +20,8 @@
 - [ ] Tune `BreakDuration` — if chains feel slow, shorten the flail first.
 
 ## M4 — Chains readable
-- [ ] ☁ M4.1 Rules: combo multiplier by depth; publish a `ChainScored` event with the final value. Add CoreCheck cases.
-- [ ] ☁ M4.2 Presentation: floating "+N" / depth popup on `RobotLostGrip`, bigger on `ChainClosed`. (Unity-side: list editor steps in the PR.)
+- [x] ☁ M4.1 Rules: combo multiplier by depth; publish a `ChainScored` event with the final value. Add CoreCheck cases.
+- [x] ☁ M4.2 Presentation: floating "+N" / depth popup on `RobotLostGrip`, bigger on `ChainClosed`. (Unity-side: list editor steps in the PR.)
 - [ ] 🖥 M4.3 Screen shake on depth ≥ 2.
 
 ## M5 — Walls matter

@@ -13,6 +13,10 @@ namespace Piglings.Simulation
 
         private float _timer;
 
+        // Views that need to find a robot by its GameId (e.g. score popups) listen here.
+        // Raised after Initialize, so the robot already has its Id.
+        public event System.Action<RobotController> Spawned;
+
         private void Update()
         {
             var night = session.Night;
@@ -23,6 +27,7 @@ namespace Piglings.Simulation
             var pos = new Vector3(Random.Range(minX, maxX), transform.position.y, 0f);
             var robot = Instantiate(robotPrefab, pos, Quaternion.identity, container);
             robot.Initialize(session, night.Robot, night.Wall != null ? night.Wall.ClimbSpeedMultiplier : 1f);
+            Spawned?.Invoke(robot);
         }
 
         private void OnDrawGizmosSelected()
