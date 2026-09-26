@@ -18,6 +18,9 @@ namespace Piglings.Simulation
         public GameId Id { get; private set; }
         public ChainId Chain { get; private set; }
 
+        // ThrowController reads this on the prefab to aim with the gravity the stone will really feel.
+        public float GravityScale => body.gravityScale;
+
         private NightSession _session;
         private float _life;
         private bool _removed;
