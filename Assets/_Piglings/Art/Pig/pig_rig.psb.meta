@@ -95,6 +95,72 @@ ScriptedImporter:
     spritePosition: {x: 0, y: 0}
   multiSpriteImportData: []
   layeredSpriteImportData:
+  - name: prop_stone
+    originalName: 
+    pivot: {x: 0.5, y: 0.5}
+    alignment: 0
+    border: {x: 0, y: 0, z: 0, w: 0}
+    customData: 
+    rect:
+      serializedVersion: 2
+      x: 426
+      y: 832
+      width: 60
+      height: 54
+    spriteID: b9dbf7693ba0ae947a24e3fb6cdeb504
+    spriteBone: []
+    spriteOutline: []
+    vertices: []
+    spritePhysicsOutline: []
+    indices: 
+    edges: []
+    tessellationDetail: 0
+    uvTransform: {x: 422, y: 828}
+    spritePosition: {x: 390, y: 853}
+  - name: eye_R_closed
+    originalName: 
+    pivot: {x: 0.5, y: 0.5}
+    alignment: 0
+    border: {x: 0, y: 0, z: 0, w: 0}
+    customData: 
+    rect:
+      serializedVersion: 2
+      x: 564
+      y: 976
+      width: 42
+      height: 15
+    spriteID: ef5540d89f7298d468163a5dac27229d
+    spriteBone: []
+    spriteOutline: []
+    vertices: []
+    spritePhysicsOutline: []
+    indices: 
+    edges: []
+    tessellationDetail: 0
+    uvTransform: {x: 560, y: 972}
+    spritePosition: {x: 443, y: 657}
+  - name: eye_L_closed
+    originalName: 
+    pivot: {x: 0.5, y: 0.5}
+    alignment: 0
+    border: {x: 0, y: 0, z: 0, w: 0}
+    customData: 
+    rect:
+      serializedVersion: 2
+      x: 512
+      y: 976
+      width: 44
+      height: 15
+    spriteID: 918ed8718aaf216478a838e762c3bfc5
+    spriteBone: []
+    spriteOutline: []
+    vertices: []
+    spritePhysicsOutline: []
+    indices: 
+    edges: []
+    tessellationDetail: 0
+    uvTransform: {x: 508, y: 972}
+    spritePosition: {x: 334, y: 641}
   - name: arm_R_upper
     originalName: 
     pivot: {x: 0.5, y: 0.5}
@@ -139,6 +205,72 @@ ScriptedImporter:
     tessellationDetail: 0
     uvTransform: {x: 508, y: 0}
     spritePosition: {x: 571, y: 291}
+  - name: mouth_o
+    originalName: 
+    pivot: {x: 0.5, y: 0.5}
+    alignment: 0
+    border: {x: 0, y: 0, z: 0, w: 0}
+    customData: 
+    rect:
+      serializedVersion: 2
+      x: 426
+      y: 894
+      width: 40
+      height: 52
+    spriteID: 2fc2e32d050be674eb093557dd60de10
+    spriteBone: []
+    spriteOutline: []
+    vertices: []
+    spritePhysicsOutline: []
+    indices: 
+    edges: []
+    tessellationDetail: 0
+    uvTransform: {x: 422, y: 890}
+    spritePosition: {x: 408, y: 486}
+  - name: mouth_grit
+    originalName: 
+    pivot: {x: 0.5, y: 0.5}
+    alignment: 0
+    border: {x: 0, y: 0, z: 0, w: 0}
+    customData: 
+    rect:
+      serializedVersion: 2
+      x: 200
+      y: 990
+      width: 88
+      height: 28
+    spriteID: ad5c96202855ef642b01ec0558f57c1e
+    spriteBone: []
+    spriteOutline: []
+    vertices: []
+    spritePhysicsOutline: []
+    indices: 
+    edges: []
+    tessellationDetail: 0
+    uvTransform: {x: 196, y: 986}
+    spritePosition: {x: 384, y: 512}
+  - name: mouth_grin
+    originalName: 
+    pivot: {x: 0.5, y: 0.5}
+    alignment: 0
+    border: {x: 0, y: 0, z: 0, w: 0}
+    customData: 
+    rect:
+      serializedVersion: 2
+      x: 618
+      y: 4
+      width: 160
+      height: 88
+    spriteID: edb2c68a28638c149a02d50d600db867
+    spriteBone: []
+    spriteOutline: []
+    vertices: []
+    spritePhysicsOutline: []
+    indices: 
+    edges: []
+    tessellationDetail: 0
+    uvTransform: {x: 614, y: 0}
+    spritePosition: {x: 352, y: 456}
   - name: mouth_smile
     originalName: 
     pivot: {x: 0.5, y: 0.5}
@@ -147,8 +279,8 @@ ScriptedImporter:
     customData: 
     rect:
       serializedVersion: 2
-      x: 313
-      y: 990
+      x: 618
+      y: 100
       width: 110
       height: 29
     spriteID: 7a1e938b552b4f94ab31f5f73c32ce50
@@ -159,7 +291,7 @@ ScriptedImporter:
     indices: 
     edges: []
     tessellationDetail: 0
-    uvTransform: {x: 309, y: 986}
+    uvTransform: {x: 614, y: 96}
     spritePosition: {x: 375, y: 512}
   - name: eye_R
     originalName: 
@@ -169,8 +301,8 @@ ScriptedImporter:
     customData: 
     rect:
       serializedVersion: 2
-      x: 426
-      y: 888
+      x: 470
+      y: 954
       width: 34
       height: 44
     spriteID: 45b87906890a46344a003afebe294f05
@@ -181,7 +313,7 @@ ScriptedImporter:
     indices: 
     edges: []
     tessellationDetail: 0
-    uvTransform: {x: 422, y: 884}
+    uvTransform: {x: 466, y: 950}
     spritePosition: {x: 447, y: 646}
   - name: eye_L
     originalName: 
@@ -192,7 +324,7 @@ ScriptedImporter:
     rect:
       serializedVersion: 2
       x: 426
-      y: 832
+      y: 954
       width: 36
       height: 48
     spriteID: 547422476d60fcc499bc22164b32b5bd
@@ -203,7 +335,7 @@ ScriptedImporter:
     indices: 
     edges: []
     tessellationDetail: 0
-    uvTransform: {x: 422, y: 828}
+    uvTransform: {x: 422, y: 950}
     spritePosition: {x: 338, y: 628}
   - name: ear_R
     originalName: 
@@ -494,7 +626,7 @@ ScriptedImporter:
   characterMode: 1
   documentPivot: {x: 0, y: 0}
   documentAlignment: 7
-  importHiddenLayers: 0
+  importHiddenLayers: 1
   layerMappingOption: 2
   generatePhysicsShape: 0
   paperDollMode: 0
@@ -519,34 +651,34 @@ ScriptedImporter:
   pSDLayerImportSetting: []
   psdLayers:
   - name: prop_stone
-    spriteName: 
+    spriteName: prop_stone
     isGroup: 0
     parentIndex: -1
     spriteID: b9dbf7693ba0ae947a24e3fb6cdeb504
     layerID: 0
-    mosaicPosition: {x: 0, y: 0}
+    mosaicPosition: {x: 426, y: 832}
     flatten: 0
-    isImported: 0
+    isImported: 1
     isVisible: 0
   - name: eye_R_closed
-    spriteName: 
+    spriteName: eye_R_closed
     isGroup: 0
     parentIndex: -1
     spriteID: ef5540d89f7298d468163a5dac27229d
     layerID: -1094033567
-    mosaicPosition: {x: 0, y: 0}
+    mosaicPosition: {x: 564, y: 976}
     flatten: 0
-    isImported: 0
+    isImported: 1
     isVisible: 0
   - name: eye_L_closed
-    spriteName: 
+    spriteName: eye_L_closed
     isGroup: 0
     parentIndex: -1
     spriteID: 918ed8718aaf216478a838e762c3bfc5
     layerID: -1094393213
-    mosaicPosition: {x: 0, y: 0}
+    mosaicPosition: {x: 512, y: 976}
     flatten: 0
-    isImported: 0
+    isImported: 1
     isVisible: 0
   - name: arm_R_upper
     spriteName: arm_R_upper
@@ -569,34 +701,34 @@ ScriptedImporter:
     isImported: 1
     isVisible: 1
   - name: mouth_o
-    spriteName: 
+    spriteName: mouth_o
     isGroup: 0
     parentIndex: -1
     spriteID: 2fc2e32d050be674eb093557dd60de10
     layerID: -1879418625
-    mosaicPosition: {x: 0, y: 0}
+    mosaicPosition: {x: 426, y: 894}
     flatten: 0
-    isImported: 0
+    isImported: 1
     isVisible: 0
   - name: mouth_grit
-    spriteName: 
+    spriteName: mouth_grit
     isGroup: 0
     parentIndex: -1
     spriteID: ad5c96202855ef642b01ec0558f57c1e
     layerID: -575106818
-    mosaicPosition: {x: 0, y: 0}
+    mosaicPosition: {x: 200, y: 990}
     flatten: 0
-    isImported: 0
+    isImported: 1
     isVisible: 0
   - name: mouth_grin
-    spriteName: 
+    spriteName: mouth_grin
     isGroup: 0
     parentIndex: -1
     spriteID: edb2c68a28638c149a02d50d600db867
     layerID: -480998484
-    mosaicPosition: {x: 0, y: 0}
+    mosaicPosition: {x: 618, y: 4}
     flatten: 0
-    isImported: 0
+    isImported: 1
     isVisible: 0
   - name: mouth_smile
     spriteName: mouth_smile
@@ -604,7 +736,7 @@ ScriptedImporter:
     parentIndex: -1
     spriteID: 7a1e938b552b4f94ab31f5f73c32ce50
     layerID: -1696329846
-    mosaicPosition: {x: 313, y: 990}
+    mosaicPosition: {x: 618, y: 100}
     flatten: 0
     isImported: 1
     isVisible: 1
@@ -614,7 +746,7 @@ ScriptedImporter:
     parentIndex: -1
     spriteID: 45b87906890a46344a003afebe294f05
     layerID: -1355458234
-    mosaicPosition: {x: 426, y: 888}
+    mosaicPosition: {x: 470, y: 954}
     flatten: 0
     isImported: 1
     isVisible: 1
@@ -624,7 +756,7 @@ ScriptedImporter:
     parentIndex: -1
     spriteID: 547422476d60fcc499bc22164b32b5bd
     layerID: -1355458248
-    mosaicPosition: {x: 426, y: 832}
+    mosaicPosition: {x: 426, y: 954}
     flatten: 0
     isImported: 1
     isVisible: 1

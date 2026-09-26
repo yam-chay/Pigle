@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1b19a70545a6d654ba3791c5c76b780c, type: 3}
+  m_Name: Robot_WolfBot
+  m_EditorClassIdentifier: Piglings.Definitions::Piglings.Definitions.RobotDefinition
+  id: wolfbot_basic
+  climbSpeed: 0.35
+  breakDuration: 0.6
+  ballRadius: 0.174
+  ballMass: 1
+  ballMaterial: {fileID: 6200000, guid: 0480178cfe783694d99eff3656d98f5d, type: 2}

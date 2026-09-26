@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 66a77b98ee9114c43a6c1ef98d5747cd, type: 3}
+  m_Name: Throwable_Stone
+  m_EditorClassIdentifier: Piglings.Definitions::Piglings.Definitions.ThrowableDefinition
+  id: stone
+  radius: 0.08
+  mass: 1
+  lifetime: 6
+  material: {fileID: 6200000, guid: 9281883772b675c4490389c880b39fae, type: 2}
