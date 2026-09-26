@@ -1,0 +1,13 @@
+{
+ "length": 0.6,
+ "ease": "lin",
+ "keys": [
+  {"t": 0, "p": {}},
+  {"t": 0.12, "p": {"eye": "red", "arm_L_upper": -40, "arm_L_lower": -40, "arm_R_upper": 40, "arm_R_lower": 40, "leg_L_upper": 30, "leg_R_upper": -30, "squash": -12, "root_y": -10, "ear_F": -25, "ear_B": 25, "antenna": -30}},
+  {"t": 0.26, "p": {"eye": "red", "arm_L_upper": -30, "arm_R_upper": 30, "squash": 6, "root_y": 0, "ear_F": 15, "ear_B": -15, "antenna": 30}},
+  {"t": 0.3, "p": {"eye": "x", "pop": 0, "arm_L_upper": -30, "arm_R_upper": 30, "squash": -8}},
+  {"t": 0.36, "p": {"eye": "x", "pop": 30, "arm_L_upper": -30, "arm_R_upper": 30, "squash": -10, "root_y": -2}},
+  {"t": 0.58, "p": {"eye": "x", "pop": 100, "squash": 8, "root_y": 6, "body_rot": 15, "ear_F": -20, "ear_B": 20}},
+  {"t": 0.6, "p": {"eye": "x", "pop": 100, "body_rot": 15, "ear_F": -20, "ear_B": 20}}
+ ]
+}

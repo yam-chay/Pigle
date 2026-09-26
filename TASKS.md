@@ -15,7 +15,7 @@
 - [ ] 🖥 M2.3 Wire both in Night.unity; tune throw speed so the whole wall is reachable from the hole.
 
 ## M3 — Robots feel right 🖥
-- [ ] Animator for WolfBot: Climb (loop), Break (≈0.6 s: flail → X eyes → limbs collapse). Rebuild from the Wolf-Bot Rig Tester keyframes.
+- [x] Animator for WolfBot: Climb (loop), Break (≈0.6 s: flail → X eyes → limbs collapse). Rebuild from the Wolf-Bot Rig Tester keyframes.
 - [ ] Animator for Pig: Idle (loop), Throw. From the Pig Rig Tester.
 - [ ] Tune `BreakDuration` — if chains feel slow, shorten the flail first.
 
