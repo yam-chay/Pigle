@@ -81,3 +81,5 @@ Everything else off. Holds are pins for falling balls only; climbing robots pass
 | Pig parts | 2× | 200 | 0.26 |
 | Wolf-bot parts | 3× | 300 | 0.3 |
 Barn = 6 units wide. Wolf-bot ball radius = 58 px × 0.3 × 0.01 = 0.174.
+
+Piglings.Editor | (none) | editor-only tooling; no game assembly may reference it
