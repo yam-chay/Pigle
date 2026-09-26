@@ -34,3 +34,6 @@
 
 ## Playtest log
 <!-- date · what you tried · what you felt · what to change -->
+
+2026-09-26 · first playtest · chains work: best 5 robots / depth 2, 2 reached top in ~40s ·
+TODO: stone hard to see (color), last-chain line shows empty chains from misses
