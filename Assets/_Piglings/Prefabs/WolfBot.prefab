@@ -11,6 +11,9 @@ GameObject:
   - component: {fileID: 7036289766529933794}
   - component: {fileID: 5770372897521693631}
   - component: {fileID: 1502895239951830154}
+  - component: {fileID: 6388284224697651634}
+  - component: {fileID: 6210813675107653471}
+  - component: {fileID: 2709662743224847239}
   m_Layer: 6
   m_Name: WolfBot
   m_TagString: Untagged
@@ -68,7 +71,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5e4706ea9c43bea4080d5e4cecb27d38, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Piglings.Presentation::Piglings.Presentation.RobotView
-  robot: {fileID: 2557981604039713708}
+  robot: {fileID: 2709662743224847239}
   animator: {fileID: 0}
   eyeOn: {fileID: 8225148628268290929}
   eyeRed: {fileID: 1018966721780331418}
@@ -85,6 +88,83 @@ MonoBehaviour:
   - {fileID: 8837286882924857491}
   - {fileID: 7508629624313504060}
   - {fileID: 934885069232273588}
+--- !u!50 &6388284224697651634
+Rigidbody2D:
+  serializedVersion: 5
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 730571935406087792}
+  m_BodyType: 1
+  m_Simulated: 1
+  m_UseFullKinematicContacts: 1
+  m_UseAutoMass: 0
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_GravityScale: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_Interpolate: 0
+  m_SleepingMode: 1
+  m_CollisionDetection: 0
+  m_Constraints: 0
+--- !u!58 &6210813675107653471
+CircleCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 730571935406087792}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ForceSendLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ForceReceiveLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ContactCaptureLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_CallbackLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_IsTrigger: 0
+  m_UsedByEffector: 0
+  m_CompositeOperation: 0
+  m_CompositeOrder: 0
+  m_Offset: {x: 0, y: 0}
+  m_Radius: 0.58
+--- !u!114 &2709662743224847239
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 730571935406087792}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 40cefd9f8ae6d7f40b53685185f7cf1a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Piglings.Simulation::Piglings.Simulation.RobotController
+  body: {fileID: 6388284224697651634}
+  ballCollider: {fileID: 6210813675107653471}
 --- !u!1001 &5866800009537474358
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -99,11 +179,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -7552582706839291426, guid: d5f4d75b2f198694fb1e6b1f5823fd9b, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 2.2785666
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -7552582706839291426, guid: d5f4d75b2f198694fb1e6b1f5823fd9b, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -1.2268333
+      value: -1.35
       objectReference: {fileID: 0}
     - target: {fileID: -7552582706839291426, guid: d5f4d75b2f198694fb1e6b1f5823fd9b, type: 3}
       propertyPath: m_LocalPosition.z
@@ -140,16 +220,7 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: -8653719598885068355, guid: d5f4d75b2f198694fb1e6b1f5823fd9b, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 5891765470165178910}
-    - targetCorrespondingSourceObject: {fileID: -8653719598885068355, guid: d5f4d75b2f198694fb1e6b1f5823fd9b, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 7340067626426040915}
-    - targetCorrespondingSourceObject: {fileID: -8653719598885068355, guid: d5f4d75b2f198694fb1e6b1f5823fd9b, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 2557981604039713708}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 4843985084834002234, guid: d5f4d75b2f198694fb1e6b1f5823fd9b, type: 3}
 --- !u!1 &561433260085481891 stripped
 GameObject:
@@ -191,88 +262,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: -7552582706839291426, guid: d5f4d75b2f198694fb1e6b1f5823fd9b, type: 3}
   m_PrefabInstance: {fileID: 5866800009537474358}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &6236571075206180491 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: -8653719598885068355, guid: d5f4d75b2f198694fb1e6b1f5823fd9b, type: 3}
-  m_PrefabInstance: {fileID: 5866800009537474358}
-  m_PrefabAsset: {fileID: 0}
---- !u!50 &5891765470165178910
-Rigidbody2D:
-  serializedVersion: 5
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6236571075206180491}
-  m_BodyType: 1
-  m_Simulated: 1
-  m_UseFullKinematicContacts: 0
-  m_UseAutoMass: 0
-  m_Mass: 1
-  m_LinearDamping: 0
-  m_AngularDamping: 0.05
-  m_GravityScale: 1
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_Interpolate: 0
-  m_SleepingMode: 1
-  m_CollisionDetection: 0
-  m_Constraints: 0
---- !u!58 &7340067626426040915
-CircleCollider2D:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6236571075206180491}
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Density: 1
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_ForceSendLayers:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  m_ForceReceiveLayers:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  m_ContactCaptureLayers:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  m_CallbackLayers:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  m_IsTrigger: 0
-  m_UsedByEffector: 0
-  m_CompositeOperation: 0
-  m_CompositeOrder: 0
-  m_Offset: {x: 0, y: 1.35}
-  m_Radius: 0.58
---- !u!114 &2557981604039713708
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6236571075206180491}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 40cefd9f8ae6d7f40b53685185f7cf1a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Piglings.Simulation::Piglings.Simulation.RobotController
-  body: {fileID: 5891765470165178910}
-  ballCollider: {fileID: 7340067626426040915}
 --- !u!1 &6243821683119654436 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: -8661111222755145454, guid: d5f4d75b2f198694fb1e6b1f5823fd9b, type: 3}
