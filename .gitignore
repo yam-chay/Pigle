@@ -116,3 +116,7 @@ InitTestScene*.unity*
 !/Tools/CoreCheck/CoreCheck.csproj
 /Tools/CoreCheck/bin/
 /Tools/CoreCheck/obj/
+
+# Unity test tooling leftovers from builds
+/Assets/Resources/PerformanceTestRun*
+/Assets/Resources/PerformanceTestRun*.meta
