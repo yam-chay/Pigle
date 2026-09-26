@@ -17,17 +17,8 @@ namespace Piglings.Simulation
     {
         [SerializeField] private NightDefinition night;
 
-        // Scoring lives here, not in NightDefinition: it's how the game counts, not what a night contains.
-        // Read once in Awake — change these outside play mode (or restart play) to try a new curve.
-        [Header("Scoring (see ScoreCurve)")]
-        [Tooltip("Points for a robot hit directly by the stone (depth 0).")]
-        [SerializeField, Min(0)] private int basePoints = 10;
-        [Tooltip("Extra points per step deeper in the chain. Depth 2 = base + 2 × this.")]
-        [SerializeField, Min(0)] private int pointsPerDepth = 10;
-        [Tooltip("Chain multiplier grows by this per depth reached. 0.5 → depth 1 ×1.5, depth 2 ×2.")]
-        [SerializeField, Min(0f)] private float multiplierPerDepth = 0.5f;
-        [Tooltip("The multiplier never goes above this.")]
-        [SerializeField, Min(1f)] private float maxMultiplier = 4f;
+        // Read once in Awake — edit the asset outside play mode (or restart play) to try a new curve.
+        [SerializeField] private ScoringDefinition scoring;
 
         public NightDefinition Night => night;
         public EventBus Bus { get; private set; }
@@ -41,8 +32,19 @@ namespace Piglings.Simulation
             Bus = new EventBus();
             State = new NightState();
             Ids = new IdAllocator();
-            var curve = new ScoreCurve(basePoints, pointsPerDepth, multiplierPerDepth, maxMultiplier);
-            _chains = new ChainTracker(Bus, State, curve);
+            _chains = new ChainTracker(Bus, State, BuildCurve());
+        }
+
+        // Without an asset the night still plays on ScoreCurve's defaults (10 / 10 / 0.5 / 4),
+        // but says so — silently scoring on values nobody chose would make tuning confusing.
+        private ScoreCurve BuildCurve()
+        {
+            if (scoring == null)
+            {
+                Debug.LogWarning("NightSession: no ScoringDefinition assigned, using default scoring.", this);
+                return new ScoreCurve();
+            }
+            return new ScoreCurve(scoring.BasePoints, scoring.PointsPerDepth, scoring.MultiplierPerDepth, scoring.MaxMultiplier);
         }
 
         private void OnDestroy() => _chains?.Dispose();

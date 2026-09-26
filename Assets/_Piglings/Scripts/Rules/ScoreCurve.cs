@@ -10,7 +10,7 @@ namespace Piglings.Rules
     ///     The extra is paid then, as the chain's bonus.
     /// Why depth and not robot count: one stone clipping three robots is luck; a ball knocking a ball
     /// knocking a ball is the game. Depth is what the scoring should teach.
-    /// Immutable: built once per night by NightSession from its Inspector values.
+    /// Immutable: built once per night by NightSession from the ScoringDefinition asset.
     /// </summary>
     public sealed class ScoreCurve
     {
