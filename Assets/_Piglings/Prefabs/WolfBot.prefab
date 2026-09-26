@@ -47,7 +47,7 @@ Animator:
   m_GameObject: {fileID: 730571935406087792}
   m_Enabled: 1
   m_Avatar: {fileID: 0}
-  m_Controller: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: 2f5c781ce42052d42beb485cd2926699, type: 2}
   m_CullingMode: 0
   m_UpdateMode: 0
   m_ApplyRootMotion: 0
@@ -72,7 +72,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Piglings.Presentation::Piglings.Presentation.RobotView
   robot: {fileID: 2709662743224847239}
-  animator: {fileID: 0}
+  animator: {fileID: 5770372897521693631}
   eyeOn: {fileID: 8225148628268290929}
   eyeRed: {fileID: 1018966721780331418}
   eyeX: {fileID: 8544900322169019497}

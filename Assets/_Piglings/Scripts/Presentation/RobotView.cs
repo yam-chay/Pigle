@@ -25,23 +25,14 @@ namespace Piglings.Presentation
         {
             switch (s)
             {
-                case RobotState.Climbing: SetEyes(eyeOn); break;
+                case RobotState.Climbing: break;
                 case RobotState.LosingGrip:
-                    SetEyes(eyeRed);
                     if (animator) animator.SetTrigger(BreakTrigger);   // the clip itself swaps eyes to X at the crack
                     break;
                 case RobotState.Falling:
-                    SetEyes(eyeX);
                     foreach (var d in detachables) if (d) d.SetActive(false);
                     break;
             }
-        }
-
-        private void SetEyes(GameObject active)
-        {
-            if (eyeOn) eyeOn.SetActive(active == eyeOn);
-            if (eyeRed) eyeRed.SetActive(active == eyeRed);
-            if (eyeX) eyeX.SetActive(active == eyeX);
         }
     }
 }
