@@ -10,5 +10,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../../Assets/_Piglings/Scripts/Events/**/*.cs;../../Assets/_Piglings/Scripts/Runtime/**/*.cs;../../Assets/_Piglings/Scripts/Rules/**/*.cs" />
+    <!-- One engine-free file from Simulation: the throw math. Compiling it here also guards that it stays free of UnityEngine. -->
+    <Compile Include="../../Assets/_Piglings/Scripts/Simulation/ThrowSolver.cs" />
   </ItemGroup>
 </Project>

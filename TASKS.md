@@ -10,8 +10,8 @@
 - [ ] Note what feels off (fall speed, bounciness, spawn rate) in the Playtest log below.
 
 ## M2 — Throw feel
-- [ ] ☁ M2.1 Port CCTD `ThrowSolver` (Reference/CCTD) into Simulation: aim by target point with an arc, not a straight line. Keep `ThrowController`'s public surface (`Thrown` event, `Launch` call).
-- [ ] ☁ M2.2 Port `TrajectoryView` into Presentation (reads aim from ThrowController, draws the arc). Presentation must not change state.
+- [x] ☁ M2.1 Port CCTD `ThrowSolver` (Reference/CCTD) into Simulation: aim by target point with an arc, not a straight line. Keep `ThrowController`'s public surface (`Thrown` event, `Launch` call).
+- [x] ☁ M2.2 Port `TrajectoryView` into Presentation (reads aim from ThrowController, draws the arc). Presentation must not change state.
 - [ ] 🖥 M2.3 Wire both in Night.unity; tune throw speed so the whole wall is reachable from the hole.
 
 ## M3 — Robots feel right 🖥
