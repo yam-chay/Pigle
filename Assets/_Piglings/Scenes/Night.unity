@@ -2781,7 +2781,7 @@ MonoBehaviour:
   robotScale: 1
   scalePerDepth: 0.2
   shallowColor: {r: 1, g: 1, b: 1, a: 1}
-  deepColor: {r: 1, g: 0.75, b: 0.2, a: 1}
+  deepColor: {r: 1, g: 0.73510915, b: 0.15566039, a: 1}
   deepAtDepth: 3
   chainAnchor: {fileID: 315329951}
   chainScale: 2
