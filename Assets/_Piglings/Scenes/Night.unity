@@ -1322,6 +1322,7 @@ GameObject:
   - component: {fileID: 519420031}
   - component: {fileID: 519420029}
   - component: {fileID: 519420030}
+  - component: {fileID: 519420033}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -1447,6 +1448,27 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &519420033
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 519420028}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4dabc8841908c66499ccefe515250ef1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Piglings.Presentation::Piglings.Presentation.CameraShake
+  session: {fileID: 1068153025}
+  minDepth: 2
+  traumaPerDepth: 0.25
+  bigChainTotal: 300
+  chainTrauma: 0.6
+  maxOffset: 0.15
+  maxAngle: 2
+  frequency: 22
+  recovery: 1.5
 --- !u!1 &619394800
 GameObject:
   m_ObjectHideFlags: 0
@@ -1604,8 +1626,41 @@ MonoBehaviour:
   m_EditorClassIdentifier: Piglings.Presentation::Piglings.Presentation.DangerZoneView
   session: {fileID: 1068153025}
   line: {fileID: 698291723}
-  warningColor: {r: 1, g: 0.25, b: 0.2, a: 0.35}
-  overtimeColor: {r: 1, g: 0.8, b: 0.2, a: 0.9}
+  warningColor: {r: 1, g: 0.5542342, b: 0.2688679, a: 0.35}
+  overtimeColor:
+    mode: 3
+    gradient:
+      serializedVersion: 2
+      key0: {r: 1, g: 0.25, b: 0.25, a: 1}
+      key1: {r: 1, g: 0.8137255, b: 0, a: 1}
+      key2: {r: 1, g: 0.25, b: 0.25, a: 0}
+      key3: {r: 0, g: 0, b: 0, a: 0}
+      key4: {r: 0, g: 0, b: 0, a: 0}
+      key5: {r: 0, g: 0, b: 0, a: 0}
+      key6: {r: 0, g: 0, b: 0, a: 0}
+      key7: {r: 0, g: 0, b: 0, a: 0}
+      ctime0: 0
+      ctime1: 31611
+      ctime2: 65535
+      ctime3: 0
+      ctime4: 0
+      ctime5: 0
+      ctime6: 0
+      ctime7: 0
+      atime0: 0
+      atime1: 65535
+      atime2: 0
+      atime3: 0
+      atime4: 0
+      atime5: 0
+      atime6: 0
+      atime7: 0
+      m_Mode: 0
+      m_ColorSpace: 0
+      m_NumColorKeys: 3
+      m_NumAlphaKeys: 2
+    speed: 0.6
+    spread: 1
   overtimePulse: 2
 --- !u!212 &698291723
 SpriteRenderer:
@@ -3265,12 +3320,146 @@ MonoBehaviour:
   robotOffset: {x: 0, y: 0.25, z: 0}
   robotScale: 1
   scalePerDepth: 0.2
-  shallowColor: {r: 1, g: 1, b: 1, a: 1}
-  deepColor: {r: 1, g: 0.73510915, b: 0.15566039, a: 1}
-  deepAtDepth: 3
+  robotColor:
+    mode: 0
+    gradient:
+      serializedVersion: 2
+      key0: {r: 1, g: 1, b: 1, a: 1}
+      key1: {r: 1, g: 0.82128006, b: 0.25098038, a: 1}
+      key2: {r: 1, g: 0.5092305, b: 0.10849059, a: 0}
+      key3: {r: 1, g: 0.17179956, b: 0.109803915, a: 0}
+      key4: {r: 0.38017935, g: 0, b: 0.735849, a: 0}
+      key5: {r: 0, g: 0, b: 0, a: 0}
+      key6: {r: 0, g: 0, b: 0, a: 0}
+      key7: {r: 0, g: 0, b: 0, a: 0}
+      ctime0: 771
+      ctime1: 17540
+      ctime2: 33153
+      ctime3: 49151
+      ctime4: 64957
+      ctime5: 0
+      ctime6: 0
+      ctime7: 0
+      atime0: 0
+      atime1: 65535
+      atime2: 0
+      atime3: 0
+      atime4: 0
+      atime5: 0
+      atime6: 0
+      atime7: 0
+      m_Mode: 0
+      m_ColorSpace: 0
+      m_NumColorKeys: 5
+      m_NumAlphaKeys: 2
+    speed: 1
+    spread: 1
+  deepAtDepth: 5
+  overtimeColor:
+    mode: 3
+    gradient:
+      serializedVersion: 2
+      key0: {r: 1, g: 0.25, b: 0.25, a: 1}
+      key1: {r: 1, g: 0.85, b: 0.2, a: 1}
+      key2: {r: 0.35, g: 1, b: 0.35, a: 0}
+      key3: {r: 0.3, g: 0.9, b: 1, a: 0}
+      key4: {r: 0.45, g: 0.45, b: 1, a: 0}
+      key5: {r: 1, g: 0.4, b: 1, a: 0}
+      key6: {r: 1, g: 0.25, b: 0.25, a: 0}
+      key7: {r: 0, g: 0, b: 0, a: 0}
+      ctime0: 0
+      ctime1: 11141
+      ctime2: 21627
+      ctime3: 32768
+      ctime4: 43908
+      ctime5: 54394
+      ctime6: 65535
+      ctime7: 0
+      atime0: 0
+      atime1: 65535
+      atime2: 0
+      atime3: 0
+      atime4: 0
+      atime5: 0
+      atime6: 0
+      atime7: 0
+      m_Mode: 0
+      m_ColorSpace: -1
+      m_NumColorKeys: 7
+      m_NumAlphaKeys: 2
+    speed: 2
+    spread: 2
   chainAnchor: {fileID: 315329951}
   chainScale: 2
-  chainColor: {r: 1, g: 0.85, b: 0.3, a: 1}
+  chainColor:
+    mode: 3
+    gradient:
+      serializedVersion: 2
+      key0: {r: 1, g: 0.76830447, b: 0.13679248, a: 1}
+      key1: {r: 1, g: 0.42082167, b: 0, a: 1}
+      key2: {r: 0, g: 0, b: 0, a: 0}
+      key3: {r: 0, g: 0, b: 0, a: 0}
+      key4: {r: 0, g: 0, b: 0, a: 0}
+      key5: {r: 0, g: 0, b: 0, a: 0}
+      key6: {r: 0, g: 0, b: 0, a: 0}
+      key7: {r: 0, g: 0, b: 0, a: 0}
+      ctime0: 9445
+      ctime1: 53006
+      ctime2: 0
+      ctime3: 0
+      ctime4: 0
+      ctime5: 0
+      ctime6: 0
+      ctime7: 0
+      atime0: 0
+      atime1: 65535
+      atime2: 0
+      atime3: 0
+      atime4: 0
+      atime5: 0
+      atime6: 0
+      atime7: 0
+      m_Mode: 0
+      m_ColorSpace: 0
+      m_NumColorKeys: 2
+      m_NumAlphaKeys: 2
+    speed: 2
+    spread: 1
+  overtimeChainColor:
+    mode: 3
+    gradient:
+      serializedVersion: 2
+      key0: {r: 1, g: 0.25, b: 0.25, a: 1}
+      key1: {r: 1, g: 0.85, b: 0.2, a: 1}
+      key2: {r: 0.35, g: 1, b: 0.35, a: 0}
+      key3: {r: 0.3, g: 0.9, b: 1, a: 0}
+      key4: {r: 0.45, g: 0.45, b: 1, a: 0}
+      key5: {r: 1, g: 0.4, b: 1, a: 0}
+      key6: {r: 1, g: 0.25, b: 0.25, a: 0}
+      key7: {r: 0, g: 0, b: 0, a: 0}
+      ctime0: 0
+      ctime1: 11141
+      ctime2: 21627
+      ctime3: 32768
+      ctime4: 43908
+      ctime5: 54394
+      ctime6: 65535
+      ctime7: 0
+      atime0: 0
+      atime1: 65535
+      atime2: 0
+      atime3: 0
+      atime4: 0
+      atime5: 0
+      atime6: 0
+      atime7: 0
+      m_Mode: 0
+      m_ColorSpace: -1
+      m_NumColorKeys: 7
+      m_NumAlphaKeys: 2
+    speed: 2
+    spread: 2
+  bigChainTotal: 300
   minRobotsForChainPopup: 2
 --- !u!1 &2040407676
 GameObject:
@@ -3300,7 +3489,7 @@ Transform:
   m_GameObject: {fileID: 2040407676}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 6.874, z: 0}
+  m_LocalPosition: {x: 0, y: 6.72, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -3599,6 +3788,18 @@ PrefabInstance:
       value: Pig
       objectReference: {fileID: 0}
     - target: {fileID: 4213026635838656741, guid: 76a5897965cc93f488af54ee35c9aed1, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 0.24
+      objectReference: {fileID: 0}
+    - target: {fileID: 4213026635838656741, guid: 76a5897965cc93f488af54ee35c9aed1, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 0.24
+      objectReference: {fileID: 0}
+    - target: {fileID: 4213026635838656741, guid: 76a5897965cc93f488af54ee35c9aed1, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4213026635838656741, guid: 76a5897965cc93f488af54ee35c9aed1, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
       objectReference: {fileID: 0}
@@ -3636,6 +3837,10 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4213026635838656741, guid: 76a5897965cc93f488af54ee35c9aed1, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4213026635838656741, guid: 76a5897965cc93f488af54ee35c9aed1, type: 3}
+      propertyPath: m_ConstrainProportionsScale
       value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []

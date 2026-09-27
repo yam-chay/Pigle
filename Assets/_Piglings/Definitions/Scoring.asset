@@ -17,3 +17,4 @@ MonoBehaviour:
   wolfValue: 10
   multiplierPerDepth: 1
   carryScoredTotal: 0
+  overtimeMultiplier: 2
