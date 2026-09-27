@@ -16,4 +16,4 @@ MonoBehaviour:
   growthPerHit: 10
   wolfValue: 10
   multiplierPerDepth: 1
-  carryScoredTotal: 1
+  carryScoredTotal: 0
