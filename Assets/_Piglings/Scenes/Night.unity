@@ -739,6 +739,37 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9469c002bc7455c47b47e135cd03fa8b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Piglings.Simulation::Piglings.Simulation.Hold
+--- !u!1 &315329950
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 315329951}
+  m_Layer: 0
+  m_Name: ChainPopupAnchor
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &315329951
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 315329950}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 7.8, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &331802024
 GameObject:
   m_ObjectHideFlags: 0
@@ -1613,6 +1644,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Piglings.Simulation::Piglings.Simulation.NightSession
   night: {fileID: 11400000, guid: 3f672aa5176394a47ab6bce1dd0f859c, type: 2}
+  scoring: {fileID: 11400000, guid: fa51ede7d84858d4b928e1018f74218c, type: 2}
 --- !u!4 &1068153026
 Transform:
   m_ObjectHideFlags: 0
@@ -2697,6 +2729,64 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9469c002bc7455c47b47e135cd03fa8b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Piglings.Simulation::Piglings.Simulation.Hold
+--- !u!1 &2030246745
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2030246746}
+  - component: {fileID: 2030246747}
+  m_Layer: 0
+  m_Name: ScorePopups
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2030246746
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2030246745}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2030246747
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2030246745}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f178b56a00e82714cab540ce4f9feaa4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Piglings.Presentation::Piglings.Presentation.ScorePopupSpawner
+  session: {fileID: 1068153025}
+  spawner: {fileID: 1317582554}
+  popupPrefab: {fileID: 7836288628412598368, guid: 32597bf3ea9126c43aac0e36ef808bd2, type: 3}
+  container: {fileID: 315329951}
+  robotOffset: {x: 0, y: 0.25, z: 0}
+  robotScale: 1
+  scalePerDepth: 0.2
+  shallowColor: {r: 1, g: 1, b: 1, a: 1}
+  deepColor: {r: 1, g: 0.75, b: 0.2, a: 1}
+  deepAtDepth: 3
+  chainAnchor: {fileID: 0}
+  chainScale: 2
+  chainColor: {r: 1, g: 0.85, b: 0.3, a: 1}
+  minRobotsForChainPopup: 2
 --- !u!1 &2147037958
 GameObject:
   m_ObjectHideFlags: 0
@@ -2832,3 +2922,5 @@ SceneRoots:
   - {fileID: 1317582553}
   - {fileID: 397069837}
   - {fileID: 121294482}
+  - {fileID: 315329951}
+  - {fileID: 2030246746}
