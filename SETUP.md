@@ -84,7 +84,9 @@ Barn
   DangerZone            THE DANGER LINE, just above the wall's top beam: (0, 6.275), BoxCollider2D trigger 4.4 × 0.2,
                         layer Zones, Rigidbody2D Kinematic, DangerZone (session)
     DangerLine          SpriteRenderer (thin square, scale ≈ 4.08 × 0.2), DangerZoneView (session)
-ThrowOrigin             empty at the pig's hand (0.2, 7.7)
+ThrowOrigin             empty, a CHILD OF THE PIG'S THROWING-HAND BONE, on the palm — it moves with the animation.
+                        Only its position is used: the held stone follows it without being parented, so the rig's
+                        scale never touches the stone. (Was a fixed point at (0.2, 7.7).)
 ThrowController         ThrowController (session, Stone prefab, origin, container = Throwables, camera, pile = StonePile)
 Trajectory              LineRenderer + TrajectoryView (thrower)
 RobotSpawner            y 0.3; RobotSpawner (session, WolfBot prefab, container = Robots)

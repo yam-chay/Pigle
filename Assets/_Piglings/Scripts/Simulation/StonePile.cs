@@ -28,7 +28,8 @@ namespace Piglings.Simulation
         [SerializeField] private NightSession session;
         [Tooltip("The stone prefab — the same one ThrowController throws.")]
         [SerializeField] private Throwable stonePrefab;
-        [Tooltip("Where the stone waits to be thrown: the pig's hand (ThrowOrigin).")]
+        [Tooltip("Where the stone waits to be thrown: ThrowOrigin, placed as a child of the pig's throwing-hand bone " +
+                 "so it moves with the animation. The stone follows it (it isn't parented to it), so the rig's scale never touches the stone.")]
         [SerializeField] private Transform hand;
         [Tooltip("To find the robot that steals a stone.")]
         [SerializeField] private RobotSpawner spawner;
@@ -45,7 +46,7 @@ namespace Piglings.Simulation
         [Tooltip("Added stones fall into their slot from this high.")]
         [SerializeField] private float dropHeight = 0.6f;
         [SerializeField, Min(0.05f)] private float dropSeconds = 0.3f;
-        [Tooltip("Where a stolen stone sits on the robot that took it (local to the robot).")]
+        [Tooltip("Where a stolen stone sits on the robot that took it (world offset from the robot's centre).")]
         [SerializeField] private Vector3 stolenOffset = new Vector3(0f, 0.25f, 0f);
 
         private readonly List<Throwable> _pile = new List<Throwable>();   // index = slot; last = top
@@ -123,8 +124,9 @@ namespace Piglings.Simulation
             if (_robots.TryGetValue(robot, out var thief) && thief != null)
             {
                 // Parked (no collider, no physics): it leaves with the robot and can never start a chain.
-                stone.transform.SetParent(thief, worldPositionStays: false);
-                stone.transform.localPosition = stolenOffset;
+                // worldPositionStays keeps the stone's own size — the robot is scaled 0.3.
+                stone.transform.SetParent(thief, worldPositionStays: true);
+                stone.transform.position = thief.position + stolenOffset;
             }
             else Destroy(stone.gameObject);
         }
@@ -183,20 +185,6 @@ namespace Piglings.Simulation
                 _hopT = 0f;
             }
 
-            if (_held != null && _hopT >= 0f)
-            {
-                _hopT = Mathf.Min(1f, _hopT + Time.deltaTime / hopSeconds);
-                // Arc: straight line to the hand plus a parabola bump at the middle.
-                var p = Vector3.Lerp(_hopFrom, hand.position, _hopT) + Vector3.up * (hopHeight * 4f * _hopT * (1f - _hopT));
-                _held.transform.position = p;
-                if (_hopT >= 1f)
-                {
-                    _held.transform.SetParent(hand, worldPositionStays: false);
-                    _held.transform.localPosition = Vector3.zero;
-                    _hopT = -1f;
-                }
-            }
-
             for (int i = _drops.Count - 1; i >= 0; i--)
             {
                 var d = _drops[i];
@@ -205,6 +193,27 @@ namespace Piglings.Simulation
                 d.stone.transform.position = Vector3.Lerp(d.from, d.to, d.t * d.t);   // accelerate like a fall
                 if (d.t >= 1f) _drops.RemoveAt(i); else _drops[i] = d;
             }
+        }
+
+        // LateUpdate: runs after the Animator has posed the pig this frame, so the hand is where it's drawn.
+        // The stone FOLLOWS the hand instead of becoming its child — parented to the rig it would inherit the
+        // pig's scale (0.26) and every bone's scale. Following keeps its own size and still tracks the hand
+        // through idle, aim and throw.
+        private void LateUpdate()
+        {
+            if (_held == null || hand == null) return;
+
+            if (_hopT >= 0f)
+            {
+                _hopT = Mathf.Min(1f, _hopT + Time.deltaTime / hopSeconds);
+                // Arc: straight line to the (moving) hand plus a parabola bump at the middle.
+                _held.transform.position = Vector3.Lerp(_hopFrom, hand.position, _hopT)
+                                           + Vector3.up * (hopHeight * 4f * _hopT * (1f - _hopT));
+                if (_hopT >= 1f) _hopT = -1f;   // arrived: from now on it just follows the hand
+                return;
+            }
+
+            _held.transform.position = hand.position;
         }
 
         private void OnSpawned(RobotController robot) => _robots[robot.Id] = robot.transform;
