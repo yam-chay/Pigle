@@ -12,7 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bb6a93d7e1740ca4c94f03f6a3f8b8fb, type: 3}
   m_Name: Scoring
   m_EditorClassIdentifier: Piglings.Definitions::Piglings.Definitions.ScoringDefinition
-  basePoints: 10
-  pointsPerDepth: 10
+  stoneValue: 10
+  growthPerHit: 10
+  wolfValue: 10
   multiplierPerDepth: 1
-  maxMultiplier: 4
+  carryScoredTotal: 1

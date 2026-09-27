@@ -14,8 +14,9 @@ namespace Piglings.Definitions
         [Tooltip("What the stone carries into its first hit. (Future: stone upgrades.)")]
         [SerializeField, Min(0)] private int stoneValue = 10;
 
-        [Tooltip("Each robot's multiplier grows by this per step of its own depth. 1 → depth 0 ×1, depth 1 ×2, depth 2 ×3.")]
-        [SerializeField, Min(0f)] private float multiplierPerDepth = 0.5f;
+        [Tooltip("How much a stone or a falling ball grows with each extra robot it knocks: 10 → hits worth 10, 20, 30… " +
+                 "(Future: piercing stones.)")]
+        [SerializeField, Min(0)] private int growthPerHit = 10;
 
         [Tooltip("What a knocked robot adds of its own when it passes value on to the robots it hits. (Future: wolf upgrades.)")]
         [SerializeField, Min(0)] private int wolfValue = 10;
