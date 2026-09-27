@@ -1063,6 +1063,7 @@ MonoBehaviour:
   cam: {fileID: 519420031}
   throwSpeed: 8
   outOfRangePreviewSeconds: 5
+  throwCooldown: 0.3
 --- !u!1 &501042155
 GameObject:
   m_ObjectHideFlags: 0

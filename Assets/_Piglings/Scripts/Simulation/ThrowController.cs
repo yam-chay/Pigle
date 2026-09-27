@@ -69,6 +69,9 @@ namespace Piglings.Simulation
             var pointer = Pointer.current;
             if (pointer == null || cam == null) return;
             if (session.State.ThrowsUsed >= session.Night.ThrowsAvailable) return;
+            // Cooling down: no aim, so no line and no raised arm. Holding the button through the
+            // cooldown still works — the aim appears the moment it ends and release throws as usual.
+            if (Time.time < readyAt) return;
 
             // Released this frame counts as "still aiming" so the throw uses the same aim the
             // player saw on the last frame of the drag.
@@ -92,6 +95,7 @@ namespace Piglings.Simulation
             var t = Instantiate(throwablePrefab, aim.From, Quaternion.identity, container);
             t.Launch(session, session.Night.Throwable, launch);
             Thrown?.Invoke(aim.Velocity.normalized);
+            readyAt = Time.time + throwCooldown;
 
             CurrentAim = default;
         }
@@ -113,5 +117,10 @@ namespace Piglings.Simulation
 
             return new ThrowAim(from, target, new Vector2(vx, vy), gravity, duration, inRange);
         }
+
+        [Tooltip("Seconds after a throw before the pig can aim again. Any value works — the pig's Animator restarts the throw on every release.")]
+        [SerializeField, Min(0f)] private float throwCooldown = 0.4f;
+
+        private float readyAt;   // Time.time when the next aim is allowed
     }
 }
