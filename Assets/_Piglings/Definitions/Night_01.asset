@@ -15,5 +15,8 @@ MonoBehaviour:
   robot: {fileID: 11400000, guid: ee37ff9b637829446aa9eb6fed6a8e64, type: 2}
   throwable: {fileID: 11400000, guid: 8b24c133a3567b546ab1718b3aabd560, type: 2}
   wall: {fileID: 11400000, guid: ce9cccee93d7cf04d865dd675bc6bb58, type: 2}
-  spawnInterval: 1.6
+  spawnInterval: 1
   throwsAvailable: 30
+  targetScore: 5000
+  stonesLostPerBreach: 1
+  maxBreaches: 5
