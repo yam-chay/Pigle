@@ -16,6 +16,7 @@ namespace Piglings.Rules
             public int Dropped;
             public int MaxDepth;
             public int Total;       // sum of the RobotScored totals; ChainScored reports it
+            public bool InOvertime; // thrown in overtime (so views can style its result as bonus points)
 
             // What each hitter of this chain (the stone, and every robot knocked loose) carries into
             // its next hit. Lives with the chain, so it's forgotten when the chain closes.
@@ -51,6 +52,7 @@ namespace Piglings.Rules
         {
             var c = new Open();
             c.InPlay.Add(e.Throwable);
+            c.InOvertime = _state.Phase == NightPhase.Overtime;
             c.Carried[e.Throwable] = _curve.StoneValue;
             _open[e.Chain.Id] = c;
             _state.ThrowsUsed++;
@@ -103,7 +105,7 @@ namespace Piglings.Rules
 
             // Nothing is paid here: every robot was scored as it fell, so this is just the sum.
             _bus.Publish(new ChainClosed(chain, c.Dropped, c.MaxDepth));
-            _bus.Publish(new ChainScored(chain, c.Dropped, c.MaxDepth, c.Total));
+            _bus.Publish(new ChainScored(chain, c.Dropped, c.MaxDepth, c.Total, c.InOvertime));
         }
     }
 }

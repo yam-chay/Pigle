@@ -46,6 +46,9 @@ namespace Piglings.Presentation
         [SerializeField, Min(0.01f)] private float chainScale = 2f;
         [SerializeField] private PopupColor chainColor = new PopupColor
             { mode = PopupColorMode.Solid, gradient = PopupColor.Flat(new Color(1f, 0.85f, 0.3f)) };
+        [Tooltip("Chain result for a chain thrown in overtime: an animated rainbow by default, like the overtime popups.")]
+        [SerializeField] private PopupColor overtimeChainColor = new PopupColor
+            { mode = PopupColorMode.PerLetter, gradient = PopupColor.Rainbow(), speed = 1.2f, spread = 0.8f };
         [Tooltip("A chain worth this much (or more) gets the full treatment: longest life, strongest shake.")]
         [SerializeField, Min(1)] private int bigChainTotal = 300;
         [Tooltip("Smallest chain that gets the big popup. 1-robot chains already got their \"+N\"; 0 = misses.")]
@@ -103,7 +106,8 @@ namespace Piglings.Presentation
 
             string robots = e.RobotsDropped == 1 ? "1 robot" : $"{e.RobotsDropped} robots";
             float size = Mathf.Clamp01(e.Total / (float)bigChainTotal);
-            Spawn(chainAnchor.position, $"{robots} · depth {e.MaxDepth}\n+{e.Total}", chainColor, 0f, chainScale, size);
+            var color = e.InOvertime ? overtimeChainColor : chainColor;
+            Spawn(chainAnchor.position, $"{robots} · depth {e.MaxDepth}\n+{e.Total}", color, 0f, chainScale, size);
         }
 
         // Inspector: ⋮ (or right-click the component header) → "Preview popups", in Play mode.
@@ -130,6 +134,7 @@ namespace Piglings.Presentation
             }
             Spawn(origin + new Vector3(0f, -2.2f, 0f), "20 ×1.5  OT×2", overtimeColor, 0.33f, robotScale * 1.2f, 0.33f, "+60");
             Spawn(origin, "5 robots · depth 3\n+300", chainColor, 0f, chainScale, 1f);
+            Spawn(origin + new Vector3(0f, 1.2f, 0f), "4 robots · depth 2 (OT)\n+400", overtimeChainColor, 0f, chainScale, 1f);
         }
 
         private void Spawn(Vector3 position, string text, PopupColor color, float colorKey, float scale, float intensity,

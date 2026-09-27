@@ -135,8 +135,12 @@ class Night{
   return (c,s,r);
  }
  public System.Collections.Generic.List<RobotScored> Scored=new System.Collections.Generic.List<RobotScored>();
- public void Breach(){ Bus.Publish(new RobotRemoved(Ids.Next(),ChainId.None,RemovalReason.EnteredBarn)); }
- public void Danger(){ Bus.Publish(new RobotEnteredDangerZone(Ids.Next())); }
+ // Like the real wall: a robot spawns (in the current phase), then climbs into the zone / the barn.
+ public GameId Spawn(){ var r=Ids.Next(); Bus.Publish(new RobotSpawned(r)); return r; }
+ public void Breach(){ Breach(Spawn()); }
+ public void Breach(GameId r){ Bus.Publish(new RobotRemoved(r,ChainId.None,RemovalReason.EnteredBarn)); }
+ public void Danger(){ Danger(Spawn()); }
+ public void Danger(GameId r){ Bus.Publish(new RobotEnteredDangerZone(r)); }
  public int BankedTo(MasteryDestination d){ int t=0; foreach(var b in Banked) if(b.Destination==d) t+=b.Amount*b.Multiplier; return t; }
  public bool AnyBankedTo(MasteryDestination d){ foreach(var b in Banked) if(b.Destination==d) return true; return false; }
 }
@@ -214,6 +218,25 @@ static void NightChecks(){
    Check(n.St.Phase==NightPhase.ChoicePending && n.St.StonesLeft==0,"choice appears even with 0 stones left");
    n.Ref.Stay();
    Check(n.St.Phase==NightPhase.Ended && n.Ends[0].Reason==NightEndReason.OutOfStones,"Stay with 0 stones -> overtime ends at once"); }
+ // --- Overtime can't end instantly because of where robots were when you chose Stay ---
+ { var n=new Night(new NightGoal(50,10,1,5));
+   var nearTop=n.Spawn(); var pastLine=n.Spawn();   // on the wall before the target
+   var t=n.Throw(3); n.Settle(t); n.Ref.Stay();
+   n.Danger(nearTop);
+   Check(n.St.Phase==NightPhase.Overtime,"a robot already on the wall at Stay crossing the danger line doesn't end overtime");
+   n.Breach(pastLine);
+   Check(n.St.Phase==NightPhase.Overtime && n.St.StonesLeft==9,"...nor reaching the top (no stone lost, can't lose)");
+   var fresh=n.Spawn(); n.Danger(fresh);
+   Check(n.St.Phase==NightPhase.Ended && n.Ends[0].Reason==NightEndReason.DangerLine,"a robot that climbed on during overtime reaching the line ends it"); }
+ { var n=new Night(new NightGoal(50,10,1,5));
+   var t=n.Throw(3); n.Settle(t); n.Ref.Stay();
+   var fresh=n.Spawn(); n.Breach(fresh);
+   Check(n.St.Phase==NightPhase.Ended && n.Ends[0].Reason==NightEndReason.DangerLine,"an overtime robot reaching the top ends overtime (it crossed the line)"); }
+ { // Chain results know whether they were overtime chains (for the rainbow chain popup).
+   var n=new Night(new NightGoal(50,10,1,5)); var chains=new System.Collections.Generic.List<ChainScored>();
+   n.Bus.Subscribe<ChainScored>(e=>chains.Add(e));
+   var t=n.Throw(3); n.Settle(t); n.Ref.Stay(); var o=n.Throw(2); n.Settle(o);
+   Check(chains.Count==2 && !chains[0].InOvertime && chains[1].InOvertime,"ChainScored.InOvertime: false for the Running chain, true for the overtime one"); }
  // --- Danger line in Running = warning only ---
  { var n=new Night(new NightGoal(500,5,1,3));
    n.Danger();
