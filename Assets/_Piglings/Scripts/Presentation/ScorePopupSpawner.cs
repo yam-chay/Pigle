@@ -28,19 +28,25 @@ namespace Piglings.Presentation
         [SerializeField, Min(0.01f)] private float robotScale = 1f;
         [Tooltip("Each depth step makes the popup this much bigger (0.2 = +20%), so deeper hits read as bigger.")]
         [SerializeField, Min(0f)] private float scalePerDepth = 0.2f;
-        [SerializeField] private Color shallowColor = Color.white;
-        [SerializeField] private Color deepColor = new Color(1f, 0.75f, 0.2f);
-        [Tooltip("Depth at which the colour is fully 'deep'.")]
+        [Tooltip("Robot popups. Solid mode picks the colour by depth: left of the gradient = hit by the stone, " +
+                 "right = 'Deep At Depth' or deeper.")]
+        [SerializeField] private PopupColor robotColor = new PopupColor
+            { mode = PopupColorMode.Solid, gradient = PopupColor.TwoColor(Color.white, new Color(1f, 0.75f, 0.2f)) };
+        [Tooltip("Depth at which a robot popup is fully 'deep': right end of the gradient, full shake and extra life.")]
         [SerializeField, Min(1)] private int deepAtDepth = 3;
 
-        [Tooltip("Popup colour for points scored in overtime (matches the pulsing danger line).")]
-        [SerializeField] private Color overtimeColor = new Color(1f, 0.8f, 0.2f);
+        [Tooltip("Points scored in overtime: an animated rainbow by default, so the bonus is unmistakable.")]
+        [SerializeField] private PopupColor overtimeColor = new PopupColor
+            { mode = PopupColorMode.PerLetter, gradient = PopupColor.Rainbow(), speed = 1.2f, spread = 0.8f };
 
         [Header("Chain result")]
         [Tooltip("Where the chain result appears — a fixed spot (e.g. above the barn) so it's always read in the same place.")]
         [SerializeField] private Transform chainAnchor;
         [SerializeField, Min(0.01f)] private float chainScale = 2f;
-        [SerializeField] private Color chainColor = new Color(1f, 0.85f, 0.3f);
+        [SerializeField] private PopupColor chainColor = new PopupColor
+            { mode = PopupColorMode.Solid, gradient = PopupColor.Flat(new Color(1f, 0.85f, 0.3f)) };
+        [Tooltip("A chain worth this much (or more) gets the full treatment: longest life, strongest shake.")]
+        [SerializeField, Min(1)] private int bigChainTotal = 300;
         [Tooltip("Smallest chain that gets the big popup. 1-robot chains already got their \"+N\"; 0 = misses.")]
         [SerializeField, Min(0)] private int minRobotsForChainPopup = 2;
 
@@ -74,20 +80,20 @@ namespace Piglings.Presentation
             // still exactly where it was hit.
             if (!_robots.TryGetValue(e.Robot, out var t) || t == null) return;
 
+            // How deep, 0..1: picks the colour (Solid mode) and how much it shakes and lingers.
             float depthT = Mathf.Clamp01(e.Depth / (float)deepAtDepth);
-            Color color = Color.Lerp(shallowColor, deepColor, depthT);
             float scale = robotScale * (1f + scalePerDepth * e.Depth);
             string total = $"+{e.Total}";
 
             // Show the sum only when something multiplies: a plain ×1 robot goes straight to "+10".
-            // Overtime gets its own tag ("OT×2") so the player sees which ×2 is the bonus, and a gold tint.
+            // Overtime gets its own tag ("OT×2") so the player sees which ×2 is the bonus, and its own colour.
             bool overtime = e.OvertimeMultiplier > 1;
-            if (overtime) color = overtimeColor;
+            var color = overtime ? overtimeColor : robotColor;
             string why = e.Multiplier > 1f ? $"{e.Received} ×{e.Multiplier:0.##}" : $"{e.Received}";
             if (overtime) why += $"  OT×{e.OvertimeMultiplier}";
 
-            if (e.Multiplier > 1f || overtime) Spawn(t.position + robotOffset, why, color, scale, total);
-            else Spawn(t.position + robotOffset, total, color, scale);
+            if (e.Multiplier > 1f || overtime) Spawn(t.position + robotOffset, why, color, depthT, scale, depthT, total);
+            else Spawn(t.position + robotOffset, total, color, depthT, scale, depthT);
         }
 
         private void OnChainScored(ChainScored e)
@@ -95,13 +101,15 @@ namespace Piglings.Presentation
             if (e.RobotsDropped < minRobotsForChainPopup || chainAnchor == null) return;
 
             string robots = e.RobotsDropped == 1 ? "1 robot" : $"{e.RobotsDropped} robots";
-            Spawn(chainAnchor.position, $"{robots} · depth {e.MaxDepth}\n+{e.Total}", chainColor, chainScale);
+            float size = Mathf.Clamp01(e.Total / (float)bigChainTotal);
+            Spawn(chainAnchor.position, $"{robots} · depth {e.MaxDepth}\n+{e.Total}", chainColor, 0f, chainScale, size);
         }
 
-        private void Spawn(Vector3 position, string text, Color color, float scale, string resolvedText = null)
+        private void Spawn(Vector3 position, string text, PopupColor color, float colorKey, float scale, float intensity,
+                           string resolvedText = null)
         {
             var popup = Instantiate(popupPrefab, position, Quaternion.identity, container);
-            popup.Show(text, color, scale, resolvedText);
+            popup.Show(text, color, colorKey, scale, intensity, resolvedText);
         }
     }
 }
