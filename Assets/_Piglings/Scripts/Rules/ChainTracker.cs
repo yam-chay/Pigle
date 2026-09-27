@@ -15,7 +15,7 @@ namespace Piglings.Rules
             public readonly HashSet<GameId> InPlay = new HashSet<GameId>();
             public int Dropped;
             public int MaxDepth;
-            public int Points;      // sum of RobotPoints so far; the multiplier is applied at close
+            public int Total;       // sum of the RobotScored totals; ChainScored reports it
         }
 
         private readonly EventBus _bus;
@@ -59,11 +59,14 @@ namespace Piglings.Rules
             if (e.Cause.Depth > c.MaxDepth) c.MaxDepth = e.Cause.Depth;
             _state.RobotsDropped++;
 
-            // Robot points are paid now, so the score moves while the chain is still going.
-            int points = _curve.RobotPoints(e.Cause.Depth);
-            c.Points += points;
-            _state.Score += points;
-            _bus.Publish(new RobotScored(e.Robot, e.Chain, e.Cause.Depth, points));
+            // Paid in full right now — order and depth are both known the moment it loses grip.
+            int order = c.Dropped;   // already counts this robot, so the first is 1
+            int depth = e.Cause.Depth;
+            int total = _curve.RobotTotal(order, depth);
+            c.Total += total;
+            _state.Score += total;
+            _bus.Publish(new RobotScored(e.Robot, e.Chain, order, depth,
+                _curve.RobotPoints(order), _curve.Multiplier(depth), total));
         }
 
         private void OnRobotRemoved(RobotRemoved e)
@@ -84,13 +87,9 @@ namespace Piglings.Rules
             if (c.Dropped > _state.LongestChain) _state.LongestChain = c.Dropped;
             if (c.MaxDepth > _state.DeepestChain) _state.DeepestChain = c.MaxDepth;
 
-            // The multiplier's extra is paid at close: only now do we know how deep the chain got.
-            // State is updated before publishing, so every listener sees the final score.
-            int total = _curve.ChainTotal(c.Points, c.MaxDepth);
-            _state.Score += total - c.Points;
-
+            // Nothing is paid here: every robot was scored as it fell, so this is just the sum.
             _bus.Publish(new ChainClosed(chain, c.Dropped, c.MaxDepth));
-            _bus.Publish(new ChainScored(chain, c.Dropped, c.MaxDepth, c.Points, _curve.Multiplier(c.MaxDepth), total));
+            _bus.Publish(new ChainScored(chain, c.Dropped, c.MaxDepth, c.Total));
         }
     }
 }

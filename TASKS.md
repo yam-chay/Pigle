@@ -23,6 +23,7 @@
 - [x] ☁ M4.1 Rules: combo multiplier by depth; publish a `ChainScored` event with the final value. Add CoreCheck cases.
 - [x] ☁ M4.2 Presentation: floating "+N" / depth popup on `RobotLostGrip`, bigger on `ChainClosed`. (Unity-side: list editor steps in the PR.)
 - [ ] 🖥 M4.3 Screen shake on depth ≥ 2.
+- [x] ☁ M4.4 Rules: rework scoring. Robot points = basePoints × order in chain; per-robot multiplier = 1 + multiplierPerDepth × own depth, applied immediately. No chain-end multiplier; `ChainScored` = sum. Popup "30 ×2" → "+60".
 
 ## M5 — Walls matter
 - [ ] 🖥 Wall_Straw / Wall_Brick definitions with different hold bounciness; A/B them in play.

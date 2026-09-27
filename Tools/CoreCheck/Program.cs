@@ -12,50 +12,57 @@ static void Main(){
  Check(!closed.HasValue,"chain open while b falls");
  bus.Publish(new RobotRemoved(b,chain,RemovalReason.HitGround));
  Check(closed.HasValue && closed.Value.RobotsDropped==2 && closed.Value.MaxDepth==1,"closed 2/depth1");
- Check(st.Score==45,$"score: (10+20) x1.5 = 45 (got {st.Score})");
+ Check(st.Score==50,$"score: 10x1 + 20x2 = 50 (got {st.Score})");
  Action<ChainClosed> h=e=>{}; bus.Subscribe(h); bus.Unsubscribe(h); Check(true,"unsubscribe ok");
  tr.Dispose(); Check(tr.OpenChainCount==0,"dispose");
  ScoreChecks();
  ThrowChecks();
 }
-// Scoring: RobotScored per robot as it happens, ChainScored with the multiplied total at close.
+// Scoring: each robot = basePoints x order, times 1 + multiplierPerDepth x its own depth, paid immediately.
+// ChainScored is just the sum.
 static void ScoreChecks(){
  var bus=new EventBus(); var st=new NightState(); var ids=new IdAllocator(); var tr=new ChainTracker(bus,st);
- var robotPts=new System.Collections.Generic.List<int>(); ChainScored? scored=null; int scoreSeenAtClose=-1; bool closedFirst=false;
- bus.Subscribe<RobotScored>(e=>robotPts.Add(e.Points));
+ var hits=new System.Collections.Generic.List<RobotScored>(); ChainScored? scored=null; int scoreSeenAtClose=-1; bool closedFirst=false;
+ bus.Subscribe<RobotScored>(e=>hits.Add(e));
  bus.Subscribe<ChainClosed>(e=>{ scoreSeenAtClose=st.Score; closedFirst=!scored.HasValue; });
  bus.Subscribe<ChainScored>(e=>scored=e);
- // stone -> a -> b -> c : depths 0,1,2
+ // stone -> a -> b -> c : orders 1,2,3 ; depths 0,1,2
  var chain=new ChainId(ids.Next()); var stone=ids.Next(); var a=ids.Next(); var b=ids.Next(); var c=ids.Next();
  bus.Publish(new ThrowReleased(chain,stone));
  bus.Publish(new RobotLostGrip(a,chain,Attribution.FromThrowable(stone)));
  bus.Publish(new RobotLostGrip(b,chain,Attribution.FromRobotBall(a,0)));
  bus.Publish(new RobotLostGrip(c,chain,Attribution.FromRobotBall(b,1)));
- Check(robotPts.Count==3 && robotPts[0]==10 && robotPts[1]==20 && robotPts[2]==30,"RobotScored +10 +20 +30 by depth");
- Check(st.Score==60 && !scored.HasValue,"robot points paid immediately, no ChainScored while open");
+ Check(hits.Count==3 && hits[0].Order==1 && hits[1].Order==2 && hits[2].Order==3,"RobotScored order 1,2,3");
+ Check(hits[0].Points==10 && hits[1].Points==20 && hits[2].Points==30,"points = 10 x order: 10, 20, 30");
+ Check(MathF.Abs(hits[0].Multiplier-1f)<1e-5f && MathF.Abs(hits[1].Multiplier-2f)<1e-5f && MathF.Abs(hits[2].Multiplier-3f)<1e-5f,"multiplier by own depth: x1, x2, x3");
+ Check(hits[0].Total==10 && hits[1].Total==40 && hits[2].Total==90,"totals 10, 40, 90");
+ Check(st.Score==140 && !scored.HasValue,"paid immediately (140), no ChainScored while open");
  bus.Publish(new ThrowableRemoved(stone,chain));
  foreach(var r in new[]{a,b,c}) bus.Publish(new RobotRemoved(r,chain,RemovalReason.HitGround));
- Check(scored.HasValue && scored.Value.RobotsDropped==3 && scored.Value.MaxDepth==2 && scored.Value.RobotPoints==60
-   && MathF.Abs(scored.Value.Multiplier-2f)<1e-5f && scored.Value.Total==120,"ChainScored 3 robots, depth 2, 60 x2 = 120");
- Check(st.Score==120,"score includes the chain bonus");
- Check(closedFirst && scoreSeenAtClose==120,"ChainClosed before ChainScored, state already final");
+ Check(scored.HasValue && scored.Value.RobotsDropped==3 && scored.Value.MaxDepth==2 && scored.Value.Total==140,"ChainScored 3 robots, depth 2, total 140 = the sum");
+ Check(st.Score==140,"nothing extra added at close");
+ Check(closedFirst && scoreSeenAtClose==140,"ChainClosed before ChainScored");
+ // order counts per chain, not per night: a new chain starts at 1 again
+ hits.Clear(); var ch2=new ChainId(ids.Next()); var s2=ids.Next(); var d=ids.Next();
+ bus.Publish(new ThrowReleased(ch2,s2)); bus.Publish(new RobotLostGrip(d,ch2,Attribution.FromThrowable(s2)));
+ Check(hits.Count==1 && hits[0].Order==1 && hits[0].Total==10,"order restarts at 1 in a new chain");
+ bus.Publish(new ThrowableRemoved(s2,ch2)); bus.Publish(new RobotRemoved(d,ch2,RemovalReason.HitGround));
  // a miss still publishes ChainScored, with zeros, and changes nothing
- scored=null; var miss=new ChainId(ids.Next()); var s2=ids.Next();
- bus.Publish(new ThrowReleased(miss,s2)); bus.Publish(new ThrowableRemoved(s2,miss));
- Check(scored.HasValue && scored.Value.RobotsDropped==0 && scored.Value.Total==0 && st.Score==120,"miss -> ChainScored 0, score unchanged");
- // three direct hits (breadth, depth 0) are worth far less than the depth-2 chain
- scored=null; var wide=new ChainId(ids.Next()); var s3=ids.Next(); var w=new[]{ids.Next(),ids.Next(),ids.Next()};
- bus.Publish(new ThrowReleased(wide,s3));
- foreach(var r in w) bus.Publish(new RobotLostGrip(r,wide,Attribution.FromThrowable(s3)));
- bus.Publish(new ThrowableRemoved(s3,wide)); foreach(var r in w) bus.Publish(new RobotRemoved(r,wide,RemovalReason.HitGround));
- Check(scored.HasValue && scored.Value.Total==30 && MathF.Abs(scored.Value.Multiplier-1f)<1e-5f,"3 direct hits = 30 x1 (depth beats breadth)");
+ scored=null; int before=st.Score; var miss=new ChainId(ids.Next()); var s3=ids.Next();
+ bus.Publish(new ThrowReleased(miss,s3)); bus.Publish(new ThrowableRemoved(s3,miss));
+ Check(scored.HasValue && scored.Value.RobotsDropped==0 && scored.Value.Total==0 && st.Score==before,"miss -> ChainScored 0, score unchanged");
+ // three direct hits (breadth): order still grows, multiplier stays x1
+ scored=null; var wide=new ChainId(ids.Next()); var s4=ids.Next(); var w=new[]{ids.Next(),ids.Next(),ids.Next()};
+ bus.Publish(new ThrowReleased(wide,s4));
+ foreach(var r in w) bus.Publish(new RobotLostGrip(r,wide,Attribution.FromThrowable(s4)));
+ bus.Publish(new ThrowableRemoved(s4,wide)); foreach(var r in w) bus.Publish(new RobotRemoved(r,wide,RemovalReason.HitGround));
+ Check(scored.HasValue && scored.Value.Total==60,"3 direct hits = 10+20+30 = 60 (vs 140 for a depth-2 line)");
  tr.Dispose();
  // the curve on its own
- var curve=new ScoreCurve();
- Check(MathF.Abs(curve.Multiplier(0)-1f)<1e-5f && MathF.Abs(curve.Multiplier(1)-1.5f)<1e-5f,"multiplier x1 at depth 0, x1.5 at depth 1");
- Check(MathF.Abs(curve.Multiplier(20)-4f)<1e-5f,"multiplier capped at 4");
- Check(new ScoreCurve(10,0,0.25f).ChainTotal(10,1)==13,"12.5 rounds to 13");
- Check(new ScoreCurve(5,5,0f,0.5f).Multiplier(3)==1f,"max below 1 is clamped to 1 (never shrinks a chain)");
+ var half=new ScoreCurve(10,0.5f);
+ Check(half.RobotTotal(3,1)==45,"custom 0.5/depth: 30 x1.5 = 45");
+ Check(new ScoreCurve(5,0.5f).RobotTotal(1,1)==8,"7.5 rounds to 8");
+ Check(new ScoreCurve(10,-1f).Multiplier(3)==1f,"negative multiplierPerDepth clamped to 0 (never shrinks a robot)");
 }
 // ThrowSolver: the arc must pass through the target, and the stepped physics flight must stay on that arc.
 static void ThrowChecks(){

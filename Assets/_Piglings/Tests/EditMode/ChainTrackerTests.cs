@@ -46,10 +46,9 @@ namespace Piglings.Tests
             Assert.That(_closed.Value.RobotsDropped, Is.EqualTo(2));
             Assert.That(_closed.Value.MaxDepth, Is.EqualTo(1));
             Assert.That(_state.LongestChain, Is.EqualTo(2));
-            // Robot points 10 (depth 0) + 20 (depth 1), times the depth-1 chain multiplier ×1.5.
+            // a: 1st in the chain, depth 0 → 10 ×1.  b: 2nd, depth 1 → 20 ×2.
             var curve = _tracker.Curve;
-            int points = curve.RobotPoints(0) + curve.RobotPoints(1);
-            Assert.That(_state.Score, Is.EqualTo(curve.ChainTotal(points, 1)));
+            Assert.That(_state.Score, Is.EqualTo(curve.RobotTotal(1, 0) + curve.RobotTotal(2, 1)));
         }
 
         [Test]

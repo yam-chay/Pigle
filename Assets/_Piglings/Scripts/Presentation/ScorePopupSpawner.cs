@@ -6,8 +6,8 @@ using UnityEngine;
 namespace Piglings.Presentation
 {
     /// <summary>
-    /// Makes chains readable: a small "+N" where each robot loses grip (RobotScored), and a big
-    /// "robots · depth / +total ×mult" when a chain closes (ChainScored).
+    /// Makes chains readable: where each robot loses grip, "points ×mult" resolving into "+total"
+    /// (RobotScored); and a big "robots · depth / +total" when a chain closes (ChainScored).
     ///
     /// Only listens and spawns visuals — never touches game state. The numbers come from the Rules
     /// events, so the popups always show exactly what was added to the score.
@@ -74,7 +74,11 @@ namespace Piglings.Presentation
             float depthT = Mathf.Clamp01(e.Depth / (float)deepAtDepth);
             Color color = Color.Lerp(shallowColor, deepColor, depthT);
             float scale = robotScale * (1f + scalePerDepth * e.Depth);
-            Spawn(t.position + robotOffset, $"+{e.Points}", color, scale);
+            string total = $"+{e.Total}";
+
+            // Show the multiplication only when it changes something: a ×1 robot goes straight to "+10".
+            if (e.Multiplier > 1f) Spawn(t.position + robotOffset, $"{e.Points} ×{e.Multiplier:0.##}", color, scale, total);
+            else Spawn(t.position + robotOffset, total, color, scale);
         }
 
         private void OnChainScored(ChainScored e)
@@ -82,14 +86,13 @@ namespace Piglings.Presentation
             if (e.RobotsDropped < minRobotsForChainPopup || chainAnchor == null) return;
 
             string robots = e.RobotsDropped == 1 ? "1 robot" : $"{e.RobotsDropped} robots";
-            string mult = e.Multiplier > 1f ? $"  ×{e.Multiplier:0.##}" : "";
-            Spawn(chainAnchor.position, $"{robots} · depth {e.MaxDepth}\n+{e.Total}{mult}", chainColor, chainScale);
+            Spawn(chainAnchor.position, $"{robots} · depth {e.MaxDepth}\n+{e.Total}", chainColor, chainScale);
         }
 
-        private void Spawn(Vector3 position, string text, Color color, float scale)
+        private void Spawn(Vector3 position, string text, Color color, float scale, string resolvedText = null)
         {
             var popup = Instantiate(popupPrefab, position, Quaternion.identity, container);
-            popup.Show(text, color, scale);
+            popup.Show(text, color, scale, resolvedText);
         }
     }
 }
