@@ -78,15 +78,18 @@ namespace Piglings.Events
 
     /// <summary>
     /// Published once by the Rules layer (NightReferee) when the night is decided.
-    /// Score/StonesLeft are the values at that moment — leftover stones are recorded for future rewards.
+    /// All values are as of that moment. Leftover stones are recorded for future rewards;
+    /// ThrowsUsed counts stones actually thrown (not ones lost to breaches), for score per stone.
     /// </summary>
     public readonly struct NightEnded
     {
         public readonly NightResult Result; public readonly NightEndReason Reason;
         public readonly int Score; public readonly int TargetScore; public readonly int StonesLeft; public readonly int Breaches;
-        public NightEnded(NightResult result, NightEndReason reason, int score, int targetScore, int stonesLeft, int breaches)
+        public readonly int ThrowsUsed;
+        public NightEnded(NightResult result, NightEndReason reason, int score, int targetScore, int stonesLeft, int breaches, int throwsUsed)
         {
             Result = result; Reason = reason; Score = score; TargetScore = targetScore; StonesLeft = stonesLeft; Breaches = breaches;
+            ThrowsUsed = throwsUsed;
         }
     }
 }

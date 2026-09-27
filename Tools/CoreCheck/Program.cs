@@ -156,6 +156,25 @@ static void NightChecks(){
  { var n=new Night(new NightGoal(500,5,0,0));
    for(int i=0;i<10;i++) n.Breach();
    Check(n.St.StonesLeft==5 && n.Ends.Count==0,"stonesLostPerBreach 0 + maxBreaches 0 -> breaches cost nothing"); }
+ { // Breaches keep counting once the stones are gone; stones never go below 0.
+   var n=new Night(new NightGoal(500,1,1,3));
+   var t=n.Throw(1);   // last stone thrown; its chain stays in flight, so out-of-stones can't end the night first
+   n.Breach();
+   Check(n.St.StonesLeft==0 && n.St.RobotsReachedTop==1 && n.Ends.Count==0,"breach at 0 stones: counted, stones stay 0, not over");
+   n.Breach();
+   Check(n.St.StonesLeft==0 && n.St.RobotsReachedTop==2,"2nd breach at 0 stones: counted, still 0");
+   n.Breach();
+   Check(n.Ends.Count==1 && n.Ends[0].Reason==NightEndReason.BarnBreached && n.Ends[0].Breaches==3 && n.Ends[0].StonesLeft==0,
+     "3rd breach at 0 stones reaches maxBreaches -> Lost, barn breached (stones 0)");
+   n.Settle(t); }
+ { var n=new Night(new NightGoal(500,1,3,0));
+   n.Breach();
+   Check(n.St.StonesLeft==0,"a breach costing 3 stones with 1 left -> 0, not -2"); }
+ { // NightEnded carries throws used (stones actually thrown, not ones lost to breaches)
+   var n=new Night(new NightGoal(60,10,1,5));
+   n.Breach(); var a=n.Throw(0); n.Settle(a); var b=n.Throw(3); n.Settle(b);
+   Check(n.Ends.Count==1 && n.Ends[0].Result==NightResult.Won && n.Ends[0].ThrowsUsed==2 && n.Ends[0].StonesLeft==7,
+     "NightEnded.ThrowsUsed = 2 (breach stone not counted), 7 stones left"); }
  Check(new NightGoal(0).TargetScore==1,"a target of 0 becomes 1 (otherwise you could never throw)");
 }
 // ThrowSolver: the arc must pass through the target, and the stepped physics flight must stay on that arc.

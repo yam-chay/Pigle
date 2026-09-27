@@ -95,7 +95,8 @@ namespace Piglings.Rules
             _state.Result = result;
             _state.EndReason = reason;
             UpdateCanThrow();
-            _bus.Publish(new NightEnded(result, reason, _state.Score, _goal.TargetScore, _state.StonesLeft, _state.RobotsReachedTop));
+            _bus.Publish(new NightEnded(result, reason, _state.Score, _goal.TargetScore, _state.StonesLeft,
+                _state.RobotsReachedTop, _state.ThrowsUsed));
         }
     }
 }

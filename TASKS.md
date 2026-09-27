@@ -3,20 +3,20 @@
 ☁ = cloud session OK (code/docs only) · 🖥 = local, needs the Unity editor (use Claude Code + unity-mcp)
 
 ## M0 — Setup 🖥
-- [ ] SETUP.md steps 1–7
+- [x] SETUP.md steps 1–7
 
 ## M1 — First chain 🖥
-- [ ] Playtest: stone → robot → its ball → second robot. HUD shows depth 1.
-- [ ] Note what feels off (fall speed, bounciness, spawn rate) in the Playtest log below.
+- [x] Playtest: stone → robot → its ball → second robot. HUD shows depth 1.
+- [x] Note what feels off (fall speed, bounciness, spawn rate) in the Playtest log below.
 
 ## M2 — Throw feel
 - [x] ☁ M2.1 Port CCTD `ThrowSolver` (Reference/CCTD) into Simulation: aim by target point with an arc, not a straight line. Keep `ThrowController`'s public surface (`Thrown` event, `Launch` call).
 - [x] ☁ M2.2 Port `TrajectoryView` into Presentation (reads aim from ThrowController, draws the arc). Presentation must not change state.
-- [ ] 🖥 M2.3 Wire both in Night.unity; tune throw speed so the whole wall is reachable from the hole.
+- [x] 🖥 M2.3 Wire both in Night.unity; tune throw speed so the whole wall is reachable from the hole.
 
 ## M3 — Robots feel right 🖥
 - [x] Animator for WolfBot: Climb (loop), Break (≈0.6 s: flail → X eyes → limbs collapse). Rebuild from the Wolf-Bot Rig Tester keyframes.
-- [ ] Animator for Pig: Idle (loop), Throw. From the Pig Rig Tester.
+- [x] Animator for Pig: Idle (loop), Throw. From the Pig Rig Tester.
 - [ ] Tune `BreakDuration` — if chains feel slow, shorten the flail first.
 
 ## M4 — Chains readable
