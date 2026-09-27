@@ -15,17 +15,20 @@ namespace Piglings.Rules
             public readonly HashSet<GameId> InPlay = new HashSet<GameId>();
             public int Dropped;
             public int MaxDepth;
+            public int Points;      // sum of RobotPoints so far; the multiplier is applied at close
         }
 
         private readonly EventBus _bus;
         private readonly NightState _state;
+        private readonly ScoreCurve _curve;
         private readonly Dictionary<GameId, Open> _open = new Dictionary<GameId, Open>();
 
         public int OpenChainCount => _open.Count;
+        public ScoreCurve Curve => _curve;
 
-        public ChainTracker(EventBus bus, NightState state)
+        public ChainTracker(EventBus bus, NightState state, ScoreCurve curve = null)
         {
-            _bus = bus; _state = state;
+            _bus = bus; _state = state; _curve = curve ?? new ScoreCurve();
             _bus.Subscribe<ThrowReleased>(OnThrow);
             _bus.Subscribe<RobotLostGrip>(OnLostGrip);
             _bus.Subscribe<RobotRemoved>(OnRobotRemoved);
@@ -55,7 +58,12 @@ namespace Piglings.Rules
             c.Dropped++;
             if (e.Cause.Depth > c.MaxDepth) c.MaxDepth = e.Cause.Depth;
             _state.RobotsDropped++;
-            _state.Score += ScoreFor(e.Cause.Depth);
+
+            // Robot points are paid now, so the score moves while the chain is still going.
+            int points = _curve.RobotPoints(e.Cause.Depth);
+            c.Points += points;
+            _state.Score += points;
+            _bus.Publish(new RobotScored(e.Robot, e.Chain, e.Cause.Depth, points));
         }
 
         private void OnRobotRemoved(RobotRemoved e)
@@ -75,10 +83,14 @@ namespace Piglings.Rules
             _open.Remove(chain.Id);
             if (c.Dropped > _state.LongestChain) _state.LongestChain = c.Dropped;
             if (c.MaxDepth > _state.DeepestChain) _state.DeepestChain = c.MaxDepth;
-            _bus.Publish(new ChainClosed(chain, c.Dropped, c.MaxDepth));
-        }
 
-        /// <summary>Deeper = worth more. Placeholder curve — tune in play.</summary>
-        public static int ScoreFor(int depth) => 10 * (depth + 1);
+            // The multiplier's extra is paid at close: only now do we know how deep the chain got.
+            // State is updated before publishing, so every listener sees the final score.
+            int total = _curve.ChainTotal(c.Points, c.MaxDepth);
+            _state.Score += total - c.Points;
+
+            _bus.Publish(new ChainClosed(chain, c.Dropped, c.MaxDepth));
+            _bus.Publish(new ChainScored(chain, c.Dropped, c.MaxDepth, c.Points, _curve.Multiplier(c.MaxDepth), total));
+        }
     }
 }

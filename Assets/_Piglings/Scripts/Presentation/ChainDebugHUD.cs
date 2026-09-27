@@ -12,7 +12,8 @@ namespace Piglings.Presentation
 
         private void Start() => session.Bus.Subscribe<ChainClosed>(OnChain);
         private void OnDestroy() { if (session != null && session.Bus != null) session.Bus.Unsubscribe<ChainClosed>(OnChain); }
-        private void OnChain(ChainClosed e) => _last = $"{e.RobotsDropped} robots, depth {e.MaxDepth}";
+        // Misses close a chain too (0 robots); skip them so "Last chain" keeps the last real one.
+        private void OnChain(ChainClosed e) { if (e.RobotsDropped > 0) _last = $"{e.RobotsDropped} robots, depth {e.MaxDepth}"; }
 
         private void OnGUI()
         {

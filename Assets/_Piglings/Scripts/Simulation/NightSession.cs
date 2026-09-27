@@ -17,6 +17,9 @@ namespace Piglings.Simulation
     {
         [SerializeField] private NightDefinition night;
 
+        // Read once in Awake — edit the asset outside play mode (or restart play) to try a new curve.
+        [SerializeField] private ScoringDefinition scoring;
+
         public NightDefinition Night => night;
         public EventBus Bus { get; private set; }
         public NightState State { get; private set; }
@@ -29,7 +32,19 @@ namespace Piglings.Simulation
             Bus = new EventBus();
             State = new NightState();
             Ids = new IdAllocator();
-            _chains = new ChainTracker(Bus, State);
+            _chains = new ChainTracker(Bus, State, BuildCurve());
+        }
+
+        // Without an asset the night still plays on ScoreCurve's defaults (10 / 10 / 0.5 / 4),
+        // but says so — silently scoring on values nobody chose would make tuning confusing.
+        private ScoreCurve BuildCurve()
+        {
+            if (scoring == null)
+            {
+                Debug.LogWarning("NightSession: no ScoringDefinition assigned, using default scoring.", this);
+                return new ScoreCurve();
+            }
+            return new ScoreCurve(scoring.BasePoints, scoring.PointsPerDepth, scoring.MultiplierPerDepth, scoring.MaxMultiplier);
         }
 
         private void OnDestroy() => _chains?.Dispose();
