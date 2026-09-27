@@ -30,8 +30,8 @@
 
 ## M5 — Walls matter
 - [ ] 🖥 Wall_Straw / Wall_Brick definitions with different hold bounciness; A/B them in play.
-- [ ] 🖥 M5.2 Tune the night: `targetScore`, `throwsAvailable`, `stonesLostPerBreach`, `maxBreaches`. Log whether losing a stone per breach creates tension or snowballs into hopeless nights (if it snowballs: set it to 0 and let `maxBreaches` defend).
-- [x] ☁ Night end condition in Rules (`NightReferee`): reach `targetScore` = win (once everything in flight settles); out of stones = lose; a robot reaching the top costs `stonesLostPerBreach` stones; `maxBreaches` = lose. Event: `NightEnded`. (Changed from "survive X seconds" — a timer rewards stalling; a score target rewards chains.)
+- [ ] 🖥 M5.2 Tune the night: `targetScore`, `throwsAvailable` (the pile = the pig's life), spawn rate. Log whether the pile drains too fast to breaches.
+- [x] ☁ Night end condition in Rules (`NightReferee`): reach `targetScore` = win (once everything in flight settles); *(loss rule since replaced by M7.1: one life, the pile)* Event: `NightEnded`. (Changed from "survive X seconds" — a timer rewards stalling; a score target rewards chains.)
 
 ## M6 — Night loop (a night that starts, ends and restarts)
 - [ ] ☁+🖥 M6.2 Real (uGUI) end panel and choice buttons, replacing the M6.5 OnGUI placeholders: result + reason, score / target, score per stone, mastery gained, best chain. (Restarting is M6.6.)
@@ -50,21 +50,22 @@
 ## M7 — Ammo on the perch + breaches that play out
 Context (story frame, GDD): the villain is the Big Bad Wolf; the robots are his tools, driven by his remote, clearing the way so he can climb up and get the pigs. On a loss he goes down the chimney after them (off-screen / cartoon — the pigs are never shown eaten); the end-of-night sweep happens with it or just after. Exact sequence still being designed (see open questions). Structure: ARCHITECTURE.md → "Ammo on the perch" and the robot state machine.
 - [x] 🖥 M7.0 Already in the scene: breach line (TopZone) moved up under the pig's hole — (0, 7.2), 4.4 × 0.2; danger line (DangerZone) just above the wall's top beam — (0, 6.275), 4.4 × 0.2; perch pieces + hanging "no wolves" sign as art-only children of TopZone; night background that scrolls, with a day version fading in when the night ends (`ScrollingBackground` + `DayNightBackground`). See SETUP.md §7.
-- [ ] ☁ M7.1 Ammo view seam: a Presentation ammo view that reads the count from Runtime and its look (container sprite states, item sprite) from the throwable's Definition (new fields). One reading rule: many = fullness, ≤ 5 = individual items + pulsing number, 0 = empty. Nothing stone-specific in code. CoreCheck for any engine-free part.
-- [ ] 🖥 M7.2 Stone pile on the perch: container art for full → ≤ 5 discrete → empty; one stone hops from the pile to the pig's hand on each throw.
-- [ ] ☁+🖥 M7.3 Robot `Breaching` state: `ReachedTop → Breaching → Removed(EnteredBarn)`. Collider off, alive for the breach animation, then jumps off the porch and falls. Never starts or joins a chain; never holds a chain or the night open (hard time limit). Physics changes only in `EnterState`. Code ☁, animation 🖥. 5 breaches still lose the night.
+- [x] ☁ M7.1 One life + a real pile (replaces the sprite-state ammo view): no breach limit; a breach takes the top stone, a breach on an empty pile = caught (the only loss); last stone thrown ≠ loss. `StonesChanged` (Thrown/Stolen/Added/Forfeited) from `NightReferee`; `AddStones(n)`. `StonePile` (Simulation) mirrors the count with real stones in pyramid slots (parked: no physics/collider); the top stone hops to the hand when the pig may throw; a thief carries its stone off (parked, never a weapon). CoreCheck for the rule and every count change.
+- [ ] 🖥 M7.2 Wire the pile on the right perch piece: `StonePile` (session, Stone prefab, hand = ThrowOrigin, spawner), `pile_rag.png` under it, `ThrowController.pile`; tune slots/spacing to the plank and the hop. Steps in the PR.
+- [ ] ☁+🖥 M7.3 Robot `Breaching` state: `ReachedTop → Breaching → Removed(EnteredBarn)`. Collider off, alive for the breach animation, then jumps off the porch and falls. Never starts or joins a chain; never holds a chain or the night open (hard time limit). Physics changes only in `EnterState`. Code ☁, animation 🖥. The stolen stone rides on the breaching robot.
 
 ## Open design questions (from the GDD — don't implement until decided)
 - One robot line per run vs. mixed swarm.
 - House modification mid-run vs. between runs.
 - Upgrade families and their levers (from M4.5): stone upgrades → `stoneValue` / `growthPerHit`; wolf upgrades → `wolfValue`; pegs / slices → `multiplierPerDepth`; compounding (`carryScoredTotal`) as a rare late upgrade. When the first real upgrade exists, move these values onto the stone/robot definitions.
 - Boss nights: each `NightDefinition` is a "blind" (target, stones, spawn rate, wall); later, one rule twisted per boss night.
-- **PROPOSAL** — What a breach does to stones: (A) the robots steal stones — disarming the pig is part of clearing the way; or (B) the pig spends a stone swatting the robot off the perch. (Today a breach silently removes `stonesLostPerBreach` stones — 1 in Night_01.)
-- **PROPOSAL** — The breach counter as the wolf's route being built: each breach installs one piece (hook, rope, ladder rungs toward the chimney); breach 5 completes it and the wolf appears.
+- **PROPOSAL** — The wolf's route to the chimney (hook, rope, ladder) as part of the loss scene: built in one go after the fatal breach on an empty pile. (No longer a per-breach counter: there's no breach limit.)
 - **PROPOSAL** — The sweep's cause is the remote: on a loss the wolf switches it off (robots go limp); on a win, at dawn, he smashes it in frustration.
 - **PROPOSAL** — Loss sequence order: wolf climbs + chimney → barn shakes → remote off, sweep → payout (progress still fills) → "next night locked".
-- **PROPOSAL** — The pig's face as a warning / breach meter using the rig's hidden mouths (mouth_o when a robot is in the danger zone, escalating per breach).
+- **PROPOSAL** — The pig's face as a warning meter using the rig's hidden mouths, escalating by **stones left** (the thing that actually kills you): worried at 5, gritting at 2, panicking at an empty rag; mouth_o when a robot is in the danger zone.
 - **PROPOSAL** — Loadout size in the day phase (how many weapons you can take onto the perch).
+- **IDEA** — Hidden "Pacifist" achievement: lose every stone to the wolves without throwing once (possible weapon unlock).
+- *(Decided: breaches steal stones — option A; the 5-breach limit is gone. See M7.1.)*
 
 ## Playtest log
 <!-- date · what you tried · what you felt · what to change -->

@@ -48,6 +48,9 @@ namespace Piglings.Simulation
         [SerializeField] private Transform origin;       // the pig's hand / barn hole
         [SerializeField] private Transform container;
         [SerializeField] private Camera cam;
+        [Tooltip("The pile on the perch. Its stone in the pig's hand is the one thrown. Empty = the old way " +
+                 "(a new stone from the prefab each throw), so the scene works before the pile is wired.")]
+        [SerializeField] private StonePile pile;
 
         [Tooltip("Launch speed. Fixed — the player picks the target, never the power.\n" +
                  "Too low and the far corners of the wall turn out of range (the line goes red).")]
@@ -72,6 +75,8 @@ namespace Piglings.Simulation
             // Cooling down: no aim, so no line and no raised arm. Holding the button through the
             // cooldown still works — the aim appears the moment it ends and release throws as usual.
             if (Time.time < readyAt) return;
+            // The next stone is still hopping up from the pile: nothing in the hand to aim with yet.
+            if (pile != null && !pile.HasStoneInHand) return;
 
             // Released this frame counts as "still aiming" so the throw uses the same aim the
             // player saw on the last frame of the drag.
@@ -92,7 +97,10 @@ namespace Piglings.Simulation
                 aim.Velocity.x,
                 ThrowSolver.CompensateForFixedStep(aim.Velocity.y, aim.Gravity, Time.fixedDeltaTime));
 
-            var t = Instantiate(throwablePrefab, aim.From, Quaternion.identity, container);
+            // The stone in the hand (from the pile) is the one that flies; without a pile, make one.
+            var t = pile != null ? pile.ReleaseHeld(container) : Instantiate(throwablePrefab, aim.From, Quaternion.identity, container);
+            if (t == null) return;
+            t.transform.position = aim.From;
             t.Launch(session, session.Night.Throwable, launch);
             Thrown?.Invoke(aim.Velocity.normalized);
             readyAt = Time.time + throwCooldown;

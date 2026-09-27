@@ -50,7 +50,8 @@ Each playable scene has exactly one **scene-scoped owner**. For the prototype th
 
 Outside chains, the wall publishes night-level facts:
 - A climbing robot crosses the danger line → `RobotEnteredDangerZone(robot)`, once per robot (published by `DangerZone`). In Running a warning only; in Overtime it ends the night (see below). No robot state changes.
-- A climbing robot reaches the roof → `RobotRemoved(EnteredBarn)`: a breach, counted by `NightReferee`.
+- A climbing robot reaches the roof → `RobotRemoved(EnteredBarn)`: a breach, counted by `NightReferee`. With stones left it takes the top stone (`StonesChanged(Stolen, robot)`); with none left the pigs are caught — the only way to lose.
+- Every change to the stone count → `StonesChanged(count, delta, cause, robot)`, published only by `NightReferee` (Thrown / Stolen / Added / Forfeited).
 - A falling ball that never lands (resting on a hold) is removed after `RobotDefinition.MaxFallSeconds` → `RobotRemoved(TimedOut)`, so its chain can close.
 
 ## Night phases (`NightReferee`, GDD "סוף הלילה: להמשיך או ללכת")
@@ -58,7 +59,7 @@ Outside chains, the wall publishes night-level facts:
 ```
 Running ──score ≥ target, no chain open──▶ ChoicePending ──Stay──▶ Overtime ──▶ Ended
    │                                            └──────Leave──────────────────▶ Ended
-   └──out of stones / too many breaches (lost)────────────────────────────────▶ Ended
+   └──a robot breaches with no stones left (Caught, lost)───────────────────────▶ Ended
 ```
 - One state machine; `NightState.Phase` is the source of truth; transitions only via `SetPhase` → `EnterPhase`. Each change publishes `NightPhaseChanged(from, to)`.
 - Reaching the target ends the danger, not the night: from then on the night can't be lost (`NightTargetReached` marks the moment; throwing stops until the choice).
@@ -78,7 +79,7 @@ Spawned -> Climbing -> LosingGrip -> Falling -> Removed(HitGround | TimedOut)
 - `RobotController.EnterState` is the ONLY place a state becomes physics (body type, layer).
 - `LosingGrip` = the break clip (flail → crack → limbs collapse). Still kinematic. Duration from `RobotDefinition.BreakDuration`.
 - `Falling` = dynamic ball on layer `RobotBall`, bounces through the Holds. Only a Falling robot passes a chain on. A ball still falling after `RobotDefinition.MaxFallSeconds` is removed (`TimedOut`) so it can't hold a chain open.
-- `Breaching` *(planned, M7.3)* = the breach sequence after `ReachedTop`: collider off, the robot stays alive for its animation, then jumps off the porch and falls. It **never starts or joins a chain** (it isn't `Falling` and has no collider) and **never holds a chain or the night open**: a hard time limit ends it in `Removed(EnteredBarn)` whatever the animation does — same class of bug as the stuck ball. Today `ReachTop` removes the robot at once (it vanishes). The breach is counted when it's removed, as now; 5 breaches still lose the night.
+- `Breaching` *(planned, M7.3)* = the breach sequence after `ReachedTop`: collider off, the robot stays alive for its animation, then jumps off the porch and falls. It **never starts or joins a chain** (it isn't `Falling` and has no collider) and **never holds a chain or the night open**: a hard time limit ends it in `Removed(EnteredBarn)` whatever the animation does — same class of bug as the stuck ball. Today `ReachTop` removes the robot at once (it vanishes). The breach (and the stone theft) is counted when it's removed, as now; the stolen stone rides on the robot (see the pile below).
 
 ## Physics layers & matrix
 
@@ -102,12 +103,20 @@ Only `RobotClimbing` touches `Zones`, so zones only ever see climbing (or just-h
 | `DangerZone` | just above the wall's top beam (y ≈ 6.275) | Has `NightSession` (serialized). A climbing robot entering it → `RobotEnteredDangerZone`, once per robot, all night. `RobotView` sets the Animator bool `InDanger`. No robot state. In Overtime it's the line that ends the night; `DangerZoneView` shows it differently then. |
 | `GroundZone` | below the barn | Marker. Falling balls and throwables touching it are removed. |
 
-## Ammo on the perch (PLANNED — M7.1 / M7.2)
+## The stones: one life, a real pile on the perch (M7.1)
 
-Ammo is the pig's life, shown as a physical container on the perch (stones: a pile) that visibly depletes: each throw, one item hops from the container to the pig's hand.
-- **One reading rule for every weapon's container:** many left = how full the container is; ≤ 5 left = individual items + a small pulsing number; 0 = empty.
-- **Structure:** an ammo view in **Presentation** reads the count from **Runtime** (today `NightState.StonesLeft`) and its look (container sprite states, item sprite) from the throwable's **Definition** (`ThrowableDefinition` — these visual fields don't exist yet). Nothing is hard-coded to stones: a new weapon is new art, not new code. Reads only.
-- **Coming:** mixed weapon types per night → the perch is the loadout, one container per weapon; that needs a per-weapon count in Runtime (today there's one number). In the day phase the perch shows only owned weapons and the player picks a limited number (size TBD). Weapon mastery will show on its container — Meta is still empty, don't build it.
+**Loss rule.** The stones are the pig's life. There's no breach limit. A robot that breaches takes the top stone and leaves; a robot that breaches while the pile is empty catches the pigs (`NightEndReason.Caught`) — the only loss. Throwing your last stone isn't a loss: the night goes on, and a chain still in flight can reach the target before the next breach (after the target the night can't be lost, as before).
+
+**One truth, one mirror.**
+- **Runtime** `NightState.StonesLeft` is the count, written only by `NightReferee.ChangeStones`, which publishes `StonesChanged`. `NightReferee.AddStones(n)` is the seam for mid-run refills. CoreCheck covers all of it.
+- **Simulation** `StonePile` (on the right perch piece) **mirrors** the count with real stone GameObjects; it never decides it. It hands out the real throwables, which is why it's Simulation, not Presentation.
+  - Stones sit in fixed pyramid slots, no physics, no collider (`Throwable.Park`). Top stone = last slot filled.
+  - When the hand is empty and the pig may throw, the top stone hops to the hand (ThrowOrigin) and waits. `ThrowController` only aims with a stone in the hand, and launches *that* stone (`StonePile.ReleaseHeld` → `Throwable.Launch`). Hop < throw cooldown, so there's no input lag.
+  - `Stolen`: the top stone is parented to the thief, stays parked (never a weapon, can't start a chain) and leaves with it. `Added`: new stones drop onto the next free slots. `Forfeited`: overtime ended at the danger line, the unthrown stones go.
+  - After every change the pile reconciles to the count, so it can never disagree with the HUD.
+- **No pool yet**: stones are created from the Stone prefab and destroyed as before. A pool can slot in behind `StonePile` later.
+
+**Coming:** mixed weapon types per night → the perch is the loadout, one container per weapon (needs a per-weapon count in Runtime; today there's one). The rag under the stones is the first container tier (rag → bindle → sack → dedicated tool); weapon mastery will show on it. Meta is still empty — don't build it.
 
 ## Background
 `BackgroundNight` (`ScrollingBackground`: endless tiled scroll) with child `BackgroundDay` (`DayNightBackground`: fades in on `NightEnded`). Presentation only.

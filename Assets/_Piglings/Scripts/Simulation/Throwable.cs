@@ -24,6 +24,7 @@ namespace Piglings.Simulation
         private NightSession _session;
         private float _life;
         private bool _removed;
+        private bool _launched;   // false while it sits on the pile, hops to the hand, or is carried off by a thief
 
         private void Reset()
         {
@@ -31,9 +32,22 @@ namespace Piglings.Simulation
             circle = GetComponent<CircleCollider2D>();
         }
 
+        /// <summary>
+        /// Not a weapon (yet): no physics, no collider. Used while the stone sits on the pile, rides to the
+        /// pig's hand, or is carried off by a robot — so it can never hit anything or start a chain.
+        /// </summary>
+        public void Park()
+        {
+            body.simulated = false;
+            circle.enabled = false;
+        }
+
         public void Launch(NightSession session, ThrowableDefinition def, Vector2 velocity)
         {
             _session = session;
+            _launched = true;
+            body.simulated = true;
+            circle.enabled = true;
             Id = session.Ids.Next();
             Chain = new ChainId(session.Ids.Next());
             _life = def.Lifetime;
@@ -48,6 +62,7 @@ namespace Piglings.Simulation
 
         private void Update()
         {
+            if (!_launched) return;   // a parked stone has no lifetime
             _life -= Time.deltaTime;
             if (_life <= 0f) Remove();
         }

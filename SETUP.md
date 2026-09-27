@@ -40,7 +40,7 @@ Hidden layers in the PSDs (red/X eyes, extra mouths, sparks) come in hidden — 
 - `Robot_WolfBot` (defaults are tuned: ballRadius 0.174, breakDuration 0.6, maxFallSeconds 6)
 - `Throwable_Stone`
 - `Wall_Wood` (holdMaterial: a PhysicsMaterial2D, bounciness ~0.35, friction ~0.2 — make it in `PhysicsMaterials/`)
-- `Night_01` → assign the three above. Current values: spawnInterval 1, throws 30, targetScore 5000, stonesLostPerBreach 1, maxBreaches 5.
+- `Night_01` → assign the three above. Current values: spawnInterval 1, throws 30 (the pile — the pig's life), targetScore 5000. (The old stonesLostPerBreach / maxBreaches fields are gone.)
 - `Scoring` (ScoringDefinition) → assign to NightSession. Current: stone/growth/wolf 10, multiplierPerDepth 1, overtimeMultiplier 2.
 Also create `Ball.physicsMaterial2D` (bounciness ~0.3) and assign it to Robot_WolfBot.
 
@@ -79,11 +79,13 @@ Barn
     barn_perch_0        art only (no collider): perch piece, local (-1.294, -0.228)
       barn_perch_sign_0 art only: the hanging "no wolves" sign, local (0, -0.325)
     barn_perch_2        art only: perch piece, local (1.294, -0.228)
+      StonePile         (M7.2) StonePile (session, Stone prefab, hand = ThrowOrigin, spawner); position = centre of the
+                        pile's bottom row on the plank; child SpriteRenderer = pile_rag.png just under it
   DangerZone            THE DANGER LINE, just above the wall's top beam: (0, 6.275), BoxCollider2D trigger 4.4 × 0.2,
                         layer Zones, Rigidbody2D Kinematic, DangerZone (session)
     DangerLine          SpriteRenderer (thin square, scale ≈ 4.08 × 0.2), DangerZoneView (session)
 ThrowOrigin             empty at the pig's hand (0.2, 7.7)
-ThrowController         ThrowController (session, Stone prefab, origin, container = Throwables, camera)
+ThrowController         ThrowController (session, Stone prefab, origin, container = Throwables, camera, pile = StonePile)
 Trajectory              LineRenderer + TrajectoryView (thrower)
 RobotSpawner            y 0.3; RobotSpawner (session, WolfBot prefab, container = Robots)
 GroundZone              BoxCollider2D trigger 12 × 1 at y -0.6, layer Ground, GroundZone, Rigidbody2D Kinematic
