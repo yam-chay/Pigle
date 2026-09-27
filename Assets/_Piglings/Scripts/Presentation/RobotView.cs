@@ -31,6 +31,14 @@ namespace Piglings.Presentation
             _bus = null;
         }
 
+        // The wall pauses for the end-of-night choice: freeze the climb animation with it,
+        // so frozen robots don't keep pedalling in place.
+        private void Update()
+        {
+            if (animator == null || robot.Session == null) return;
+            animator.speed = robot.Session.State.Phase == NightPhase.ChoicePending ? 0f : 1f;
+        }
+
         // Every robot hears every danger event; it only reacts to its own. A few dozen a night.
         private void OnEnteredDanger(RobotEnteredDangerZone e)
         {

@@ -12,6 +12,9 @@ namespace Piglings.Definitions
         [SerializeField, Min(0.01f)] private float ballRadius = 0.174f;      // 58 art px * 0.3 scale * 0.01
         [SerializeField, Min(0.01f)] private float ballMass = 1f;
         [SerializeField] private PhysicsMaterial2D ballMaterial;
+        [Tooltip("A falling ball still in the air after this many seconds is removed (e.g. it came to rest on a hold). " +
+                 "Without it, its chain never closes and the night can't reach the choice.")]
+        [SerializeField, Min(0.5f)] private float maxFallSeconds = 6f;
 
         public string Id => id;
         public float ClimbSpeed => climbSpeed;
@@ -19,5 +22,6 @@ namespace Piglings.Definitions
         public float BallRadius => ballRadius;
         public float BallMass => ballMass;
         public PhysicsMaterial2D BallMaterial => ballMaterial;
+        public float MaxFallSeconds => maxFallSeconds;
     }
 }

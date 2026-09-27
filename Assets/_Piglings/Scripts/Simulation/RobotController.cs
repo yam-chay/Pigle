@@ -42,6 +42,7 @@ namespace Piglings.Simulation
         private RobotDefinition _def;
         private float _climbSpeed;
         private float _breakTimer;
+        private float _fallTimer;
 
         private void Reset()
         {
@@ -68,6 +69,17 @@ namespace Piglings.Simulation
             Chain = chain;
             Depth = cause.Depth;
             _session.Bus.Publish(new RobotLostGrip(Id, chain, cause));
+            SetState(RobotState.LosingGrip);
+        }
+
+        /// <summary>
+        /// The end-of-night sweep: a robot still climbing lets go and falls. Not part of any chain — the Rules
+        /// score it flat (RobotSwept). Called by RobotSpawner when the night ends.
+        /// </summary>
+        public void Sweep()
+        {
+            if (!CanLoseGrip) return;
+            _session.Bus.Publish(new RobotSwept(Id));
             SetState(RobotState.LosingGrip);
         }
 
@@ -107,6 +119,7 @@ namespace Piglings.Simulation
                     body.linearVelocity = Vector2.zero;
                     break;
                 case RobotState.Falling:
+                    _fallTimer = _def.MaxFallSeconds;
                     gameObject.layer = LayerMask.NameToLayer(PhysicsLayers.RobotBall);
                     body.bodyType = RigidbodyType2D.Dynamic;
                     body.angularVelocity = UnityEngine.Random.Range(-360f, 360f);
@@ -121,14 +134,23 @@ namespace Piglings.Simulation
 
         private void Update()
         {
-            if (State != RobotState.LosingGrip) return;
-            _breakTimer -= Time.deltaTime;
-            if (_breakTimer <= 0f) SetState(RobotState.Falling);
+            if (State == RobotState.LosingGrip)
+            {
+                _breakTimer -= Time.deltaTime;
+                if (_breakTimer <= 0f) SetState(RobotState.Falling);
+            }
+            else if (State == RobotState.Falling)
+            {
+                // A ball resting on a hold would keep its chain open forever — and the night with it.
+                _fallTimer -= Time.deltaTime;
+                if (_fallTimer <= 0f) Remove(RemovalReason.TimedOut);
+            }
         }
 
         private void FixedUpdate()
         {
-            if (State == RobotState.Climbing)
+            // Paused while the player chooses (no Time.timeScale: only the wall stops).
+            if (State == RobotState.Climbing && _session.WallMoving)
                 body.MovePosition(body.position + Vector2.up * (_climbSpeed * Time.fixedDeltaTime));
         }
 

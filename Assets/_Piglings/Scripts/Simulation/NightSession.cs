@@ -28,6 +28,13 @@ namespace Piglings.Simulation
         private ChainTracker _chains;
         private NightReferee _referee;
 
+        /// <summary>Robots climb and spawn only while the night is being played: paused for the choice, stopped once over.</summary>
+        public bool WallMoving => State.Phase == NightPhase.Running || State.Phase == NightPhase.Overtime;
+
+        // The end-of-night choice. Called by NightChoice (Simulation); the referee ignores them outside ChoicePending.
+        public void ChooseStay() => _referee.Stay();
+        public void ChooseLeave() => _referee.Leave();
+
         private void Awake()
         {
             Bus = new EventBus();
