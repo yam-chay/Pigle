@@ -6,7 +6,7 @@ using UnityEngine;
 namespace Piglings.Presentation
 {
     /// <summary>
-    /// Makes chains readable: where each robot loses grip, "points ×mult" resolving into "+total"
+    /// Makes chains readable: where each robot loses grip, "received ×mult" resolving into "+total"
     /// (RobotScored); and a big "robots · depth / +total" when a chain closes (ChainScored).
     ///
     /// Only listens and spawns visuals — never touches game state. The numbers come from the Rules
@@ -77,7 +77,7 @@ namespace Piglings.Presentation
             string total = $"+{e.Total}";
 
             // Show the multiplication only when it changes something: a ×1 robot goes straight to "+10".
-            if (e.Multiplier > 1f) Spawn(t.position + robotOffset, $"{e.Points} ×{e.Multiplier:0.##}", color, scale, total);
+            if (e.Multiplier > 1f) Spawn(t.position + robotOffset, $"{e.Received} ×{e.Multiplier:0.##}", color, scale, total);
             else Spawn(t.position + robotOffset, total, color, scale);
         }
 

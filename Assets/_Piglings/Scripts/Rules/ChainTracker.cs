@@ -16,6 +16,10 @@ namespace Piglings.Rules
             public int Dropped;
             public int MaxDepth;
             public int Total;       // sum of the RobotScored totals; ChainScored reports it
+
+            // What each hitter of this chain (the stone, and every robot knocked loose) carries into
+            // its next hit. Lives with the chain, so it's forgotten when the chain closes.
+            public readonly Dictionary<GameId, int> Carried = new Dictionary<GameId, int>();
         }
 
         private readonly EventBus _bus;
@@ -47,6 +51,7 @@ namespace Piglings.Rules
         {
             var c = new Open();
             c.InPlay.Add(e.Throwable);
+            c.Carried[e.Throwable] = _curve.StoneValue;
             _open[e.Chain.Id] = c;
             _state.ThrowsUsed++;
         }
@@ -59,14 +64,20 @@ namespace Piglings.Rules
             if (e.Cause.Depth > c.MaxDepth) c.MaxDepth = e.Cause.Depth;
             _state.RobotsDropped++;
 
-            // Paid in full right now — order and depth are both known the moment it loses grip.
+            // Paid in full right now: the hitter's carried value is known the moment this robot
+            // loses grip. A hitter we don't know (e.g. a future hazard) counts as a fresh stone.
             int order = c.Dropped;   // already counts this robot, so the first is 1
             int depth = e.Cause.Depth;
-            int total = _curve.RobotTotal(order, depth);
-            c.Total += total;
-            _state.Score += total;
-            _bus.Publish(new RobotScored(e.Robot, e.Chain, order, depth,
-                _curve.RobotPoints(order), _curve.Multiplier(depth), total));
+            if (!c.Carried.TryGetValue(e.Cause.Source, out int received)) received = _curve.StoneValue;
+
+            int total = _curve.RobotTotal(received, depth);
+            int carries = _curve.CarriedBy(received, total);
+            c.Carried[e.Cause.Source] = _curve.HitterAfterHit(received);   // its next hit is worth more
+            c.Carried[e.Robot] = carries;                                     // this robot is now a stone too
+
+            c.Total = AddClamped(c.Total, total);
+            _state.Score = AddClamped(_state.Score, total);
+            _bus.Publish(new RobotScored(e.Robot, e.Chain, order, depth, received, _curve.Multiplier(depth), total, carries));
         }
 
         private void OnRobotRemoved(RobotRemoved e)
@@ -91,5 +102,8 @@ namespace Piglings.Rules
             _bus.Publish(new ChainClosed(chain, c.Dropped, c.MaxDepth));
             _bus.Publish(new ChainScored(chain, c.Dropped, c.MaxDepth, c.Total));
         }
+
+        // Scores can get huge with CarryScoredTotal on; saturate rather than wrap negative.
+        private static int AddClamped(int a, int b) => (int)System.Math.Min(int.MaxValue, (long)a + b);
     }
 }

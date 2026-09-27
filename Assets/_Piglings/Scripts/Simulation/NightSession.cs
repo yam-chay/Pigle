@@ -44,7 +44,7 @@ namespace Piglings.Simulation
                 Debug.LogWarning("NightSession: no ScoringDefinition assigned, using default scoring.", this);
                 return new ScoreCurve();
             }
-            return new ScoreCurve(scoring.BasePoints, scoring.MultiplierPerDepth);
+            return new ScoreCurve(scoring.BasePoints, scoring.MultiplierPerDepth, scoring.CarryScoredTotal);
         }
 
         private void OnDestroy() => _chains?.Dispose();
