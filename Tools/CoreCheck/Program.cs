@@ -17,6 +17,7 @@ static void Main(){
  tr.Dispose(); Check(tr.OpenChainCount==0,"dispose");
  ScoreChecks();
  NightChecks();
+ NameClashChecks();
  ThrowChecks();
 }
 // Scoring: value flows down the chain. A hitter (stone or ball) carries a value; the robot it knocks
@@ -162,7 +163,7 @@ static void NightChecks(){
    n.Ref.Stay(); n.Ref.Leave();
    Check(n.St.Phase==NightPhase.Running,"Stay/Leave are ignored outside ChoicePending");
    var t=n.Throw(3); n.Settle(t); n.Ref.Leave();
-   Check(n.St.Phase==NightPhase.Ended && n.St.Choice==NightChoice.Leave && n.Ends.Count==1 && n.Ends[0].Result==NightResult.Won
+   Check(n.St.Phase==NightPhase.Ended && n.St.Choice==StayOrLeave.Leave && n.Ends.Count==1 && n.Ends[0].Result==NightResult.Won
      && n.Ends[0].Reason==NightEndReason.Left,"Leave -> Ended at once, Won, reason Left");
    Check(n.BankedTo(MasteryDestination.Barn)==10 && n.BankedTo(MasteryDestination.Weapon)==9 && n.St.BarnMastery==10 && n.St.WeaponMastery==9,
      "Leave banks: score above target (60-50=10) to the barn x1, leftover stones (9) to the weapon");
@@ -171,7 +172,7 @@ static void NightChecks(){
  // --- Stay -> Overtime ---
  { var n=new Night(new NightGoal(50,3,1,5));
    var t=n.Throw(3); n.Settle(t); n.Ref.Stay();
-   Check(n.St.Phase==NightPhase.Overtime && n.St.CanThrow && n.St.StonesLeft==2 && n.St.Choice==NightChoice.Stay,"Stay -> Overtime: throwing resumes (2 stones)");
+   Check(n.St.Phase==NightPhase.Overtime && n.St.CanThrow && n.St.StonesLeft==2 && n.St.Choice==StayOrLeave.Stay,"Stay -> Overtime: throwing resumes (2 stones)");
    var o=n.Throw(2);   // 10+20 = 30 overtime points
    Check(n.St.OvertimeScore==30 && n.St.Phase==NightPhase.Overtime,"overtime score counted separately (30)");
    n.Settle(o);
@@ -275,6 +276,36 @@ static void NightChecks(){
      "NightPhaseChanged: ChoicePending, Overtime, Ended — once each");
    Check(n.Ends[0].ThrowsUsed==2 && n.Ends[0].StonesLeft==0,"NightEnded carries throws used"); }
  Check(new NightGoal(0).TargetScore==1,"a target of 0 becomes 1 (otherwise you could never throw)");
+}
+// Name clashes: CoreCheck can't compile Simulation/Presentation, so it can't see "ambiguous reference" errors
+// there. This scans every script instead: a type name declared in two of our namespaces (e.g. an enum in
+// Events and a component in Simulation), or one that shadows a common UnityEngine type, breaks any file
+// that uses both namespaces — and Presentation uses nearly all of them.
+static void NameClashChecks(){
+ var dir=new System.IO.DirectoryInfo(AppContext.BaseDirectory);
+ while(dir!=null && !System.IO.Directory.Exists(System.IO.Path.Combine(dir.FullName,"Assets"))) dir=dir.Parent;
+ if(dir==null){ Check(false,"name clashes: couldn't find the Assets folder"); return; }
+ var scripts=System.IO.Path.Combine(dir.FullName,"Assets","_Piglings","Scripts");
+ var decl=new System.Text.RegularExpressions.Regex(@"^\s*(?:public|internal)\s+(?:(?:sealed|static|readonly|abstract|partial)\s+)*(?:class|struct|enum|interface)\s+([A-Za-z_]\w*)");
+ var nsOf=new System.Text.RegularExpressions.Regex(@"^\s*namespace\s+([\w\.]+)");
+ var where=new System.Collections.Generic.Dictionary<string,System.Collections.Generic.HashSet<string>>();
+ foreach(var f in System.IO.Directory.GetFiles(scripts,"*.cs",System.IO.SearchOption.AllDirectories)){
+  string ns="(global)";
+  foreach(var line in System.IO.File.ReadAllLines(f)){
+   var m=nsOf.Match(line); if(m.Success){ ns=m.Groups[1].Value; continue; }
+   var d=decl.Match(line); if(!d.Success) continue;
+   var name=d.Groups[1].Value;
+   if(!where.TryGetValue(name,out var set)) where[name]=set=new System.Collections.Generic.HashSet<string>();
+   set.Add(ns);
+  }
+ }
+ var clashes=new System.Collections.Generic.List<string>();
+ foreach(var kv in where) if(kv.Value.Count>1) clashes.Add(kv.Key+" in "+string.Join(" + ",kv.Value));
+ Check(where.Count>20 && clashes.Count==0,"no type name declared in two of our namespaces"+(clashes.Count>0?": "+string.Join("; ",clashes):""));
+ var unity=new[]{"Random","Debug","Time","Object","Color","Vector2","Vector3","Physics2D","Animator","Camera","Input","Screen","GUI","Transform","Rigidbody2D","Collider2D","EntityId","Mathf","Application"};
+ var shadow=new System.Collections.Generic.List<string>();
+ foreach(var u in unity) if(where.ContainsKey(u)) shadow.Add(u);
+ Check(shadow.Count==0,"no type shadows a common UnityEngine name"+(shadow.Count>0?": "+string.Join(", ",shadow):""));
 }
 // ThrowSolver: the arc must pass through the target, and the stepped physics flight must stay on that arc.
 static void ThrowChecks(){

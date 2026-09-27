@@ -90,7 +90,9 @@ namespace Piglings.Events
     /// Reaching the target ends the danger, not the night: from ChoicePending on, the night can't be lost.
     /// </summary>
     public enum NightPhase { Running, ChoicePending, Overtime, Ended }
-    public enum NightChoice { None, Stay, Leave }
+    // Named StayOrLeave, not NightChoice: Simulation has a NightChoice component (the buttons), and code that
+    // uses both namespaces (every Presentation view) would find the name ambiguous.
+    public enum StayOrLeave { None, Stay, Leave }
     public enum NightResult { Won, Lost }
     // OutOfStones: lost in Running, or overtime used up its stones (a win). DangerLine: overtime ended by a robot at the line.
     public enum NightEndReason { OutOfStones, BarnBreached, Left, DangerLine }
@@ -113,8 +115,8 @@ namespace Piglings.Events
     /// <summary>The player chose what their leftover stones are for.</summary>
     public readonly struct NightChoiceMade
     {
-        public readonly NightChoice Choice;
-        public NightChoiceMade(NightChoice choice) { Choice = choice; }
+        public readonly StayOrLeave Choice;
+        public NightChoiceMade(StayOrLeave choice) { Choice = choice; }
     }
 
     /// <summary>

@@ -23,7 +23,7 @@ namespace Piglings.Runtime
         public bool CanThrow;      // false while paused, once out of stones, after the target (until Stay), or night over
         public NightResult Result;
         public NightEndReason EndReason;
-        public NightChoice Choice;
+        public StayOrLeave Choice;
 
         public int StonesAtTarget = -1;  // stones left when the score first reached the target; -1 = not yet
         public int ScoreAtChoice;        // score when the choice appeared (target + overshoot)
