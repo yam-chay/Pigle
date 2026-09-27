@@ -46,9 +46,9 @@ namespace Piglings.Tests
             Assert.That(_closed.Value.RobotsDropped, Is.EqualTo(2));
             Assert.That(_closed.Value.MaxDepth, Is.EqualTo(1));
             Assert.That(_state.LongestChain, Is.EqualTo(2));
-            // a: the stone carries 10 → 10 ×1 = 10, and a now carries 10 + 10 = 20.
-            // b: a's ball carries 20 → 20 ×2 = 40.
-            Assert.That(_state.Score, Is.EqualTo(10 + 40));
+            // Defaults: a: the stone carries 10 → 10 ×1 = 10, and a now carries 10 + 10 = 20.
+            // b: a's ball carries 20 → 20 ×1.5 = 30.
+            Assert.That(_state.Score, Is.EqualTo(10 + 30));
         }
 
         [Test]

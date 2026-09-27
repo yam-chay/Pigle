@@ -24,7 +24,7 @@
 - [x] ☁ M4.2 Presentation: floating "+N" / depth popup on `RobotLostGrip`, bigger on `ChainClosed`. (Unity-side: list editor steps in the PR.)
 - [ ] 🖥 M4.3 Screen shake on depth ≥ 2.
 - [x] ☁ M4.4 Rules: rework scoring. Robot points = basePoints × order in chain; per-robot multiplier = 1 + multiplierPerDepth × own depth, applied immediately. No chain-end multiplier; `ChainScored` = sum. Popup "30 ×2" → "+60".
-- [x] ☁ M4.5 Rules: value flows down the chain. Stone carries 10 (+10 per extra hit); a knocked robot scores received × (1 + depth) and carries 10 + what it scored (or received, via `carryScoredTotal`).
+- [x] ☁ M4.5 Rules: value flows down the chain. Stone carries `stoneValue` (+`growthPerHit` per extra hit); a knocked robot scores received × (1 + `multiplierPerDepth` × depth) and carries `wolfValue` + what it received. Low defaults (10/10/10/×0.5); compounding (`carryScoredTotal`) kept as an off switch for future upgrades.
 
 ## M5 — Walls matter
 - [ ] 🖥 Wall_Straw / Wall_Brick definitions with different hold bounciness; A/B them in play.

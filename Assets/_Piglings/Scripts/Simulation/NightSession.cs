@@ -35,7 +35,7 @@ namespace Piglings.Simulation
             _chains = new ChainTracker(Bus, State, BuildCurve());
         }
 
-        // Without an asset the night still plays on ScoreCurve's defaults (10 / ×1 per depth),
+        // Without an asset the night still plays on ScoreCurve's defaults (10 / 10 / 10 / ×0.5),
         // but says so — silently scoring on values nobody chose would make tuning confusing.
         private ScoreCurve BuildCurve()
         {
@@ -44,7 +44,8 @@ namespace Piglings.Simulation
                 Debug.LogWarning("NightSession: no ScoringDefinition assigned, using default scoring.", this);
                 return new ScoreCurve();
             }
-            return new ScoreCurve(scoring.BasePoints, scoring.MultiplierPerDepth, scoring.CarryScoredTotal);
+            return new ScoreCurve(scoring.StoneValue, scoring.GrowthPerHit, scoring.WolfValue,
+                                  scoring.MultiplierPerDepth, scoring.CarryScoredTotal);
         }
 
         private void OnDestroy() => _chains?.Dispose();
