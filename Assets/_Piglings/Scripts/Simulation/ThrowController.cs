@@ -68,7 +68,7 @@ namespace Piglings.Simulation
 
             var pointer = Pointer.current;
             if (pointer == null || cam == null) return;
-            if (session.State.ThrowsUsed >= session.Night.ThrowsAvailable) return;
+            if (!session.State.CanThrow) return;   // out of stones, target reached, or night over (NightReferee)
 
             // Released this frame counts as "still aiming" so the throw uses the same aim the
             // player saw on the last frame of the drag.

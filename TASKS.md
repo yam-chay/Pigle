@@ -28,7 +28,7 @@
 
 ## M5 — Walls matter
 - [ ] 🖥 Wall_Straw / Wall_Brick definitions with different hold bounciness; A/B them in play.
-- [ ] ☁ Night end condition in Rules: N robots reached top = lose; survive X seconds = win. Events: `NightEnded`.
+- [x] ☁ Night end condition in Rules (`NightReferee`): reach `targetScore` = win (once everything in flight settles); out of stones = lose; a robot reaching the top costs `stonesLostPerBreach` stones; `maxBreaches` = lose. Event: `NightEnded`. (Changed from "survive X seconds" — a timer rewards stalling; a score target rewards chains.)
 
 ## Open design questions (from the GDD — don't implement until decided)
 - One robot line per run vs. mixed swarm.

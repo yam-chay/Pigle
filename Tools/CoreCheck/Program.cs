@@ -16,6 +16,7 @@ static void Main(){
  Action<ChainClosed> h=e=>{}; bus.Subscribe(h); bus.Unsubscribe(h); Check(true,"unsubscribe ok");
  tr.Dispose(); Check(tr.OpenChainCount==0,"dispose");
  ScoreChecks();
+ NightChecks();
  ThrowChecks();
 }
 // Scoring: value flows down the chain. A hitter (stone or ball) carries a value; the robot it knocks
@@ -97,6 +98,65 @@ static int[] Totals(ScoreCurve curve, IdAllocator ids, out int[] carries){
  bus.Publish(new RobotLostGrip(y,ch,Attribution.FromThrowable(s)));
  bus.Publish(new RobotLostGrip(z,ch,Attribution.FromRobotBall(x,0)));
  tr.Dispose(); carries=cs.ToArray(); return t.ToArray();
+}
+// NightReferee: win on target once everything has settled; lose out of stones or on too many breaches.
+class Night{
+ public EventBus Bus=new EventBus(); public NightState St=new NightState(); public IdAllocator Ids=new IdAllocator();
+ public ChainTracker Tr; public NightReferee Ref; public System.Collections.Generic.List<NightEnded> Ends=new System.Collections.Generic.List<NightEnded>();
+ public Night(NightGoal g){ Tr=new ChainTracker(Bus,St); Ref=new NightReferee(Bus,St,Tr,g); Bus.Subscribe<NightEnded>(e=>Ends.Add(e)); }
+ // Throw a stone that knocks n robots directly (10, 20, 30… by default). Returns what's still in flight.
+ public (ChainId chain, GameId stone, GameId[] robots) Throw(int n){
+  var c=new ChainId(Ids.Next()); var s=Ids.Next(); var r=new GameId[n];
+  Bus.Publish(new ThrowReleased(c,s));
+  for(int i=0;i<n;i++){ r[i]=Ids.Next(); Bus.Publish(new RobotLostGrip(r[i],c,Attribution.FromThrowable(s))); }
+  return (c,s,r);
+ }
+ public void Settle((ChainId chain, GameId stone, GameId[] robots) t){
+  Bus.Publish(new ThrowableRemoved(t.stone,t.chain));
+  foreach(var r in t.robots) Bus.Publish(new RobotRemoved(r,t.chain,RemovalReason.HitGround));
+ }
+ public void Breach(){ Bus.Publish(new RobotRemoved(Ids.Next(),ChainId.None,RemovalReason.EnteredBarn)); }
+}
+static void NightChecks(){
+ { var n=new Night(new NightGoal(50,10,1,5));
+   Check(n.St.StonesLeft==10 && n.St.CanThrow && !n.St.Ended,"night starts with all stones, can throw");
+   var t=n.Throw(3);   // 10+20+30 = 60 >= 50
+   Check(!n.St.CanThrow && !n.St.Ended && n.Ends.Count==0,"target reached: throwing stops, but no end while the chain is falling");
+   n.Settle(t);
+   Check(n.Ends.Count==1 && n.Ends[0].Result==NightResult.Won && n.Ends[0].Reason==NightEndReason.TargetReached
+     && n.Ends[0].Score==60 && n.Ends[0].StonesLeft==9,"chain settles -> Won, score 60, 9 stones left");
+   Check(n.St.Ended && n.St.Result==NightResult.Won,"state records the win"); }
+ { var n=new Night(new NightGoal(50,10,1,5));
+   var a=n.Throw(1); var b=n.Throw(3);   // b crosses the target while a is still in flight
+   n.Settle(b);
+   Check(n.Ends.Count==0,"another chain still in flight -> not over yet");
+   n.Settle(a);
+   Check(n.Ends.Count==1 && n.Ends[0].Result==NightResult.Won && n.Ends[0].Score==70,"last chain settles -> Won with its points (70)"); }
+ { var n=new Night(new NightGoal(500,2,1,5));
+   var a=n.Throw(0); var b=n.Throw(1);
+   Check(n.St.StonesLeft==0 && !n.St.CanThrow,"all stones thrown -> can't throw");
+   n.Settle(a);
+   Check(n.Ends.Count==0,"out of stones but a chain still falling -> not over");
+   n.Settle(b);
+   Check(n.Ends.Count==1 && n.Ends[0].Result==NightResult.Lost && n.Ends[0].Reason==NightEndReason.OutOfStones,"last chain settles below target -> Lost, out of stones"); }
+ { var n=new Night(new NightGoal(60,1,1,5));
+   var t=n.Throw(3); n.Settle(t);
+   Check(n.Ends.Count==1 && n.Ends[0].Result==NightResult.Won,"last stone's chain reaches the target -> Won, not Lost"); }
+ { var n=new Night(new NightGoal(500,3,1,5));
+   n.Breach();
+   Check(n.St.RobotsReachedTop==1 && n.St.StonesLeft==2,"a breach costs a stone");
+   n.Breach(); n.Breach();
+   Check(n.St.StonesLeft==0 && n.Ends.Count==1 && n.Ends[0].Reason==NightEndReason.OutOfStones,"breaches take the last stone with nothing in flight -> Lost, out of stones"); }
+ { var n=new Night(new NightGoal(500,30,1,3));
+   var t=n.Throw(1); n.Breach(); n.Breach(); n.Breach();
+   Check(n.Ends.Count==1 && n.Ends[0].Result==NightResult.Lost && n.Ends[0].Reason==NightEndReason.BarnBreached && n.Ends[0].Breaches==3,
+     "3rd breach -> Lost, barn breached, even with a chain in flight");
+   n.Breach(); n.Settle(t);
+   Check(n.Ends.Count==1 && n.St.RobotsReachedTop==3,"NightEnded fires once; nothing counts after the end"); }
+ { var n=new Night(new NightGoal(500,5,0,0));
+   for(int i=0;i<10;i++) n.Breach();
+   Check(n.St.StonesLeft==5 && n.Ends.Count==0,"stonesLostPerBreach 0 + maxBreaches 0 -> breaches cost nothing"); }
+ Check(new NightGoal(0).TargetScore==1,"a target of 0 becomes 1 (otherwise you could never throw)");
 }
 // ThrowSolver: the arc must pass through the target, and the stepped physics flight must stay on that arc.
 static void ThrowChecks(){
