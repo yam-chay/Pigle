@@ -44,7 +44,7 @@ namespace Piglings.Presentation
             var s = session.State;
             string timeToTarget = _targetTime < 0f ? "—" : $"{_targetTime:0.0}s";
             string stonesAtTarget = s.StonesAtTarget < 0 ? "—" : s.StonesAtTarget.ToString();
-            string overtimeEnd = s.Choice == NightChoice.Stay ? e.Reason.ToString() : "—";
+            string overtimeEnd = s.Choice == StayOrLeave.Stay ? e.Reason.ToString() : "—";
             Debug.Log($"[Night] {e.Result} · time-to-target {timeToTarget} · stones-left-at-target {stonesAtTarget} · " +
                       $"choice {s.Choice} · overtime-end {overtimeEnd} · breaches {e.Breaches} · " +
                       $"best chain {s.LongestChain} robots / depth {s.DeepestChain} · final score {e.Score}");
@@ -82,7 +82,7 @@ namespace Piglings.Presentation
 
         private static string WonText(Runtime.NightState s)
         {
-            if (s.Choice == NightChoice.Leave) return "you left";
+            if (s.Choice == StayOrLeave.Leave) return "you left";
             return s.EndReason == NightEndReason.DangerLine ? "overtime ended at the danger line" : "overtime used every stone";
         }
 

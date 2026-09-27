@@ -66,16 +66,16 @@ namespace Piglings.Rules
         public void Stay()
         {
             if (_state.Phase != NightPhase.ChoicePending) return;
-            _state.Choice = NightChoice.Stay;
-            _bus.Publish(new NightChoiceMade(NightChoice.Stay));
+            _state.Choice = StayOrLeave.Stay;
+            _bus.Publish(new NightChoiceMade(StayOrLeave.Stay));
             SetPhase(NightPhase.Overtime);
         }
 
         public void Leave()
         {
             if (_state.Phase != NightPhase.ChoicePending) return;
-            _state.Choice = NightChoice.Leave;
-            _bus.Publish(new NightChoiceMade(NightChoice.Leave));
+            _state.Choice = StayOrLeave.Leave;
+            _bus.Publish(new NightChoiceMade(StayOrLeave.Leave));
             End(NightResult.Won, NightEndReason.Left);
         }
 
@@ -149,7 +149,7 @@ namespace Piglings.Rules
             _state.Score = ScoreMath.AddClamped(_state.Score, points);
             _state.SweepScore = ScoreMath.AddClamped(_state.SweepScore, points);
             // In the Stay path the sweep is still overtime: it banks ×2 like the rest of it.
-            if (_state.Choice == NightChoice.Stay)
+            if (_state.Choice == StayOrLeave.Stay)
                 _state.OvertimeScore = ScoreMath.AddClamped(_state.OvertimeScore, points);
         }
 
@@ -220,12 +220,12 @@ namespace Piglings.Rules
         {
             if (_state.Result == NightResult.Won)
             {
-                if (_state.Choice == NightChoice.Leave)
+                if (_state.Choice == StayOrLeave.Leave)
                 {
                     Bank(MasteryDestination.Barn, _state.Score - _goal.TargetScore, 1);   // sweep included
                     Bank(MasteryDestination.Weapon, _state.StonesLeft, 1);                // the leftover stones
                 }
-                else if (_state.Choice == NightChoice.Stay)
+                else if (_state.Choice == StayOrLeave.Stay)
                 {
                     Bank(MasteryDestination.Barn, _state.ScoreAtChoice - _goal.TargetScore, 1);
                     Bank(MasteryDestination.Barn, _state.OvertimeScore, 2);               // sweep included
