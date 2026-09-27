@@ -35,7 +35,8 @@ namespace Piglings.Presentation
         [Tooltip("Depth at which a robot popup is fully 'deep': right end of the gradient, full shake and extra life.")]
         [SerializeField, Min(1)] private int deepAtDepth = 3;
 
-        [Tooltip("Points scored in overtime: an animated rainbow by default, so the bonus is unmistakable.")]
+        [Tooltip("Popups for points scored in overtime: an animated rainbow by default, so the bonus is unmistakable. " +
+                 "Only the popups — the danger line has its own Overtime Color (DangerLine → Danger Zone View).")]
         [SerializeField] private PopupColor overtimeColor = new PopupColor
             { mode = PopupColorMode.PerLetter, gradient = PopupColor.Rainbow(), speed = 1.2f, spread = 0.8f };
 
@@ -103,6 +104,32 @@ namespace Piglings.Presentation
             string robots = e.RobotsDropped == 1 ? "1 robot" : $"{e.RobotsDropped} robots";
             float size = Mathf.Clamp01(e.Total / (float)bigChainTotal);
             Spawn(chainAnchor.position, $"{robots} · depth {e.MaxDepth}\n+{e.Total}", chainColor, 0f, chainScale, size);
+        }
+
+        // Inspector: ⋮ (or right-click the component header) → "Preview popups", in Play mode.
+        // Spawns one of every kind side by side at the chain anchor — depth 0..3, overtime, chain result —
+        // so colour modes, shake and life can be compared in seconds instead of playing into overtime.
+        // Visuals only: nothing is scored.
+        [ContextMenu("Preview popups (Play mode)")]
+        private void PreviewPopups()
+        {
+            if (!Application.isPlaying || chainAnchor == null)
+            {
+                Debug.LogWarning("ScorePopupSpawner: Preview popups works in Play mode, with a Chain Anchor set.", this);
+                return;
+            }
+
+            var origin = chainAnchor.position;
+            for (int depth = 0; depth <= 3; depth++)
+            {
+                float depthT = Mathf.Clamp01(depth / (float)deepAtDepth);
+                float mult = 1f + 0.5f * depth;
+                var pos = origin + new Vector3(-1.5f + depth, -1.2f, 0f);
+                Spawn(pos, $"{10 * (depth + 1)} ×{mult:0.##}", robotColor, depthT, robotScale * (1f + scalePerDepth * depth), depthT,
+                      $"+{Mathf.RoundToInt(10 * (depth + 1) * mult)}");
+            }
+            Spawn(origin + new Vector3(0f, -2.2f, 0f), "20 ×1.5  OT×2", overtimeColor, 0.33f, robotScale * 1.2f, 0.33f, "+60");
+            Spawn(origin, "5 robots · depth 3\n+300", chainColor, 0f, chainScale, 1f);
         }
 
         private void Spawn(Vector3 position, string text, PopupColor color, float colorKey, float scale, float intensity,

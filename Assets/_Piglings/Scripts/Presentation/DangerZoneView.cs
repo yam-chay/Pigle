@@ -16,7 +16,8 @@ namespace Piglings.Presentation
         [SerializeField] private SpriteRenderer line;
 
         [SerializeField] private Color warningColor = new Color(1f, 0.25f, 0.2f, 0.35f);
-        [Tooltip("Overtime look. Cycle mode walks the whole line through the gradient (PerLetter doesn't apply to a line).")]
+        [Tooltip("The line's overtime look — separate from the popups' Overtime Color (on ScorePopups). " +
+                 "Cycle walks the whole line through the gradient; PerLetter doesn't apply to a line.")]
         [SerializeField] private PopupColor overtimeColor = new PopupColor
             { mode = PopupColorMode.Cycle, gradient = PopupColor.Rainbow(), speed = 0.6f };
         [Tooltip("Pulses per second in overtime.")]
