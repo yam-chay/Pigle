@@ -77,13 +77,16 @@ namespace Piglings.Events
     /// <summary>
     /// Published by the Rules layer right after ChainClosed: the chain's value, which is the sum of
     /// its RobotScored totals (nothing extra is added at close). Also published for misses, with zeros.
+    /// InOvertime: the throw was made in overtime (a chain is never split across phases: the choice
+    /// only appears once no chain is open), so views can style it as bonus points.
     /// </summary>
     public readonly struct ChainScored
     {
         public readonly ChainId Chain; public readonly int RobotsDropped; public readonly int MaxDepth; public readonly int Total;
-        public ChainScored(ChainId chain, int robotsDropped, int maxDepth, int total)
+        public readonly bool InOvertime;
+        public ChainScored(ChainId chain, int robotsDropped, int maxDepth, int total, bool inOvertime)
         {
-            Chain = chain; RobotsDropped = robotsDropped; MaxDepth = maxDepth; Total = total;
+            Chain = chain; RobotsDropped = robotsDropped; MaxDepth = maxDepth; Total = total; InOvertime = inOvertime;
         }
     }
 

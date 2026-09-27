@@ -17,8 +17,9 @@ namespace Piglings.Rules
     /// - ChoicePending: the wall pauses (Simulation reads Phase). Stay or Leave.
     /// - Overtime (Stay): throwing and the wall resume. Every chain point is doubled as it's scored
     ///   (ScoreCurve.RobotTotal, via ChainTracker) and banks to the barn as scored; the weapon earns
-    ///   nothing — that's what keeps Leave worth choosing. Ends when the stones run out
-    ///   (after the last chain closes) or when a robot reaches the danger line. No loss either way.
+    ///   nothing — that's what keeps Leave worth choosing. Ends when the stones run out (after the
+    ///   last chain closes) or when a robot that climbed on during overtime reaches the danger line.
+    ///   Robots already on the wall at Stay can't end it (see _overtimeRobots). No loss either way.
     /// - Ended: Simulation sweeps the wall (every climbing robot falls); each one scores its own value,
     ///   flat, with the same robot-value function chains use. Then mastery is banked and NightEnded published.
     ///
@@ -35,6 +36,13 @@ namespace Piglings.Rules
         // True while Simulation sweeps the wall inside the Ended phase change; RobotSwept only counts then.
         private bool _sweeping;
 
+        // Robots that spawned during overtime — the only ones whose danger line ends it. Why: the wall
+        // resumes exactly as it froze, so a robot parked just under the line would end overtime the instant
+        // you press Stay. Robots already on the wall at Stay can't end it (they can still be knocked off
+        // for double points; reaching the top costs nothing). So the earliest overtime can end is the
+        // time a fresh robot takes to climb the wall: a fair, predictable window with no timer to tune.
+        private readonly System.Collections.Generic.HashSet<GameId> _overtimeRobots = new System.Collections.Generic.HashSet<GameId>();
+
         public NightGoal Goal => _goal;
 
         public NightReferee(EventBus bus, NightState state, ChainTracker chains, NightGoal goal = null)
@@ -50,6 +58,7 @@ namespace Piglings.Rules
             _bus.Subscribe<ChainScored>(OnChainScored);
             _bus.Subscribe<RobotEnteredDangerZone>(OnEnteredDangerZone);
             _bus.Subscribe<RobotSwept>(OnRobotSwept);
+            _bus.Subscribe<RobotSpawned>(OnRobotSpawned);
         }
 
         public void Dispose()
@@ -60,6 +69,7 @@ namespace Piglings.Rules
             _bus.Unsubscribe<ChainScored>(OnChainScored);
             _bus.Unsubscribe<RobotEnteredDangerZone>(OnEnteredDangerZone);
             _bus.Unsubscribe<RobotSwept>(OnRobotSwept);
+            _bus.Unsubscribe<RobotSpawned>(OnRobotSpawned);
         }
 
         // ---------- the player's choice (called by Simulation's NightChoice; ignored outside ChoicePending) ----------
@@ -124,9 +134,9 @@ namespace Piglings.Rules
                     return;
 
                 case NightPhase.Overtime:
-                    // A robot that was already past the danger line when overtime began made it to the top:
-                    // it crossed the line during overtime, so the bonus is over. Still no loss.
-                    End(NightResult.Won, NightEndReason.DangerLine);
+                    // An overtime robot got to the top (it crossed the line on the way): the bonus is over.
+                    // A robot that was already on the wall at Stay costs nothing. Never a loss.
+                    if (_overtimeRobots.Contains(e.Robot)) End(NightResult.Won, NightEndReason.DangerLine);
                     return;
 
                 // Running after the target, or ChoicePending: the night can't be lost any more. Counted, costs nothing.
@@ -136,7 +146,13 @@ namespace Piglings.Rules
         // In Running it's a warning only (views turn the robot red). In Overtime it's the line that ends the bonus.
         private void OnEnteredDangerZone(RobotEnteredDangerZone e)
         {
-            if (_state.Phase == NightPhase.Overtime) End(NightResult.Won, NightEndReason.DangerLine);
+            if (_state.Phase == NightPhase.Overtime && _overtimeRobots.Contains(e.Robot))
+                End(NightResult.Won, NightEndReason.DangerLine);
+        }
+
+        private void OnRobotSpawned(RobotSpawned e)
+        {
+            if (_state.Phase == NightPhase.Overtime) _overtimeRobots.Add(e.Robot);
         }
 
         // ChainTracker publishes this after it has closed the chain, so OpenChainCount is current.
