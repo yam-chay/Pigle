@@ -37,41 +37,64 @@ The `*_parts.json` next to each rig lists every part's pivot and parent (for bon
 Hidden layers in the PSDs (red/X eyes, extra mouths, sparks) come in hidden — keep them; they're swaps.
 
 ## 5. Definitions (right-click in `Assets/_Piglings/Definitions` → Create → Piglings)
-- `Robot_WolfBot` (defaults are tuned: ballRadius 0.174, breakDuration 0.6)
+- `Robot_WolfBot` (defaults are tuned: ballRadius 0.174, breakDuration 0.6, maxFallSeconds 6)
 - `Throwable_Stone`
 - `Wall_Wood` (holdMaterial: a PhysicsMaterial2D, bounciness ~0.35, friction ~0.2 — make it in `PhysicsMaterials/`)
-- `Night_01` → assign the three above; spawnInterval 1.6, throws 30.
+- `Night_01` → assign the three above. Current values: spawnInterval 1, throws 30 (the pile — the pig's life), targetScore 5000. (The old stonesLostPerBreach / maxBreaches fields are gone.)
+- `Scoring` (ScoringDefinition) → assign to NightSession. Current: stone/growth/wolf 10, multiplierPerDepth 1, overtimeMultiplier 2.
 Also create `Ball.physicsMaterial2D` (bounciness ~0.3) and assign it to Robot_WolfBot.
 
 ## 6. Prefabs
 **WolfBot.prefab** — root scale 0.3
 - Rigidbody2D (Kinematic, gravity 1), CircleCollider2D (radius set by code), `RobotController` (wire body + collider)
 - child: the imported wolf-bot rig → `RobotView` on root (wire animator, eye_on / eye_red / eye_x, detachables = arm/leg uppers, antenna, tail_1)
+- Animator `WolfBot.controller`: Climb, ClimbDanger (bool `InDanger`), Break (trigger `Break`, reachable from both). Clips are baked by *Piglings ▸ Animation ▸ Bake WolfBot Clips*.
 
 **Stone.prefab** — Rigidbody2D (Dynamic), CircleCollider2D, `Throwable`, a simple stone sprite (placeholder circle is fine).
 
+**Pig.prefab** — the pig rig + Animator (Idle, Aim, Throw) + `PigView`.
+
+**ScorePopup.prefab** — world-space TextMeshPro + `ScorePopup`.
+
 ## 7. Night scene — `Assets/_Piglings/Scenes/Night.unity`
+Values below are read from the scene as it is now (world units; positions are local to the parent).
 ```
-NightSession            NightSession (night = Night_01)
-Main Camera             Orthographic, size ≈ 5.3, position (0, 4.8, -10)
+BackgroundNight         SpriteRenderer (tiled night, order -100), ScrollingBackground
+  BackgroundDay         SpriteRenderer (tiled day, order -99), DayNightBackground (session) — fades in on NightEnded
+Main Camera             Orthographic, size 5.3, position (0, 4.8, -10); CameraShake (session)
+Global Light 2D
+NightSession            NightSession (night = Night_01, scoring = Scoring)
 Barn
   Barn_Bottom           y 0      (sprite: bottom closed)
   Slice_01              y 3.0    (sprite: slice)
     Holds               7 children, CircleCollider2D r 0.1, layer Holds, component Hold (positions below)
   Slice_02              y 4.6    (same, + Holds)
-  Barn_Top              y 6.2    (sprite: top)
-    HoleMask            SpriteMask (circle sprite), local (0, 1.6), scale → diameter 0.76
-    Pig                 the pig rig, scale 0.26, local ≈ (0, 1.4); body/face sprites Mask Interaction = Visible Inside Mask;
-                        throwing arm + stone: no mask, higher Order in Layer than the rim; PigView (wire ThrowController)
-  SideWalls             two BoxCollider2D at x ±3.05, layer BarnWalls, tall enough (0 → 6.2)
-  TopZone               BoxCollider2D trigger across the top of Slice_02 (y ≈ 6.2), layer Zones, BarnTopZone,
-                        Rigidbody2D Kinematic (same trick as CCTD's DangerZone)
-ThrowOrigin             empty at the pig's hand (≈ 0.25, 7.9)
-ThrowController         ThrowController (session, Stone prefab, origin, container=Throwables, camera)
-RobotSpawner            y 0.2, minX -2.6, maxX 2.6; RobotSpawner (session, WolfBot prefab, container=Robots)
-GroundZone              BoxCollider2D trigger, wide (12 × 1) at y -0.6, layer Ground, GroundZone, Rigidbody2D Kinematic
+  Barn_Top              (0, 6.2) (sprite: top)
+    Pig                 Pig prefab, local (0, 0.8); body/face sprites Mask Interaction = Visible Inside Mask;
+                        throwing arm + stone: no mask, higher Order in Layer than the rim
+    HoleMask            SpriteMask (circle sprite), local (0, 1.6), scale ≈ 0.76 (diameter 0.76)
+  Wall_L / Wall_R       BoxCollider2D 0.1 × 7.5 (offset y 0.5) at x ∓2.2, y 3.1; layer BarnWalls
+  TopZone               THE BREACH LINE, just under the pig's hole: (0, 7.2), BoxCollider2D trigger 4.4 × 0.2,
+                        layer Zones, Rigidbody2D Kinematic, BarnTopZone
+    barn_perch_0        art only (no collider): perch piece, local (-1.294, -0.228)
+      barn_perch_sign_0 art only: the hanging "no wolves" sign, local (0, -0.325)
+    barn_perch_2        art only: perch piece, local (1.294, -0.228)
+      StonePile         (M7.2) StonePile (session, Stone prefab, hand = ThrowOrigin, spawner); position = centre of the
+                        pile's bottom row on the plank; child SpriteRenderer = pile_rag.png just under it
+  DangerZone            THE DANGER LINE, just above the wall's top beam: (0, 6.275), BoxCollider2D trigger 4.4 × 0.2,
+                        layer Zones, Rigidbody2D Kinematic, DangerZone (session)
+    DangerLine          SpriteRenderer (thin square, scale ≈ 4.08 × 0.2), DangerZoneView (session)
+ThrowOrigin             empty at the pig's hand (0.2, 7.7)
+ThrowController         ThrowController (session, Stone prefab, origin, container = Throwables, camera, pile = StonePile)
+Trajectory              LineRenderer + TrajectoryView (thrower)
+RobotSpawner            y 0.3; RobotSpawner (session, WolfBot prefab, container = Robots)
+GroundZone              BoxCollider2D trigger 12 × 1 at y -0.6, layer Ground, GroundZone, Rigidbody2D Kinematic
+ChainPopupAnchor        (0, 7.8) — where chain results pop up
+ScorePopups             ScorePopupSpawner (session, spawner, ScorePopup prefab, container + anchor = ChainPopupAnchor)
+NightChoice             NightChoice (session) — Stay / Leave
+PlayAgain               PlayAgain (session)
+Debug                   ChainDebugHUD + NightEndView (session)
 Robots / Throwables     empty containers
-Debug                   ChainDebugHUD (session)
 ```
 **Hold local positions** (per slice, pivot bottom-center): row 1 y 1.12 → x −1.1, 0, 1.1 · row 2 y 0.54 → x −1.7, −0.55, 0.55, 1.7
 

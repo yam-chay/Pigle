@@ -103,8 +103,26 @@ namespace Piglings.Events
     // uses both namespaces (every Presentation view) would find the name ambiguous.
     public enum StayOrLeave { None, Stay, Leave }
     public enum NightResult { Won, Lost }
-    // OutOfStones: lost in Running, or overtime used up its stones (a win). DangerLine: overtime ended by a robot at the line.
-    public enum NightEndReason { OutOfStones, BarnBreached, Left, DangerLine }
+    // Caught: a robot breached while the pile was empty — the only way to lose. OutOfStones: overtime used up its
+    // stones (a win). Left: the player chose Leave. DangerLine: overtime ended by a robot at the line.
+    public enum NightEndReason { OutOfStones, Caught, Left, DangerLine }
+
+    // Forfeited: overtime ended at the danger line — the unthrown stones are lost.
+    public enum StoneChange { Thrown, Stolen, Added, Forfeited }
+
+    /// <summary>
+    /// The stone count changed (NightReferee, the one owner of the count). Count is the new total; Delta is
+    /// signed. Stolen: Robot is the thief (it takes the top stone). The pile on the perch mirrors this — it
+    /// never decides the count.
+    /// </summary>
+    public readonly struct StonesChanged
+    {
+        public readonly int Count; public readonly int Delta; public readonly StoneChange Cause; public readonly GameId Robot;
+        public StonesChanged(int count, int delta, StoneChange cause, GameId robot)
+        {
+            Count = count; Delta = delta; Cause = cause; Robot = robot;
+        }
+    }
     public enum MasteryDestination { Barn, Weapon }
 
     /// <summary>Published by NightReferee on every phase change. Simulation pauses, resumes and sweeps the wall off this.</summary>

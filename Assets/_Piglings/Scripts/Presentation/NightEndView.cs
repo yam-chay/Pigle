@@ -87,6 +87,6 @@ namespace Piglings.Presentation
         }
 
         private static string LostText(NightEndReason r) =>
-            r == NightEndReason.BarnBreached ? "the barn was breached" : "out of stones";
+            r == NightEndReason.Caught ? "the wolves got the pigs" : "out of stones";
     }
 }

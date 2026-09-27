@@ -9,11 +9,13 @@ namespace Piglings.Rules
     ///
     ///   Running ──target reached, no chain open──▶ ChoicePending ──Stay──▶ Overtime ──▶ Ended
     ///      │                                           └────────Leave─────────────────▶ Ended
-    ///      └──out of stones / too many breaches (lost)─────────────────────────────────▶ Ended
+    ///      └──a robot breaches with no stones left (Caught, lost)───────────────────────▶ Ended
     ///
-    /// - Running: the normal night. A breach costs stones; too many breaches, or running out of stones
-    ///   below the target, loses. Once the score reaches the target the night can no longer be lost —
-    ///   throwing stops and we wait for what's falling to land, so a chain is never cut.
+    /// - Running: the normal night. The stones are the pig's life. A robot that breaches takes the top
+    ///   stone and leaves; a robot that breaches while the pile is empty catches the pigs — the ONLY loss.
+    ///   Throwing your last stone isn't a loss: the night goes on, and a chain still in flight can reach
+    ///   the target before the next breach. Once the score reaches the target the night can no longer be
+    ///   lost — throwing stops and we wait for what's falling to land, so a chain is never cut.
     /// - ChoicePending: the wall pauses (Simulation reads Phase). Stay or Leave.
     /// - Overtime (Stay): throwing and the wall resume. Every chain point is doubled as it's scored
     ///   (ScoreCurve.RobotTotal, via ChainTracker) and banks to the barn as scored; the weapon earns
@@ -96,8 +98,25 @@ namespace Piglings.Rules
 
         private void OnThrow(ThrowReleased e)
         {
-            if (_state.StonesLeft > 0) _state.StonesLeft--;
+            if (_state.StonesLeft > 0) ChangeStones(-1, StoneChange.Thrown, GameId.None);
+            else UpdateCanThrow();
+        }
+
+        /// <summary>
+        /// Stones join the pile mid-run (a pickup, a reward — nothing calls this yet). Ignored once the night is over.
+        /// </summary>
+        public void AddStones(int count)
+        {
+            if (count <= 0 || _state.Phase == NightPhase.Ended) return;
+            ChangeStones(count, StoneChange.Added, GameId.None);
+        }
+
+        // The one place the count changes: write it, refresh CanThrow, tell the pile.
+        private void ChangeStones(int delta, StoneChange cause, GameId robot)
+        {
+            _state.StonesLeft = System.Math.Max(0, _state.StonesLeft + delta);
             UpdateCanThrow();
+            _bus.Publish(new StonesChanged(_state.StonesLeft, delta, cause, robot));
         }
 
         private void OnRobotScored(RobotScored e)
@@ -122,15 +141,10 @@ namespace Piglings.Rules
             switch (_state.Phase)
             {
                 case NightPhase.Running when !TargetReached:
-                    _state.StonesLeft = System.Math.Max(0, _state.StonesLeft - _goal.StonesLostPerBreach);
-                    UpdateCanThrow();
-                    if (_goal.MaxBreaches > 0 && _state.RobotsReachedTop >= _goal.MaxBreaches)
-                    {
-                        End(NightResult.Lost, NightEndReason.BarnBreached);
-                        return;
-                    }
-                    // A breach can take the last stone while nothing is in flight: nothing left can score.
-                    CheckSettled();
+                    // The robots are clearing the way for the wolf: disarming the pig is part of it.
+                    // Stones left: the robot takes the top one and leaves. None left: the pigs are caught.
+                    if (_state.StonesLeft > 0) ChangeStones(-1, StoneChange.Stolen, e.Robot);
+                    else End(NightResult.Lost, NightEndReason.Caught);
                     return;
 
                 case NightPhase.Overtime:
@@ -173,10 +187,10 @@ namespace Piglings.Rules
         {
             if (_chains.OpenChainCount > 0) return;
 
+            // Out of stones below the target is not a loss: the night goes on until a robot breaches.
             if (_state.Phase == NightPhase.Running)
             {
                 if (TargetReached) SetPhase(NightPhase.ChoicePending);
-                else if (_state.StonesLeft == 0) End(NightResult.Lost, NightEndReason.OutOfStones);
             }
             else if (_state.Phase == NightPhase.Overtime && _state.StonesLeft == 0)
             {
@@ -201,7 +215,8 @@ namespace Piglings.Rules
             _state.Result = result;
             _state.EndReason = reason;
             // Overtime cut short by the danger line: the unthrown stones are lost.
-            if (reason == NightEndReason.DangerLine) _state.StonesLeft = 0;
+            if (reason == NightEndReason.DangerLine && _state.StonesLeft > 0)
+                ChangeStones(-_state.StonesLeft, StoneChange.Forfeited, GameId.None);
             SetPhase(NightPhase.Ended);
         }
 
