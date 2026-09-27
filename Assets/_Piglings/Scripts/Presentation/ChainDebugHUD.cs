@@ -28,13 +28,17 @@ namespace Piglings.Presentation
             var s = session.State;
             var night = session.Night;
             string breachLimit = night.MaxBreaches > 0 ? $"/{night.MaxBreaches}" : "";
-            GUILayout.BeginArea(new Rect(10, 10, 320, 200), GUI.skin.box);
+            GUILayout.BeginArea(new Rect(10, 10, 320, 220), GUI.skin.box);
             GUILayout.Label($"Score {s.Score} / {night.TargetScore}   Stones {s.StonesLeft}");
             GUILayout.Label($"Per stone {ScorePerStone(s.Score, s.ThrowsUsed)}");
             GUILayout.Label($"Dropped {s.RobotsDropped}   Reached top {s.RobotsReachedTop}{breachLimit}");
             GUILayout.Label($"Last chain: {_last}");
             GUILayout.Label($"Best chain: {s.LongestChain} robots, depth {s.DeepestChain}");
-            if (s.Ended) GUILayout.Label(s.Result == NightResult.Won ? "NIGHT CLEARED" : $"NIGHT LOST ({ReasonText(s.EndReason)})");
+            if (s.Ended)
+            {
+                GUILayout.Label(s.Result == NightResult.Won ? "NIGHT CLEARED" : $"NIGHT LOST ({ReasonText(s.EndReason)})");
+                GUILayout.Label("Click to play again");   // PlayAgain (Simulation) does the reload
+            }
             GUILayout.EndArea();
         }
     }
