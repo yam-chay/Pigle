@@ -75,8 +75,8 @@ namespace Piglings.Rules
             c.Carried[e.Cause.Source] = _curve.HitterAfterHit(received);   // its next hit is worth more
             c.Carried[e.Robot] = carries;                                     // this robot is now a stone too
 
-            c.Total = AddClamped(c.Total, total);
-            _state.Score = AddClamped(_state.Score, total);
+            c.Total = ScoreMath.AddClamped(c.Total, total);
+            _state.Score = ScoreMath.AddClamped(_state.Score, total);
             _bus.Publish(new RobotScored(e.Robot, e.Chain, order, depth, received, _curve.Multiplier(depth), total, carries));
         }
 
@@ -102,8 +102,5 @@ namespace Piglings.Rules
             _bus.Publish(new ChainClosed(chain, c.Dropped, c.MaxDepth));
             _bus.Publish(new ChainScored(chain, c.Dropped, c.MaxDepth, c.Total));
         }
-
-        // Scores can get huge with CarryScoredTotal on; saturate rather than wrap negative.
-        private static int AddClamped(int a, int b) => (int)System.Math.Min(int.MaxValue, (long)a + b);
     }
 }

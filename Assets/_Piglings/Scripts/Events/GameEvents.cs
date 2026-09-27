@@ -32,7 +32,8 @@ namespace Piglings.Events
         public RobotEnteredDangerZone(GameId robot) { Robot = robot; }
     }
 
-    public enum RemovalReason { HitGround, EnteredBarn }
+    // TimedOut: a falling ball that never reached the ground (e.g. resting on a hold) — removed so its chain can close.
+    public enum RemovalReason { HitGround, EnteredBarn, TimedOut }
 
     public readonly struct RobotRemoved
     {
@@ -84,8 +85,57 @@ namespace Piglings.Events
         }
     }
 
+    /// <summary>
+    /// Running → ChoicePending → Overtime → Ended, or ChoicePending → Ended (Leave), or Running → Ended (lost).
+    /// Reaching the target ends the danger, not the night: from ChoicePending on, the night can't be lost.
+    /// </summary>
+    public enum NightPhase { Running, ChoicePending, Overtime, Ended }
+    public enum NightChoice { None, Stay, Leave }
     public enum NightResult { Won, Lost }
-    public enum NightEndReason { TargetReached, OutOfStones, BarnBreached }
+    // OutOfStones: lost in Running, or overtime used up its stones (a win). DangerLine: overtime ended by a robot at the line.
+    public enum NightEndReason { OutOfStones, BarnBreached, Left, DangerLine }
+    public enum MasteryDestination { Barn, Weapon }
+
+    /// <summary>Published by NightReferee on every phase change. Simulation pauses, resumes and sweeps the wall off this.</summary>
+    public readonly struct NightPhaseChanged
+    {
+        public readonly NightPhase From; public readonly NightPhase To;
+        public NightPhaseChanged(NightPhase from, NightPhase to) { From = from; To = to; }
+    }
+
+    /// <summary>The score first reached the target (chains may still be falling). Once per night.</summary>
+    public readonly struct NightTargetReached
+    {
+        public readonly int Score; public readonly int StonesLeft;
+        public NightTargetReached(int score, int stonesLeft) { Score = score; StonesLeft = stonesLeft; }
+    }
+
+    /// <summary>The player chose what their leftover stones are for.</summary>
+    public readonly struct NightChoiceMade
+    {
+        public readonly NightChoice Choice;
+        public NightChoiceMade(NightChoice choice) { Choice = choice; }
+    }
+
+    /// <summary>
+    /// A robot still on the wall was knocked off by the end-of-night sweep (published by Simulation while it
+    /// sweeps). Not part of any chain: NightReferee scores it flat with the robot-value function.
+    /// </summary>
+    public readonly struct RobotSwept
+    {
+        public readonly GameId Robot;
+        public RobotSwept(GameId robot) { Robot = robot; }
+    }
+
+    /// <summary>
+    /// Where points went when the night ended: Amount × Multiplier to Barn or Weapon mastery.
+    /// Published by NightReferee just before NightEnded, only for non-zero amounts. Meta subscribes later.
+    /// </summary>
+    public readonly struct NightBanked
+    {
+        public readonly MasteryDestination Destination; public readonly int Amount; public readonly int Multiplier;
+        public NightBanked(MasteryDestination destination, int amount, int multiplier) { Destination = destination; Amount = amount; Multiplier = multiplier; }
+    }
 
     /// <summary>
     /// Published once by the Rules layer (NightReferee) when the night is decided.

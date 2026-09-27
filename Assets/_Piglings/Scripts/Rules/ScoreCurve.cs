@@ -39,6 +39,12 @@ namespace Piglings.Rules
             CarryScoredTotal = carryScoredTotal;
         }
 
+        /// <summary>
+        /// A robot's own worth. The one robot-value function: chains add it when a robot passes value on
+        /// (CarriedBy), and the end-of-night sweep scores each robot left on the wall with it, flat.
+        /// </summary>
+        public int RobotValue() => WolfValue;
+
         public float Multiplier(int depth) => 1f + MultiplierPerDepth * depth;
 
         public int RobotTotal(int received, int depth) => ClampToInt(Math.Round(received * (double)Multiplier(depth), MidpointRounding.AwayFromZero));
@@ -47,7 +53,7 @@ namespace Piglings.Rules
         public int HitterAfterHit(int value) => ClampToInt((long)value + GrowthPerHit);
 
         /// <summary>What a freshly knocked robot carries into its own hits.</summary>
-        public int CarriedBy(int received, int total) => ClampToInt((long)WolfValue + (CarryScoredTotal ? total : received));
+        public int CarriedBy(int received, int total) => ClampToInt((long)RobotValue() + (CarryScoredTotal ? total : received));
 
         // With CarryScoredTotal on, value grows faster than factorially down a line (depth ~12
         // passes int.MaxValue). Clamp instead of wrapping into a negative score.
