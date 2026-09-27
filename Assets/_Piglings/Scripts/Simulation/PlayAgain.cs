@@ -6,7 +6,7 @@ namespace Piglings.Simulation
 {
     /// <summary>
     /// Once the night is decided (NightState.Ended), the next click reloads the active scene —
-    /// a fresh NightSession, a fresh night. The HUD shows "Click to play again" off the same flag.
+    /// a fresh NightSession, a fresh night. NightEndView shows "Click to play again" off the same flag.
     ///
     /// Why a scene reload: everything a night owns lives in the scene (no statics, no
     /// DontDestroyOnLoad), so reloading is the whole reset — nothing to clear by hand.

@@ -49,9 +49,23 @@ Each playable scene has exactly one **scene-scoped owner**. For the prototype th
 - When the throwable and every robot of the chain are removed, `ChainTracker` publishes `ChainClosed(robotsDropped, maxDepth)`.
 
 Outside chains, the wall publishes night-level facts:
-- A climbing robot crosses the danger line → `RobotEnteredDangerZone(robot)`, once per robot (published by `DangerZone`). A warning only: no Rules react to it, no robot state changes.
+- A climbing robot crosses the danger line → `RobotEnteredDangerZone(robot)`, once per robot (published by `DangerZone`). In Running a warning only; in Overtime it ends the night (see below). No robot state changes.
 - A climbing robot reaches the roof → `RobotRemoved(EnteredBarn)`: a breach, counted by `NightReferee`.
-- The night is decided → `NightEnded` (published once by `NightReferee`).
+- A falling ball that never lands (resting on a hold) is removed after `RobotDefinition.MaxFallSeconds` → `RobotRemoved(TimedOut)`, so its chain can close.
+
+## Night phases (`NightReferee`, GDD "סוף הלילה: להמשיך או ללכת")
+
+```
+Running ──score ≥ target, no chain open──▶ ChoicePending ──Stay──▶ Overtime ──▶ Ended
+   │                                            └──────Leave──────────────────▶ Ended
+   └──out of stones / too many breaches (lost)────────────────────────────────▶ Ended
+```
+- One state machine; `NightState.Phase` is the source of truth; transitions only via `SetPhase` → `EnterPhase`. Each change publishes `NightPhaseChanged(from, to)`.
+- Reaching the target ends the danger, not the night: from then on the night can't be lost (`NightTargetReached` marks the moment; throwing stops until the choice).
+- **ChoicePending**: the wall pauses — `NightSession.WallMoving` is false, so robots stop climbing and the spawner stops. No `Time.timeScale`. `NightChoice` (Simulation) calls `NightSession.ChooseStay/ChooseLeave` → `NightChoiceMade`.
+- **Overtime**: wall and throwing resume. Overtime score banks ×2 to the barn; the weapon earns nothing. Ends when the stones run out (after the last chain) or at the danger line (a robot entering it, or one already past it reaching the top). Unthrown stones are lost.
+- **Ended**: while handling `NightPhaseChanged(→Ended)` (the bus is synchronous), `RobotSpawner` sweeps the wall: every climbing robot calls `Sweep()` → `RobotSwept`, scored flat by the referee with `ScoreCurve.RobotValue()` — the same robot-value function chains use. Then the referee publishes `NightBanked(Barn|Weapon, amount, multiplier)` per destination and `NightEnded` once.
+- Mastery is **only published** (`NightBanked`), never stored across nights: Meta subscribes later.
 
 Events are facts, never commands. Nobody "asks" through the bus.
 
@@ -84,7 +98,7 @@ Only `RobotClimbing` touches `Zones`, so zones only ever see climbing (or just-h
 | Zone | Where | What it does |
 |---|---|---|
 | `BarnTopZone` | roof line | Marker. A climbing robot touching it calls `ReachTop` → `RobotRemoved(EnteredBarn)` = breach. |
-| `DangerZone` | a little below `BarnTopZone` | Has `NightSession` (serialized). A climbing robot entering it → `RobotEnteredDangerZone`, once per robot, all night. `RobotView` sets the Animator bool `InDanger`. No robot state. Later: the line that ends overtime. |
+| `DangerZone` | a little below `BarnTopZone` | Has `NightSession` (serialized). A climbing robot entering it → `RobotEnteredDangerZone`, once per robot, all night. `RobotView` sets the Animator bool `InDanger`. No robot state. In Overtime it's the line that ends the night; `DangerZoneView` shows it differently then. |
 | `GroundZone` | below the barn | Marker. Falling balls and throwables touching it are removed. |
 
 ## Scale convention
