@@ -146,7 +146,7 @@ class Night{
 }
 static void NightChecks(){
  // --- Running -> ChoicePending ---
- { var n=new Night(new NightGoal(50,10,1,5));
+ { var n=new Night(new NightGoal(50,10));
    Check(n.St.Phase==NightPhase.Running && n.St.StonesLeft==10 && n.St.CanThrow,"night starts Running, all stones, can throw");
    var t=n.Throw(3);   // 10+20+30 = 60 >= 50
    Check(n.St.Phase==NightPhase.Running && !n.St.CanThrow && n.Targets.Count==1 && n.Targets[0].StonesLeft==9 && n.St.StonesAtTarget==9,
@@ -156,22 +156,22 @@ static void NightChecks(){
      "chain settles -> ChoicePending: paused, no throwing, not ended");
    n.Breach(); n.Breach(); n.Breach(); n.Breach(); n.Breach();
    Check(n.St.Phase==NightPhase.ChoicePending && n.St.StonesLeft==9 && n.Ends.Count==0,"ChoicePending can't be lost: breaches cost nothing"); }
- { var n=new Night(new NightGoal(50,10,1,5));
+ { var n=new Night(new NightGoal(50,10));
    var a=n.Throw(1); var b=n.Throw(3);   // b crosses the target while a is still in flight
    n.Settle(b);
    Check(n.St.Phase==NightPhase.Running,"another chain still in flight -> no choice yet (never cut a chain)");
    n.Settle(a);
    Check(n.St.Phase==NightPhase.ChoicePending && n.St.ScoreAtChoice==70,"last chain lands -> ChoicePending with its points (70)"); }
- { var n=new Night(new NightGoal(50,10,1,2));
+ { var n=new Night(new NightGoal(50,10));
    var t=n.Throw(3); n.Breach(); n.Breach(); n.Breach();
    Check(n.Ends.Count==0 && n.St.StonesLeft==9,"after the target (chain still falling) the night can't be lost: breaches don't end it or cost stones");
    n.Settle(t);
    Check(n.St.Phase==NightPhase.ChoicePending,"...and the choice still comes"); }
- { var n=new Night(new NightGoal(60,1,1,5));
+ { var n=new Night(new NightGoal(60,1));
    var t=n.Throw(3); n.Settle(t);
    Check(n.St.Phase==NightPhase.ChoicePending,"last stone's chain reaches the target -> ChoicePending, not Lost"); }
  // --- Leave ---
- { var n=new Night(new NightGoal(50,10,1,5));
+ { var n=new Night(new NightGoal(50,10));
    n.Ref.Stay(); n.Ref.Leave();
    Check(n.St.Phase==NightPhase.Running,"Stay/Leave are ignored outside ChoicePending");
    var t=n.Throw(3); n.Settle(t); n.Ref.Leave();
@@ -182,7 +182,7 @@ static void NightChecks(){
    n.Ref.Stay();
    Check(n.St.Phase==NightPhase.Ended && n.Ends.Count==1,"Ended is final: a late Stay changes nothing"); }
  // --- Stay -> Overtime ---
- { var n=new Night(new NightGoal(50,3,1,5));
+ { var n=new Night(new NightGoal(50,3));
    var t=n.Throw(3); n.Settle(t); n.Ref.Stay();
    Check(n.St.Phase==NightPhase.Overtime && n.St.CanThrow && n.St.StonesLeft==2 && n.St.Choice==StayOrLeave.Stay,"Stay -> Overtime: throwing resumes (2 stones)");
    var o=n.Throw(2);   // 10+20 = 30 overtime points
@@ -191,7 +191,7 @@ static void NightChecks(){
    n.Breach();   // (irrelevant here: covered below)
    Check(n.St.Phase==NightPhase.Ended && n.Ends[0].Reason==NightEndReason.DangerLine,"a breach during overtime ends it (danger line)");
  }
- { var n=new Night(new NightGoal(50,3,1,5));
+ { var n=new Night(new NightGoal(50,3));
    var t=n.Throw(3); n.Settle(t); n.Ref.Stay();
    var o1=n.Throw(1); n.Settle(o1);
    Check(n.St.Phase==NightPhase.Overtime,"overtime continues while stones remain");
@@ -203,7 +203,7 @@ static void NightChecks(){
    Check(n.St.OvertimeScore==80 && n.BankedTo(MasteryDestination.Barn)==10+80,"Stay banks the points as scored: overshoot 10 + overtime 80 (already doubled) = 90, no extra x2");
    Check(!n.AnyBankedTo(MasteryDestination.Weapon) && n.St.WeaponMastery==0,"no weapon mastery from overtime"); }
  { // THE rule that keeps Leave worth choosing: overtime ended by the danger line with stones unthrown -> still no weapon mastery.
-   var n=new Night(new NightGoal(50,10,1,5));
+   var n=new Night(new NightGoal(50,10));
    var t=n.Throw(3); n.Settle(t); n.Ref.Stay();
    var o=n.Throw(1);
    n.Danger();
@@ -213,13 +213,13 @@ static void NightChecks(){
    Check(n.BankedTo(MasteryDestination.Barn)==10+20,"everything earned is kept: overshoot 10 + the overtime robot's doubled 20");
    n.Settle(o);
    Check(n.Ends.Count==1,"NightEnded fires once, even when the in-flight chain lands afterwards"); }
- { var n=new Night(new NightGoal(50,1,1,5));
+ { var n=new Night(new NightGoal(50,1));
    var t=n.Throw(3); n.Settle(t);
    Check(n.St.Phase==NightPhase.ChoicePending && n.St.StonesLeft==0,"choice appears even with 0 stones left");
    n.Ref.Stay();
    Check(n.St.Phase==NightPhase.Ended && n.Ends[0].Reason==NightEndReason.OutOfStones,"Stay with 0 stones -> overtime ends at once"); }
  // --- Overtime can't end instantly because of where robots were when you chose Stay ---
- { var n=new Night(new NightGoal(50,10,1,5));
+ { var n=new Night(new NightGoal(50,10));
    var nearTop=n.Spawn(); var pastLine=n.Spawn();   // on the wall before the target
    var t=n.Throw(3); n.Settle(t); n.Ref.Stay();
    n.Danger(nearTop);
@@ -228,88 +228,103 @@ static void NightChecks(){
    Check(n.St.Phase==NightPhase.Overtime && n.St.StonesLeft==9,"...nor reaching the top (no stone lost, can't lose)");
    var fresh=n.Spawn(); n.Danger(fresh);
    Check(n.St.Phase==NightPhase.Ended && n.Ends[0].Reason==NightEndReason.DangerLine,"a robot that climbed on during overtime reaching the line ends it"); }
- { var n=new Night(new NightGoal(50,10,1,5));
+ { var n=new Night(new NightGoal(50,10));
    var t=n.Throw(3); n.Settle(t); n.Ref.Stay();
    var fresh=n.Spawn(); n.Breach(fresh);
    Check(n.St.Phase==NightPhase.Ended && n.Ends[0].Reason==NightEndReason.DangerLine,"an overtime robot reaching the top ends overtime (it crossed the line)"); }
  { // Chain results know whether they were overtime chains (for the rainbow chain popup).
-   var n=new Night(new NightGoal(50,10,1,5)); var chains=new System.Collections.Generic.List<ChainScored>();
+   var n=new Night(new NightGoal(50,10)); var chains=new System.Collections.Generic.List<ChainScored>();
    n.Bus.Subscribe<ChainScored>(e=>chains.Add(e));
    var t=n.Throw(3); n.Settle(t); n.Ref.Stay(); var o=n.Throw(2); n.Settle(o);
    Check(chains.Count==2 && !chains[0].InOvertime && chains[1].InOvertime,"ChainScored.InOvertime: false for the Running chain, true for the overtime one"); }
  { // Robot popups decide "overtime" from the same record as the chain popup.
-   var n=new Night(new NightGoal(50,10,1,5));
+   var n=new Night(new NightGoal(50,10));
    var t=n.Throw(3); n.Settle(t); var run=n.Scored.ToArray(); n.Scored.Clear();
    n.Ref.Stay(); var o=n.Throw(2); n.Settle(o); var ot=n.Scored.ToArray();
    Check(run.Length==3 && !run[0].InOvertime && !run[2].InOvertime && ot.Length==2 && ot[0].InOvertime && ot[1].InOvertime && ot[0].OvertimeMultiplier==2,
      "RobotScored.InOvertime: false for Running hits, true (and x2) for overtime hits"); }
  // --- Danger line in Running = warning only ---
- { var n=new Night(new NightGoal(500,5,1,3));
+ { var n=new Night(new NightGoal(500,5));
    n.Danger();
    Check(n.St.Phase==NightPhase.Running && n.St.StonesLeft==5 && n.St.RobotsReachedTop==0 && n.Ends.Count==0,
      "Running: entering the danger zone is a warning only (no stone, no breach, no end)"); }
- // --- Losing (Running, below the target) ---
- { var n=new Night(new NightGoal(500,2,1,5));
+ // --- Losing: the pile is the pig's life. The only loss is a breach on an empty pile. ---
+ { var n=new Night(new NightGoal(500,2));
    var a=n.Throw(0); var b=n.Throw(1);
    Check(n.St.StonesLeft==0 && !n.St.CanThrow,"all stones thrown -> can't throw");
-   n.Settle(a);
-   Check(n.Ends.Count==0,"out of stones but a chain still falling -> not over");
-   n.Settle(b);
-   Check(n.Ends.Count==1 && n.Ends[0].Result==NightResult.Lost && n.Ends[0].Reason==NightEndReason.OutOfStones,"last chain lands below target -> Lost, out of stones");
+   n.Settle(a); n.Settle(b);
+   Check(n.Ends.Count==0 && n.St.Phase==NightPhase.Running,"last stone thrown and landed below target -> NOT a loss, the night goes on");
+   n.Breach();
+   Check(n.Ends.Count==1 && n.Ends[0].Result==NightResult.Lost && n.Ends[0].Reason==NightEndReason.Caught,"then a robot breaches on the empty pile -> Lost, caught");
    Check(n.Banked.Count==0 && n.St.BarnMastery==0 && n.St.WeaponMastery==0,"a lost night banks nothing"); }
- { var n=new Night(new NightGoal(500,3,1,5));
-   n.Breach();
-   Check(n.St.RobotsReachedTop==1 && n.St.StonesLeft==2,"Running: a breach costs a stone");
+ { var n=new Night(new NightGoal(500,3)); var ch=new System.Collections.Generic.List<StonesChanged>();
+   n.Bus.Subscribe<StonesChanged>(e=>ch.Add(e));
+   var thief=n.Spawn(); n.Breach(thief);
+   Check(n.St.StonesLeft==2 && n.Ends.Count==0 && ch.Count==1 && ch[0].Cause==StoneChange.Stolen && ch[0].Robot==thief && ch[0].Delta==-1 && ch[0].Count==2,
+     "breach with stones left: the robot takes the top stone (StonesChanged Stolen, thief id, 3 -> 2), no loss");
    n.Breach(); n.Breach();
-   Check(n.St.StonesLeft==0 && n.Ends.Count==1 && n.Ends[0].Reason==NightEndReason.OutOfStones,"breaches take the last stone with nothing in flight -> Lost"); }
- { var n=new Night(new NightGoal(500,30,1,3));
-   var t=n.Throw(1); n.Breach(); n.Breach(); n.Breach();
-   Check(n.Ends.Count==1 && n.Ends[0].Result==NightResult.Lost && n.Ends[0].Reason==NightEndReason.BarnBreached && n.Ends[0].Breaches==3,
-     "3rd breach -> Lost, barn breached, even with a chain in flight");
-   n.Breach(); n.Settle(t);
-   Check(n.Ends.Count==1 && n.St.RobotsReachedTop==3,"NightEnded fires once; nothing counts after the end"); }
- { var n=new Night(new NightGoal(500,1,1,3));
+   Check(n.St.StonesLeft==0 && n.Ends.Count==0 && n.St.RobotsReachedTop==3,"three breaches take all three stones — still not lost");
+   n.Breach();
+   Check(n.Ends.Count==1 && n.Ends[0].Reason==NightEndReason.Caught && n.Ends[0].Breaches==4,"4th breach on the empty pile -> caught");
+   n.Breach();
+   Check(n.Ends.Count==1 && n.St.RobotsReachedTop==4,"NightEnded fires once; nothing counts after the end"); }
+ { var n=new Night(new NightGoal(500,1));
    var t=n.Throw(1); n.Breach();
-   Check(n.St.StonesLeft==0 && n.St.RobotsReachedTop==1 && n.Ends.Count==0,"breach at 0 stones: counted, stones stay 0, not over");
-   n.Breach(); n.Breach();
-   Check(n.Ends.Count==1 && n.Ends[0].Reason==NightEndReason.BarnBreached && n.Ends[0].StonesLeft==0,"3rd breach at 0 stones -> Lost, barn breached");
+   Check(n.Ends.Count==1 && n.Ends[0].Reason==NightEndReason.Caught,"breach on an empty pile loses even with a chain still falling (it didn't reach the target first)"); }
+ { var n=new Night(new NightGoal(60,1));
+   var t=n.Throw(3);   // the last stone's chain crosses the target...
+   n.Breach();         // ...so a robot arriving now can't catch anyone
+   Check(n.Ends.Count==0,"last stone's chain reaches the target before the breach -> can't lose any more");
+   n.Settle(t);
+   Check(n.St.Phase==NightPhase.ChoicePending,"...and the night goes to the choice (win)"); }
+ { // Stones added mid-run, and every change reported with its cause.
+   var n=new Night(new NightGoal(500,5)); var ch=new System.Collections.Generic.List<StonesChanged>();
+   n.Bus.Subscribe<StonesChanged>(e=>ch.Add(e));
+   var t=n.Throw(1);
+   Check(ch.Count==1 && ch[0].Cause==StoneChange.Thrown && ch[0].Count==4,"a throw: StonesChanged Thrown, 5 -> 4");
+   n.Ref.AddStones(3); n.Ref.AddStones(0);
+   Check(n.St.StonesLeft==7 && ch.Count==2 && ch[1].Cause==StoneChange.Added && ch[1].Delta==3 && n.St.CanThrow,"AddStones(3): 4 -> 7, StonesChanged Added; AddStones(0) is ignored");
    n.Settle(t); }
- { var n=new Night(new NightGoal(500,1,3,0));
-   n.Breach();
-   Check(n.St.StonesLeft==0,"a breach costing 3 stones with 1 left -> 0, not -2"); }
- { var n=new Night(new NightGoal(500,5,0,0));
-   for(int i=0;i<10;i++) n.Breach();
-   Check(n.St.StonesLeft==5 && n.Ends.Count==0,"stonesLostPerBreach 0 + maxBreaches 0 -> breaches cost nothing"); }
+ { var n=new Night(new NightGoal(500,0)); n.Ref.AddStones(2);
+   Check(n.St.StonesLeft==2 && n.St.CanThrow,"an empty pile refilled mid-run can throw again"); }
+ { // Overtime ending at the danger line: the unthrown stones are forfeited (the pile hears it).
+   var n=new Night(new NightGoal(50,10)); var ch=new System.Collections.Generic.List<StonesChanged>();
+   var t=n.Throw(3); n.Settle(t); n.Ref.Stay();
+   n.Bus.Subscribe<StonesChanged>(e=>ch.Add(e));
+   n.Danger();
+   Check(ch.Count==1 && ch[0].Cause==StoneChange.Forfeited && ch[0].Delta==-9 && ch[0].Count==0 && n.St.StonesLeft==0,"danger-line end: StonesChanged Forfeited, 9 -> 0");
+   n.Ref.AddStones(5);
+   Check(n.St.StonesLeft==0,"AddStones after the night ended is ignored"); }
  // --- The sweep: flat robot value, same function as chains ---
- { var n=new Night(new NightGoal(50,10,1,5));
+ { var n=new Night(new NightGoal(50,10));
    var t=n.Throw(3); n.Settle(t);
    for(int i=0;i<4;i++) n.Wall.Add(n.Ids.Next());
    n.Ref.Leave();
    Check(n.St.SweepScore==40 && n.St.Score==100 && n.Ends[0].Score==100,"sweep: 4 robots x robot value 10, flat (no order escalation, no depth) = 40, in the final score");
    Check(n.BankedTo(MasteryDestination.Barn)==50,"Leave path: the sweep counts as score above target (100-50) x1"); }
  { var curve=new ScoreCurve(10,10,7,0.5f,false);
-   var n=new Night(new NightGoal(50,10,1,5),curve);
+   var n=new Night(new NightGoal(50,10),curve);
    var t=n.Throw(3); n.Settle(t);
    for(int i=0;i<3;i++) n.Wall.Add(n.Ids.Next());
    n.Ref.Leave();
    Check(n.St.SweepScore==3*curve.RobotValue() && curve.RobotValue()==7,"sweep uses the chain's robot-value function (wolfValue 7 -> 21)"); }
- { var n=new Night(new NightGoal(50,3,1,5));
+ { var n=new Night(new NightGoal(50,3));
    var t=n.Throw(3); n.Settle(t); n.Ref.Stay();
    for(int i=0;i<2;i++) n.Wall.Add(n.Ids.Next());
    n.Danger();
    Check(n.St.SweepScore==20 && n.St.OvertimeScore==0 && n.BankedTo(MasteryDestination.Barn)==10+20,
      "Stay path: the sweep stays x1 and isn't overtime score (overshoot 10 + sweep 20)"); }
- { var n=new Night(new NightGoal(500,10,1,5));
+ { var n=new Night(new NightGoal(500,10));
    n.Bus.Publish(new RobotSwept(n.Ids.Next()));
    Check(n.St.Score==0 && n.St.SweepScore==0,"RobotSwept outside the end sweep scores nothing"); }
- { var n=new Night(new NightGoal(500,1,1,5));
+ { var n=new Night(new NightGoal(500,1));
    n.Wall.Add(n.Ids.Next());
-   var t=n.Throw(0); n.Settle(t);
+   var t=n.Throw(0); n.Settle(t); n.Breach();
    Check(n.Ends[0].Result==NightResult.Lost && n.St.SweepScore==10 && n.Banked.Count==0,"a lost night is swept too, but banks nothing"); }
  // --- Overtime doubles points in play, once ---
  { // The same line of 3 in Running and in Overtime, with values that round (37.5): each robot exactly x2.
    var curve=new ScoreCurve(15,10,10,0.5f,false,2);
-   var n=new Night(new NightGoal(50,10,1,5),curve);
+   var n=new Night(new NightGoal(50,10),curve);
    var run=n.ThrowLine(3); n.Settle(run);
    var r=n.Scored.ToArray(); n.Scored.Clear();
    Check(r.Length==3 && r[0].Total==15 && r[1].Total==38 && r[2].Total==70 && r[0].OvertimeMultiplier==1,"Running line: 15, 25x1.5=37.5->38, 35x2=70 (OT x1)");
@@ -322,33 +337,33 @@ static void NightChecks(){
      "RobotScored carries OT x2; what robots pass on isn't doubled (x2 never compounds down the chain)");
    Check(n.St.OvertimeScore==2*(15+38+70),"overtime score = the doubled chain (246)"); }
  { var curve=new ScoreCurve(10,10,10,1f,true,2);   // compounding switch on: still exactly x2
-   var n=new Night(new NightGoal(50,10,1,5),curve);
+   var n=new Night(new NightGoal(50,10),curve);
    var run=n.ThrowLine(3); n.Settle(run); var r=n.Scored.ToArray(); n.Scored.Clear();
    n.Ref.Stay(); var ot=n.ThrowLine(3); n.Settle(ot); var o=n.Scored.ToArray();
    Check(o[0].Total==2*r[0].Total && o[1].Total==2*r[1].Total && o[2].Total==2*r[2].Total,"with carryScoredTotal on, overtime is still exactly x2 (no compounding of the bonus)"); }
  { // Barn mastery from overtime = the overtime points, no extra multiplier.
-   var n=new Night(new NightGoal(50,3,1,5));
+   var n=new Night(new NightGoal(50,3));
    var t=n.Throw(3); n.Settle(t); n.Ref.Stay();
    var o=n.Throw(2); n.Settle(o); var o2=n.Throw(1); n.Settle(o2);
    bool allX1=true; foreach(var b in n.Banked) if(b.Multiplier!=1) allX1=false;
    Check(n.St.Phase==NightPhase.Ended && n.BankedTo(MasteryDestination.Barn)==(n.St.ScoreAtChoice-50)+n.St.OvertimeScore && allX1,
      "barn mastery = overshoot + overtime points as scored; every NightBanked is x1 (overtime pays x2 once, not x4)"); }
  { // The sweep is identical after Stay and after Leave.
-   var leave=new Night(new NightGoal(50,10,1,5)); var t1=leave.Throw(3); leave.Settle(t1);
+   var leave=new Night(new NightGoal(50,10)); var t1=leave.Throw(3); leave.Settle(t1);
    for(int i=0;i<3;i++) leave.Wall.Add(leave.Ids.Next());
    leave.Ref.Leave();
-   var stay=new Night(new NightGoal(50,10,1,5)); var t2=stay.Throw(3); stay.Settle(t2);
+   var stay=new Night(new NightGoal(50,10)); var t2=stay.Throw(3); stay.Settle(t2);
    for(int i=0;i<3;i++) stay.Wall.Add(stay.Ids.Next());
    stay.Ref.Stay(); stay.Danger();
    Check(leave.St.SweepScore==30 && stay.St.SweepScore==30 && stay.St.OvertimeScore==0,"the sweep is x1 on both paths: 30 after Leave, 30 after Stay"); }
- { var n=new Night(new NightGoal(50,1,1,5)); var t=n.Throw(3); n.Settle(t);
+ { var n=new Night(new NightGoal(50,1)); var t=n.Throw(3); n.Settle(t);
    n.Wall.Add(n.Ids.Next()); n.Ref.Stay();
-   var m=new Night(new NightGoal(50,1,1,5)); var t2=m.Throw(3); m.Settle(t2);
+   var m=new Night(new NightGoal(50,1)); var t2=m.Throw(3); m.Settle(t2);
    m.Wall.Add(m.Ids.Next()); m.Ref.Leave();
    Check(n.St.BarnMastery==m.St.BarnMastery && n.St.WeaponMastery==0 && m.St.WeaponMastery==0,
      "0 stones left: Stay and Leave now pay the same (the old free-win loophole is gone)"); }
  // --- Phase order, as published ---
- { var n=new Night(new NightGoal(50,2,1,5));
+ { var n=new Night(new NightGoal(50,2));
    var t=n.Throw(3); n.Settle(t); n.Ref.Stay(); var o=n.Throw(1); n.Settle(o);
    Check(n.Phases.Count==3 && n.Phases[0]==NightPhase.ChoicePending && n.Phases[1]==NightPhase.Overtime && n.Phases[2]==NightPhase.Ended,
      "NightPhaseChanged: ChoicePending, Overtime, Ended — once each");

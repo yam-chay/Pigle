@@ -43,7 +43,7 @@ namespace Piglings.Simulation
             _chains = new ChainTracker(Bus, State, BuildCurve());
             // After ChainTracker: the referee reads its open-chain count.
             _referee = new NightReferee(Bus, State, _chains,
-                new NightGoal(night.TargetScore, night.ThrowsAvailable, night.StonesLostPerBreach, night.MaxBreaches));
+                new NightGoal(night.TargetScore, night.ThrowsAvailable));
         }
 
         // Without an asset the night still plays on ScoreCurve's defaults (10 / 10 / 10 / ×0.5),
