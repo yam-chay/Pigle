@@ -176,6 +176,15 @@ static void NightChecks(){
    Check(n.Ends.Count==1 && n.Ends[0].Result==NightResult.Won && n.Ends[0].ThrowsUsed==2 && n.Ends[0].StonesLeft==7,
      "NightEnded.ThrowsUsed = 2 (breach stone not counted), 7 stones left"); }
  Check(new NightGoal(0).TargetScore==1,"a target of 0 becomes 1 (otherwise you could never throw)");
+ { // Danger line: a warning fact. It carries the robot and changes nothing in the Rules.
+   var n=new Night(new NightGoal(500,5,1,3)); var seen=new System.Collections.Generic.List<GameId>();
+   n.Bus.Subscribe<RobotEnteredDangerZone>(e=>seen.Add(e.Robot));
+   var r=n.Ids.Next(); n.Bus.Publish(new RobotEnteredDangerZone(r));
+   Check(seen.Count==1 && seen[0]==r,"RobotEnteredDangerZone carries the robot id");
+   Check(n.St.RobotsReachedTop==0 && n.St.StonesLeft==5 && n.St.Score==0 && n.St.CanThrow && !n.St.Ended && n.Ends.Count==0,
+     "entering the danger line is not a breach: no stone lost, no breach counted, night goes on");
+   n.Bus.Publish(new RobotRemoved(r,ChainId.None,RemovalReason.EnteredBarn));
+   Check(n.St.RobotsReachedTop==1 && n.St.StonesLeft==4,"the breach itself still counts when that robot reaches the top"); }
 }
 // ThrowSolver: the arc must pass through the target, and the stepped physics flight must stay on that arc.
 static void ThrowChecks(){

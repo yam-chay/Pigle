@@ -21,6 +21,17 @@ namespace Piglings.Events
         public RobotLostGrip(GameId robot, ChainId chain, Attribution cause) { Robot = robot; Chain = chain; Cause = cause; }
     }
 
+    /// <summary>
+    /// A climbing robot crossed the danger line just below the roof: it's about to breach.
+    /// Published once per robot, by the DangerZone. A warning for views today; later it's also
+    /// the line that ends overtime. Changes nothing in the Rules on its own.
+    /// </summary>
+    public readonly struct RobotEnteredDangerZone
+    {
+        public readonly GameId Robot;
+        public RobotEnteredDangerZone(GameId robot) { Robot = robot; }
+    }
+
     public enum RemovalReason { HitGround, EnteredBarn }
 
     public readonly struct RobotRemoved

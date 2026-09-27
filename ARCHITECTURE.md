@@ -35,7 +35,7 @@ Presentation  Unity. Views, rigs, animation, HUD. Reads state and reacts to even
 There is no bootstrap scene, no bootstrap assembly, no service locator, no singletons, no `DontDestroyOnLoad`.
 
 Each playable scene has exactly one **scene-scoped owner**. For the prototype that's `NightSession` (Simulation):
-- `Awake` (execution order -1000) creates `EventBus`, `NightState`, `IdAllocator` and the Rules (`ChainTracker`).
+- `Awake` (execution order -1000) creates `EventBus`, `NightState`, `IdAllocator` and the Rules (`ChainTracker`, then `NightReferee`).
 - Every scene object that needs them gets the `NightSession` through a **serialized field** in the Inspector. No `FindObjectOfType`, no statics.
 - When the scene unloads, everything goes with it.
 
@@ -47,6 +47,11 @@ Each playable scene has exactly one **scene-scoped owner**. For the prototype th
 - The throwable knocks a climbing robot loose → `RobotLostGrip` with `Attribution.FromThrowable` (depth 0).
 - A falling robot ball knocks another robot loose → `RobotLostGrip` with `Attribution.FromRobotBall(robot, depth)` (depth + 1), same `ChainId`.
 - When the throwable and every robot of the chain are removed, `ChainTracker` publishes `ChainClosed(robotsDropped, maxDepth)`.
+
+Outside chains, the wall publishes night-level facts:
+- A climbing robot crosses the danger line → `RobotEnteredDangerZone(robot)`, once per robot (published by `DangerZone`). A warning only: no Rules react to it, no robot state changes.
+- A climbing robot reaches the roof → `RobotRemoved(EnteredBarn)`: a breach, counted by `NightReferee`.
+- The night is decided → `NightEnded` (published once by `NightReferee`).
 
 Events are facts, never commands. Nobody "asks" through the bus.
 
@@ -71,6 +76,16 @@ Layers: `RobotClimbing`, `RobotBall`, `Throwable`, `Holds`, `BarnWalls`, `Ground
 | Throwable | | | – | ✔ | ✔ | ✔ | – |
 
 Everything else off. Holds are pins for falling balls only; climbing robots pass through them.
+
+## Zones (triggers on layer `Zones`)
+
+Only `RobotClimbing` touches `Zones`, so zones only ever see climbing (or just-hit) robots.
+
+| Zone | Where | What it does |
+|---|---|---|
+| `BarnTopZone` | roof line | Marker. A climbing robot touching it calls `ReachTop` → `RobotRemoved(EnteredBarn)` = breach. |
+| `DangerZone` | a little below `BarnTopZone` | Has `NightSession` (serialized). A climbing robot entering it → `RobotEnteredDangerZone`, once per robot, all night. `RobotView` sets the Animator bool `InDanger`. No robot state. Later: the line that ends overtime. |
+| `GroundZone` | below the barn | Marker. Falling balls and throwables touching it are removed. |
 
 ## Scale convention
 
