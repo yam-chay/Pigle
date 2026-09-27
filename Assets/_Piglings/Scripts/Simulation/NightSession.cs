@@ -56,7 +56,7 @@ namespace Piglings.Simulation
                 return new ScoreCurve();
             }
             return new ScoreCurve(scoring.StoneValue, scoring.GrowthPerHit, scoring.WolfValue,
-                                  scoring.MultiplierPerDepth, scoring.CarryScoredTotal);
+                                  scoring.MultiplierPerDepth, scoring.CarryScoredTotal, scoring.OvertimeMultiplier);
         }
 
         private void OnDestroy()

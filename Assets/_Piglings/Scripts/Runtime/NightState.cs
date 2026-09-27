@@ -27,7 +27,7 @@ namespace Piglings.Runtime
 
         public int StonesAtTarget = -1;  // stones left when the score first reached the target; -1 = not yet
         public int ScoreAtChoice;        // score when the choice appeared (target + overshoot)
-        public int OvertimeScore;        // everything scored after Stay, sweep included (banks ×2 to the barn)
+        public int OvertimeScore;        // chain points scored during overtime (already doubled); the sweep isn't in it
         public int SweepScore;           // what the end-of-night sweep added
         public int BarnMastery;          // Σ Amount × Multiplier banked to the barn
         public int WeaponMastery;        // Σ Amount × Multiplier banked to the weapon

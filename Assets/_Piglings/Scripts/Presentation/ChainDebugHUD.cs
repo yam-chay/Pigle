@@ -26,7 +26,7 @@ namespace Piglings.Presentation
             {
                 case NightPhase.Running: return s.StonesAtTarget >= 0 ? "TARGET REACHED — letting the wall settle" : null;
                 case NightPhase.ChoicePending: return "Choose: stay or leave";
-                case NightPhase.Overtime: return "OVERTIME — every point ×2 to the barn";
+                case NightPhase.Overtime: return "OVERTIME — chain points ×2";
                 default: return null;
             }
         }

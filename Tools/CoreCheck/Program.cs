@@ -112,7 +112,7 @@ class Night{
  public System.Collections.Generic.List<GameId> Wall=new System.Collections.Generic.List<GameId>();
  public Night(NightGoal g, ScoreCurve curve=null){
   Tr=new ChainTracker(Bus,St,curve); Ref=new NightReferee(Bus,St,Tr,g);
-  Bus.Subscribe<NightEnded>(e=>Ends.Add(e)); Bus.Subscribe<NightBanked>(e=>Banked.Add(e)); Bus.Subscribe<NightTargetReached>(e=>Targets.Add(e));
+  Bus.Subscribe<NightEnded>(e=>Ends.Add(e)); Bus.Subscribe<NightBanked>(e=>Banked.Add(e)); Bus.Subscribe<RobotScored>(e=>Scored.Add(e)); Bus.Subscribe<NightTargetReached>(e=>Targets.Add(e));
   // Stand-in for RobotSpawner: on Ended, every robot still on the wall is swept (synchronously, like the real one).
   Bus.Subscribe<NightPhaseChanged>(e=>{ Phases.Add(e.To); if(e.To==NightPhase.Ended) foreach(var r in Wall) Bus.Publish(new RobotSwept(r)); });
  }
@@ -127,6 +127,14 @@ class Night{
   Bus.Publish(new ThrowableRemoved(t.stone,t.chain));
   foreach(var r in t.robots) Bus.Publish(new RobotRemoved(r,t.chain,RemovalReason.HitGround));
  }
+ // Throw a stone that starts a line: stone -> r1, r1's ball -> r2 (depth 1), r2's ball -> r3 (depth 2)...
+ public (ChainId chain, GameId stone, GameId[] robots) ThrowLine(int n){
+  var c=new ChainId(Ids.Next()); var s=Ids.Next(); var r=new GameId[n];
+  Bus.Publish(new ThrowReleased(c,s));
+  for(int i=0;i<n;i++){ r[i]=Ids.Next(); Bus.Publish(new RobotLostGrip(r[i],c,i==0?Attribution.FromThrowable(s):Attribution.FromRobotBall(r[i-1],i-1))); }
+  return (c,s,r);
+ }
+ public System.Collections.Generic.List<RobotScored> Scored=new System.Collections.Generic.List<RobotScored>();
  public void Breach(){ Bus.Publish(new RobotRemoved(Ids.Next(),ChainId.None,RemovalReason.EnteredBarn)); }
  public void Danger(){ Bus.Publish(new RobotEnteredDangerZone(Ids.Next())); }
  public int BankedTo(MasteryDestination d){ int t=0; foreach(var b in Banked) if(b.Destination==d) t+=b.Amount*b.Multiplier; return t; }
@@ -174,7 +182,7 @@ static void NightChecks(){
    var t=n.Throw(3); n.Settle(t); n.Ref.Stay();
    Check(n.St.Phase==NightPhase.Overtime && n.St.CanThrow && n.St.StonesLeft==2 && n.St.Choice==StayOrLeave.Stay,"Stay -> Overtime: throwing resumes (2 stones)");
    var o=n.Throw(2);   // 10+20 = 30 overtime points
-   Check(n.St.OvertimeScore==30 && n.St.Phase==NightPhase.Overtime,"overtime score counted separately (30)");
+   Check(n.St.OvertimeScore==60 && n.St.Phase==NightPhase.Overtime,"overtime chain points doubled as scored (10+20 -> 20+40 = 60)");
    n.Settle(o);
    n.Breach();   // (irrelevant here: covered below)
    Check(n.St.Phase==NightPhase.Ended && n.Ends[0].Reason==NightEndReason.DangerLine,"a breach during overtime ends it (danger line)");
@@ -188,7 +196,7 @@ static void NightChecks(){
    n.Settle(o2);
    Check(n.St.Phase==NightPhase.Ended && n.Ends[0].Result==NightResult.Won && n.Ends[0].Reason==NightEndReason.OutOfStones,
      "overtime stones used up, last chain closed -> Ended, Won (no loss in overtime)");
-   Check(n.St.OvertimeScore==40 && n.BankedTo(MasteryDestination.Barn)==10*1+40*2,"Stay banks: overshoot 10 x1 + overtime 40 x2 = 90 to the barn");
+   Check(n.St.OvertimeScore==80 && n.BankedTo(MasteryDestination.Barn)==10+80,"Stay banks the points as scored: overshoot 10 + overtime 80 (already doubled) = 90, no extra x2");
    Check(!n.AnyBankedTo(MasteryDestination.Weapon) && n.St.WeaponMastery==0,"no weapon mastery from overtime"); }
  { // THE rule that keeps Leave worth choosing: overtime ended by the danger line with stones unthrown -> still no weapon mastery.
    var n=new Night(new NightGoal(50,10,1,5));
@@ -198,7 +206,7 @@ static void NightChecks(){
    Check(n.St.Phase==NightPhase.Ended && n.Ends[0].Result==NightResult.Won && n.Ends[0].Reason==NightEndReason.DangerLine,
      "overtime: a robot enters the danger zone -> Ended, Won (no loss), even with a chain in flight");
    Check(n.St.StonesLeft==0 && !n.AnyBankedTo(MasteryDestination.Weapon),"danger-line end: the 8 unthrown stones are lost, weapon mastery 0");
-   Check(n.BankedTo(MasteryDestination.Barn)==10+10*2,"everything earned is kept: overshoot 10 x1 + overtime 10 x2");
+   Check(n.BankedTo(MasteryDestination.Barn)==10+20,"everything earned is kept: overshoot 10 + the overtime robot's doubled 20");
    n.Settle(o);
    Check(n.Ends.Count==1,"NightEnded fires once, even when the in-flight chain lands afterwards"); }
  { var n=new Night(new NightGoal(50,1,1,5));
@@ -260,8 +268,8 @@ static void NightChecks(){
    var t=n.Throw(3); n.Settle(t); n.Ref.Stay();
    for(int i=0;i<2;i++) n.Wall.Add(n.Ids.Next());
    n.Danger();
-   Check(n.St.SweepScore==20 && n.St.OvertimeScore==20 && n.BankedTo(MasteryDestination.Barn)==10+20*2,
-     "Stay path: the sweep is overtime score -> barn x2 (overshoot 10 + sweep 20x2)"); }
+   Check(n.St.SweepScore==20 && n.St.OvertimeScore==0 && n.BankedTo(MasteryDestination.Barn)==10+20,
+     "Stay path: the sweep stays x1 and isn't overtime score (overshoot 10 + sweep 20)"); }
  { var n=new Night(new NightGoal(500,10,1,5));
    n.Bus.Publish(new RobotSwept(n.Ids.Next()));
    Check(n.St.Score==0 && n.St.SweepScore==0,"RobotSwept outside the end sweep scores nothing"); }
@@ -269,6 +277,47 @@ static void NightChecks(){
    n.Wall.Add(n.Ids.Next());
    var t=n.Throw(0); n.Settle(t);
    Check(n.Ends[0].Result==NightResult.Lost && n.St.SweepScore==10 && n.Banked.Count==0,"a lost night is swept too, but banks nothing"); }
+ // --- Overtime doubles points in play, once ---
+ { // The same line of 3 in Running and in Overtime, with values that round (37.5): each robot exactly x2.
+   var curve=new ScoreCurve(15,10,10,0.5f,false,2);
+   var n=new Night(new NightGoal(50,10,1,5),curve);
+   var run=n.ThrowLine(3); n.Settle(run);
+   var r=n.Scored.ToArray(); n.Scored.Clear();
+   Check(r.Length==3 && r[0].Total==15 && r[1].Total==38 && r[2].Total==70 && r[0].OvertimeMultiplier==1,"Running line: 15, 25x1.5=37.5->38, 35x2=70 (OT x1)");
+   n.Ref.Stay();
+   var ot=n.ThrowLine(3); n.Settle(ot);
+   var o=n.Scored.ToArray();
+   Check(o.Length==3 && o[0].Total==2*r[0].Total && o[1].Total==2*r[1].Total && o[2].Total==2*r[2].Total,
+     "an overtime chain scores exactly 2x the same chain in Running, robot by robot (76, not 75)");
+   Check(o[0].OvertimeMultiplier==2 && o[1].Received==r[1].Received && o[2].Received==r[2].Received,
+     "RobotScored carries OT x2; what robots pass on isn't doubled (x2 never compounds down the chain)");
+   Check(n.St.OvertimeScore==2*(15+38+70),"overtime score = the doubled chain (246)"); }
+ { var curve=new ScoreCurve(10,10,10,1f,true,2);   // compounding switch on: still exactly x2
+   var n=new Night(new NightGoal(50,10,1,5),curve);
+   var run=n.ThrowLine(3); n.Settle(run); var r=n.Scored.ToArray(); n.Scored.Clear();
+   n.Ref.Stay(); var ot=n.ThrowLine(3); n.Settle(ot); var o=n.Scored.ToArray();
+   Check(o[0].Total==2*r[0].Total && o[1].Total==2*r[1].Total && o[2].Total==2*r[2].Total,"with carryScoredTotal on, overtime is still exactly x2 (no compounding of the bonus)"); }
+ { // Barn mastery from overtime = the overtime points, no extra multiplier.
+   var n=new Night(new NightGoal(50,3,1,5));
+   var t=n.Throw(3); n.Settle(t); n.Ref.Stay();
+   var o=n.Throw(2); n.Settle(o); var o2=n.Throw(1); n.Settle(o2);
+   bool allX1=true; foreach(var b in n.Banked) if(b.Multiplier!=1) allX1=false;
+   Check(n.St.Phase==NightPhase.Ended && n.BankedTo(MasteryDestination.Barn)==(n.St.ScoreAtChoice-50)+n.St.OvertimeScore && allX1,
+     "barn mastery = overshoot + overtime points as scored; every NightBanked is x1 (overtime pays x2 once, not x4)"); }
+ { // The sweep is identical after Stay and after Leave.
+   var leave=new Night(new NightGoal(50,10,1,5)); var t1=leave.Throw(3); leave.Settle(t1);
+   for(int i=0;i<3;i++) leave.Wall.Add(leave.Ids.Next());
+   leave.Ref.Leave();
+   var stay=new Night(new NightGoal(50,10,1,5)); var t2=stay.Throw(3); stay.Settle(t2);
+   for(int i=0;i<3;i++) stay.Wall.Add(stay.Ids.Next());
+   stay.Ref.Stay(); stay.Danger();
+   Check(leave.St.SweepScore==30 && stay.St.SweepScore==30 && stay.St.OvertimeScore==0,"the sweep is x1 on both paths: 30 after Leave, 30 after Stay"); }
+ { var n=new Night(new NightGoal(50,1,1,5)); var t=n.Throw(3); n.Settle(t);
+   n.Wall.Add(n.Ids.Next()); n.Ref.Stay();
+   var m=new Night(new NightGoal(50,1,1,5)); var t2=m.Throw(3); m.Settle(t2);
+   m.Wall.Add(m.Ids.Next()); m.Ref.Leave();
+   Check(n.St.BarnMastery==m.St.BarnMastery && n.St.WeaponMastery==0 && m.St.WeaponMastery==0,
+     "0 stones left: Stay and Leave now pay the same (the old free-win loophole is gone)"); }
  // --- Phase order, as published ---
  { var n=new Night(new NightGoal(50,2,1,5));
    var t=n.Throw(3); n.Settle(t); n.Ref.Stay(); var o=n.Throw(1); n.Settle(o);

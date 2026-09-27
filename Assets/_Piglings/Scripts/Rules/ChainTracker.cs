@@ -70,14 +70,17 @@ namespace Piglings.Rules
             int depth = e.Cause.Depth;
             if (!c.Carried.TryGetValue(e.Cause.Source, out int received)) received = _curve.StoneValue;
 
-            int total = _curve.RobotTotal(received, depth);
-            int carries = _curve.CarriedBy(received, total);
+            // Overtime doubles what this robot scores (RobotTotal applies it), but not what it passes on:
+            // carrying uses the un-doubled value, so ×2 is paid once per robot and never compounds down a chain.
+            int phaseMultiplier = _state.Phase == NightPhase.Overtime ? _curve.OvertimeMultiplier : 1;
+            int total = _curve.RobotTotal(received, depth, phaseMultiplier);
+            int carries = _curve.CarriedBy(received, _curve.RobotTotal(received, depth));
             c.Carried[e.Cause.Source] = _curve.HitterAfterHit(received);   // its next hit is worth more
             c.Carried[e.Robot] = carries;                                     // this robot is now a stone too
 
             c.Total = ScoreMath.AddClamped(c.Total, total);
             _state.Score = ScoreMath.AddClamped(_state.Score, total);
-            _bus.Publish(new RobotScored(e.Robot, e.Chain, order, depth, received, _curve.Multiplier(depth), total, carries));
+            _bus.Publish(new RobotScored(e.Robot, e.Chain, order, depth, received, _curve.Multiplier(depth), phaseMultiplier, total, carries));
         }
 
         private void OnRobotRemoved(RobotRemoved e)

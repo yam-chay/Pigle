@@ -26,7 +26,7 @@ namespace Piglings.Simulation
             GUILayout.BeginArea(box, GUI.skin.box);
             GUILayout.Label($"Target reached! Score {s.Score}. Stones left: {s.StonesLeft}");
             GUILayout.Space(6f);
-            if (GUILayout.Button($"STAY — overtime: every point ×2 to the barn\n(the weapon gets nothing; a robot at the line ends it)", GUILayout.Height(52f)))
+            if (GUILayout.Button($"STAY — overtime: every chain point ×2\n(the weapon gets nothing; a robot at the line ends it)", GUILayout.Height(52f)))
                 Stay();
             if (GUILayout.Button($"LEAVE — bank {s.StonesLeft} stone(s) to the weapon\n(score above target goes to the barn)", GUILayout.Height(52f)))
                 Leave();

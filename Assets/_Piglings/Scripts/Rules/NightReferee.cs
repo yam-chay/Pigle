@@ -15,8 +15,9 @@ namespace Piglings.Rules
     ///   below the target, loses. Once the score reaches the target the night can no longer be lost —
     ///   throwing stops and we wait for what's falling to land, so a chain is never cut.
     /// - ChoicePending: the wall pauses (Simulation reads Phase). Stay or Leave.
-    /// - Overtime (Stay): throwing and the wall resume. Everything scored banks ×2 to the barn; the
-    ///   weapon earns nothing — that's what keeps Leave worth choosing. Ends when the stones run out
+    /// - Overtime (Stay): throwing and the wall resume. Every chain point is doubled as it's scored
+    ///   (ScoreCurve.RobotTotal, via ChainTracker) and banks to the barn as scored; the weapon earns
+    ///   nothing — that's what keeps Leave worth choosing. Ends when the stones run out
     ///   (after the last chain closes) or when a robot reaches the danger line. No loss either way.
     /// - Ended: Simulation sweeps the wall (every climbing robot falls); each one scores its own value,
     ///   flat, with the same robot-value function chains use. Then mastery is banked and NightEnded published.
@@ -148,9 +149,7 @@ namespace Piglings.Rules
             int points = _chains.Curve.RobotValue();
             _state.Score = ScoreMath.AddClamped(_state.Score, points);
             _state.SweepScore = ScoreMath.AddClamped(_state.SweepScore, points);
-            // In the Stay path the sweep is still overtime: it banks ×2 like the rest of it.
-            if (_state.Choice == StayOrLeave.Stay)
-                _state.OvertimeScore = ScoreMath.AddClamped(_state.OvertimeScore, points);
+            // ×1 on both paths: the sweep isn't earned by throwing, and doubling it would make Stay a free win.
         }
 
         // Called whenever something may have finished: a chain closed, a breach took a stone, overtime began.
@@ -205,7 +204,7 @@ namespace Piglings.Rules
             _sweeping = false;
 
             if (next == NightPhase.Ended) FinishNight();
-            // Stay with no stones left: nothing to play, overtime ends at once (the sweep still banks ×2).
+            // Stay with no stones left: nothing to play, overtime ends at once.
             else if (next == NightPhase.Overtime) CheckSettled();
         }
 
@@ -220,17 +219,12 @@ namespace Piglings.Rules
         {
             if (_state.Result == NightResult.Won)
             {
-                if (_state.Choice == StayOrLeave.Leave)
-                {
-                    Bank(MasteryDestination.Barn, _state.Score - _goal.TargetScore, 1);   // sweep included
-                    Bank(MasteryDestination.Weapon, _state.StonesLeft, 1);                // the leftover stones
-                }
-                else if (_state.Choice == StayOrLeave.Stay)
-                {
-                    Bank(MasteryDestination.Barn, _state.ScoreAtChoice - _goal.TargetScore, 1);
-                    Bank(MasteryDestination.Barn, _state.OvertimeScore, 2);               // sweep included
-                    // No weapon mastery from overtime: unthrown stones are lost, thrown ones earned the barn ×2.
-                }
+                // Everything above the target goes to the barn as scored, on both paths. Overtime's ×2 is
+                // already in those points (doubled when scored), so it isn't applied again here.
+                Bank(MasteryDestination.Barn, _state.Score - _goal.TargetScore, 1);
+                // Leftover stones go to the weapon only when you Leave. In overtime the weapon earns nothing:
+                // unthrown stones are lost, thrown ones were worth double.
+                if (_state.Choice == StayOrLeave.Leave) Bank(MasteryDestination.Weapon, _state.StonesLeft, 1);
             }
 
             _bus.Publish(new NightEnded(_state.Result, _state.EndReason, _state.Score, _goal.TargetScore,

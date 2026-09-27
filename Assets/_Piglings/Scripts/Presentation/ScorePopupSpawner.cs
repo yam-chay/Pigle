@@ -33,6 +33,9 @@ namespace Piglings.Presentation
         [Tooltip("Depth at which the colour is fully 'deep'.")]
         [SerializeField, Min(1)] private int deepAtDepth = 3;
 
+        [Tooltip("Popup colour for points scored in overtime (matches the pulsing danger line).")]
+        [SerializeField] private Color overtimeColor = new Color(1f, 0.8f, 0.2f);
+
         [Header("Chain result")]
         [Tooltip("Where the chain result appears — a fixed spot (e.g. above the barn) so it's always read in the same place.")]
         [SerializeField] private Transform chainAnchor;
@@ -76,8 +79,14 @@ namespace Piglings.Presentation
             float scale = robotScale * (1f + scalePerDepth * e.Depth);
             string total = $"+{e.Total}";
 
-            // Show the multiplication only when it changes something: a ×1 robot goes straight to "+10".
-            if (e.Multiplier > 1f) Spawn(t.position + robotOffset, $"{e.Received} ×{e.Multiplier:0.##}", color, scale, total);
+            // Show the sum only when something multiplies: a plain ×1 robot goes straight to "+10".
+            // Overtime gets its own tag ("OT×2") so the player sees which ×2 is the bonus, and a gold tint.
+            bool overtime = e.OvertimeMultiplier > 1;
+            if (overtime) color = overtimeColor;
+            string why = e.Multiplier > 1f ? $"{e.Received} ×{e.Multiplier:0.##}" : $"{e.Received}";
+            if (overtime) why += $"  OT×{e.OvertimeMultiplier}";
+
+            if (e.Multiplier > 1f || overtime) Spawn(t.position + robotOffset, why, color, scale, total);
             else Spawn(t.position + robotOffset, total, color, scale);
         }
 
