@@ -3,34 +3,54 @@ using System;
 namespace Piglings.Rules
 {
     /// <summary>
-    /// What each robot in a chain is worth. Everything is paid the moment the robot loses grip —
-    /// there is no end-of-chain bonus, so the score the player sees is always the real score.
+    /// Value flows down the chain. Every "hitter" — the stone, or a robot's falling ball — carries a
+    /// value, and whatever it knocks loose scores that value times its depth multiplier:
     ///
-    ///  - Points grow with the robot's ORDER in the chain (1st, 2nd, 3rd… to lose grip):
-    ///    basePoints × order → 10, 20, 30…  Rewards keeping a chain going, however it spreads.
-    ///  - The multiplier grows with the robot's own DEPTH (how many hand-offs from the stone):
-    ///    1 + multiplierPerDepth × depth → ×1, ×2, ×3…  Rewards the ball-knocks-ball shots.
-    ///  - Robot total = points × multiplier, rounded.
+    ///  - The stone starts carrying StoneValue.
+    ///  - A robot knocked loose scores  received × (1 + MultiplierPerDepth × its depth),  paid now.
+    ///  - The hitter grows by GrowthPerHit with every hit, so a stone or ball that knocks several
+    ///    robots makes each next one worth more. Extra hits are never wasted.
+    ///  - The knocked robot becomes a hitter itself, carrying WolfValue (its own worth) plus what it
+    ///    received — or plus what it SCORED when CarryScoredTotal is on, which compounds hard.
     ///
+    /// Example, a line stone → A → B → C with default values (10 / 10 / 10 / ×0.5, compounding off):
+    ///   A 10 × 1 = 10, carries 10 + 10 = 20 · B 20 × 1.5 = 30, carries 10 + 20 = 30 · C 30 × 2 = 60.
+    ///
+    /// Why these are separate numbers: each is the lever a future upgrade family will pull —
+    /// stone upgrades (StoneValue, GrowthPerHit), wolf upgrades (WolfValue), pegs and slices
+    /// (MultiplierPerDepth). The defaults start low on purpose, so upgrades have room to matter.
     /// Immutable: built once per night by NightSession from the ScoringDefinition asset.
     /// </summary>
     public sealed class ScoreCurve
     {
-        public int BasePoints { get; }
+        public int StoneValue { get; }
+        public int GrowthPerHit { get; }
+        public int WolfValue { get; }
         public float MultiplierPerDepth { get; }
+        public bool CarryScoredTotal { get; }
 
-        public ScoreCurve(int basePoints = 10, float multiplierPerDepth = 1f)
+        public ScoreCurve(int stoneValue = 10, int growthPerHit = 10, int wolfValue = 10,
+                          float multiplierPerDepth = 0.5f, bool carryScoredTotal = false)
         {
-            BasePoints = basePoints;
+            StoneValue = stoneValue;
+            GrowthPerHit = growthPerHit;
+            WolfValue = wolfValue;
             MultiplierPerDepth = Math.Max(0f, multiplierPerDepth);
+            CarryScoredTotal = carryScoredTotal;
         }
-
-        /// <summary>order is 1-based: the first robot of a chain is order 1.</summary>
-        public int RobotPoints(int order) => BasePoints * order;
 
         public float Multiplier(int depth) => 1f + MultiplierPerDepth * depth;
 
-        public int RobotTotal(int order, int depth) =>
-            (int)Math.Round(RobotPoints(order) * Multiplier(depth), MidpointRounding.AwayFromZero);
+        public int RobotTotal(int received, int depth) => ClampToInt(Math.Round(received * (double)Multiplier(depth), MidpointRounding.AwayFromZero));
+
+        /// <summary>A stone or ball after it knocked one more robot loose.</summary>
+        public int HitterAfterHit(int value) => ClampToInt((long)value + GrowthPerHit);
+
+        /// <summary>What a freshly knocked robot carries into its own hits.</summary>
+        public int CarriedBy(int received, int total) => ClampToInt((long)WolfValue + (CarryScoredTotal ? total : received));
+
+        // With CarryScoredTotal on, value grows faster than factorially down a line (depth ~12
+        // passes int.MaxValue). Clamp instead of wrapping into a negative score.
+        private static int ClampToInt(double v) => v >= int.MaxValue ? int.MaxValue : (int)v;
     }
 }

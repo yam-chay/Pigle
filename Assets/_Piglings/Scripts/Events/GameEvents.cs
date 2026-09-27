@@ -44,18 +44,19 @@ namespace Piglings.Events
 
     /// <summary>
     /// Published by the Rules layer right after RobotLostGrip: what that robot is worth, already
-    /// added to the score. Order is its place in the chain (1 = first to lose grip).
-    /// Total = Points × Multiplier (rounded). Presentation shows "Points ×Multiplier", then "+Total".
+    /// added to the score. Received = the value its hitter (stone or ball) carried into it;
+    /// Total = Received × Multiplier (rounded); Carries = what this robot's own ball now carries.
+    /// Order is its place in the chain (1 = first to lose grip). Presentation shows "Received ×Multiplier", then "+Total".
     /// </summary>
     public readonly struct RobotScored
     {
         public readonly GameId Robot; public readonly ChainId Chain;
         public readonly int Order; public readonly int Depth;
-        public readonly int Points; public readonly float Multiplier; public readonly int Total;
-        public RobotScored(GameId robot, ChainId chain, int order, int depth, int points, float multiplier, int total)
+        public readonly int Received; public readonly float Multiplier; public readonly int Total; public readonly int Carries;
+        public RobotScored(GameId robot, ChainId chain, int order, int depth, int received, float multiplier, int total, int carries)
         {
             Robot = robot; Chain = chain; Order = order; Depth = depth;
-            Points = points; Multiplier = multiplier; Total = total;
+            Received = received; Multiplier = multiplier; Total = total; Carries = carries;
         }
     }
 
