@@ -32,6 +32,10 @@ namespace Piglings.Simulation
         public int Depth { get; private set; }
         public bool CanLoseGrip => State == RobotState.Climbing;
 
+        // For views on the robot prefab: they can't hold a scene reference to the NightSession,
+        // so they reach the bus through their robot. Null until Initialize.
+        public NightSession Session => _session;
+
         public event Action<RobotController, RobotState> StateChanged;
 
         private NightSession _session;

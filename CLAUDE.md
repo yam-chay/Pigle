@@ -14,6 +14,7 @@ Read first: `ARCHITECTURE.md` (structure, wins over this file), then `TASKS.md` 
 - Engine-free assemblies: C# 9 max (Unity's compiler), no `UnityEngine`.
 - Unity 6 API: `Rigidbody2D.linearVelocity` (not `velocity`); input via `UnityEngine.InputSystem`.
 - Comments explain **why**, not what. Yam reads every change and wants to understand it — keep code plain over clever.
+- Tune values in the Definition assets or Inspector, never by editing defaults in `.cs` files.
 
 ## Cloud sessions (claude.ai/code) — no Unity editor there
 - ONLY touch: `*.cs`, `*.asmdef`, `*.md`, `Tools/**`.
@@ -23,6 +24,7 @@ Read first: `ARCHITECTURE.md` (structure, wins over this file), then `TASKS.md` 
 - You can't compile Unity-side code (Simulation/Presentation/Definitions). Say so in the PR and list what Yam should verify in the editor.
 - PR description: what changed, why, and what to test in play mode — in plain language.
 - Tick the task in TASKS.md in the same PR.
+- Before finishing a PR: merge the latest Production into the branch, then re-read in full every file that changed on both sides.
 
 ## Local sessions (VS Code + Claude Code + unity-mcp)
 - Scene/prefab/import/layer work happens here.
