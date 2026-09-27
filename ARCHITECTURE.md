@@ -72,12 +72,13 @@ Events are facts, never commands. Nobody "asks" through the bus.
 ## Robot state machine (ported from CCTD SpiderController)
 
 ```
-Spawned -> Climbing -> LosingGrip -> Falling -> Removed(HitGround)
-              \-> ReachedTop -> Removed(EnteredBarn)
+Spawned -> Climbing -> LosingGrip -> Falling -> Removed(HitGround | TimedOut)
+              \-> ReachedTop -> Breaching -> Removed(EnteredBarn)        ← Breaching is PLANNED (M7.3), not in code yet
 ```
 - `RobotController.EnterState` is the ONLY place a state becomes physics (body type, layer).
 - `LosingGrip` = the break clip (flail → crack → limbs collapse). Still kinematic. Duration from `RobotDefinition.BreakDuration`.
-- `Falling` = dynamic ball on layer `RobotBall`, bounces through the Holds. Only a Falling robot passes a chain on.
+- `Falling` = dynamic ball on layer `RobotBall`, bounces through the Holds. Only a Falling robot passes a chain on. A ball still falling after `RobotDefinition.MaxFallSeconds` is removed (`TimedOut`) so it can't hold a chain open.
+- `Breaching` *(planned, M7.3)* = the breach sequence after `ReachedTop`: collider off, the robot stays alive for its animation, then jumps off the porch and falls. It **never starts or joins a chain** (it isn't `Falling` and has no collider) and **never holds a chain or the night open**: a hard time limit ends it in `Removed(EnteredBarn)` whatever the animation does — same class of bug as the stuck ball. Today `ReachTop` removes the robot at once (it vanishes). The breach is counted when it's removed, as now; 5 breaches still lose the night.
 
 ## Physics layers & matrix
 
@@ -97,9 +98,19 @@ Only `RobotClimbing` touches `Zones`, so zones only ever see climbing (or just-h
 
 | Zone | Where | What it does |
 |---|---|---|
-| `BarnTopZone` | roof line | Marker. A climbing robot touching it calls `ReachTop` → `RobotRemoved(EnteredBarn)` = breach. |
-| `DangerZone` | a little below `BarnTopZone` | Has `NightSession` (serialized). A climbing robot entering it → `RobotEnteredDangerZone`, once per robot, all night. `RobotView` sets the Animator bool `InDanger`. No robot state. In Overtime it's the line that ends the night; `DangerZoneView` shows it differently then. |
+| `BarnTopZone` | the breach line, just under the pig's hole (y ≈ 7.2) | Marker. A climbing robot touching it calls `ReachTop` → `RobotRemoved(EnteredBarn)` = breach. Its children are art only (perch pieces + the hanging "no wolves" sign): no colliders. |
+| `DangerZone` | just above the wall's top beam (y ≈ 6.275) | Has `NightSession` (serialized). A climbing robot entering it → `RobotEnteredDangerZone`, once per robot, all night. `RobotView` sets the Animator bool `InDanger`. No robot state. In Overtime it's the line that ends the night; `DangerZoneView` shows it differently then. |
 | `GroundZone` | below the barn | Marker. Falling balls and throwables touching it are removed. |
+
+## Ammo on the perch (PLANNED — M7.1 / M7.2)
+
+Ammo is the pig's life, shown as a physical container on the perch (stones: a pile) that visibly depletes: each throw, one item hops from the container to the pig's hand.
+- **One reading rule for every weapon's container:** many left = how full the container is; ≤ 5 left = individual items + a small pulsing number; 0 = empty.
+- **Structure:** an ammo view in **Presentation** reads the count from **Runtime** (today `NightState.StonesLeft`) and its look (container sprite states, item sprite) from the throwable's **Definition** (`ThrowableDefinition` — these visual fields don't exist yet). Nothing is hard-coded to stones: a new weapon is new art, not new code. Reads only.
+- **Coming:** mixed weapon types per night → the perch is the loadout, one container per weapon; that needs a per-weapon count in Runtime (today there's one number). In the day phase the perch shows only owned weapons and the player picks a limited number (size TBD). Weapon mastery will show on its container — Meta is still empty, don't build it.
+
+## Background
+`BackgroundNight` (`ScrollingBackground`: endless tiled scroll) with child `BackgroundDay` (`DayNightBackground`: fades in on `NightEnded`). Presentation only.
 
 ## Scale convention
 
