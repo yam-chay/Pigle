@@ -82,7 +82,7 @@ namespace Piglings.Rules
 
         private void OnRobotRemoved(RobotRemoved e)
         {
-            if (e.Reason == RemovalReason.EnteredBarn) _state.RobotsReachedTop++;
+            // Breaches (EnteredBarn) are counted by NightReferee, which decides the night.
             Release(e.Chain, e.Robot);
         }
 

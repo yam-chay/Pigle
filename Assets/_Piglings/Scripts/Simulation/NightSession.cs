@@ -26,6 +26,7 @@ namespace Piglings.Simulation
         public IdAllocator Ids { get; private set; }
 
         private ChainTracker _chains;
+        private NightReferee _referee;
 
         private void Awake()
         {
@@ -33,6 +34,9 @@ namespace Piglings.Simulation
             State = new NightState();
             Ids = new IdAllocator();
             _chains = new ChainTracker(Bus, State, BuildCurve());
+            // After ChainTracker: the referee reads its open-chain count.
+            _referee = new NightReferee(Bus, State, _chains,
+                new NightGoal(night.TargetScore, night.ThrowsAvailable, night.StonesLostPerBreach, night.MaxBreaches));
         }
 
         // Without an asset the night still plays on ScoreCurve's defaults (10 / 10 / 10 / ×0.5),
@@ -48,6 +52,10 @@ namespace Piglings.Simulation
                                   scoring.MultiplierPerDepth, scoring.CarryScoredTotal);
         }
 
-        private void OnDestroy() => _chains?.Dispose();
+        private void OnDestroy()
+        {
+            _referee?.Dispose();
+            _chains?.Dispose();
+        }
     }
 }

@@ -1,3 +1,5 @@
+using Piglings.Events;
+
 namespace Piglings.Runtime
 {
     /// <summary>
@@ -14,5 +16,12 @@ namespace Piglings.Runtime
         public int Score;
         public int LongestChain;   // most robots dropped by a single throw
         public int DeepestChain;   // highest depth reached in any chain
+
+        // Written by NightReferee. Simulation reads CanThrow; Presentation reads the rest.
+        public int StonesLeft;     // throws left; a robot reaching the top costs stones too
+        public bool CanThrow;      // false once out of stones, target reached, or night over
+        public bool Ended;
+        public NightResult Result;
+        public NightEndReason EndReason;
     }
 }

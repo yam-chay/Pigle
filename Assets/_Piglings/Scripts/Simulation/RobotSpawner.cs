@@ -19,6 +19,7 @@ namespace Piglings.Simulation
 
         private void Update()
         {
+            if (session.State.Ended) return;   // the night is decided; stop feeding the wall
             var night = session.Night;
             _timer -= Time.deltaTime;
             if (_timer > 0f) return;

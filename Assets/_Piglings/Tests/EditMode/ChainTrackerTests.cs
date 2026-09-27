@@ -54,10 +54,13 @@ namespace Piglings.Tests
         [Test]
         public void RobotReachingTop_CountsAndDoesNotBreakChains()
         {
+            // Breaches are counted by NightReferee (it decides the night), so it takes part here.
+            var referee = new NightReferee(_bus, _state, _tracker);
             var r = _ids.Next();
             _bus.Publish(new RobotRemoved(r, ChainId.None, RemovalReason.EnteredBarn));
             Assert.That(_state.RobotsReachedTop, Is.EqualTo(1));
             Assert.That(_tracker.OpenChainCount, Is.EqualTo(0));
+            referee.Dispose();
         }
     }
 }

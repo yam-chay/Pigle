@@ -68,7 +68,7 @@ namespace Piglings.Simulation
 
             var pointer = Pointer.current;
             if (pointer == null || cam == null) return;
-            if (session.State.ThrowsUsed >= session.Night.ThrowsAvailable) return;
+            if (!session.State.CanThrow) return;   // out of stones, target reached, or night over (NightReferee)
             // Cooling down: no aim, so no line and no raised arm. Holding the button through the
             // cooldown still works — the aim appears the moment it ends and release throws as usual.
             if (Time.time < readyAt) return;
