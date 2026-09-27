@@ -14,5 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: Piglings.Definitions::Piglings.Definitions.ScoringDefinition
   basePoints: 10
   pointsPerDepth: 10
-  multiplierPerDepth: 0.5
+  multiplierPerDepth: 1
   maxMultiplier: 4

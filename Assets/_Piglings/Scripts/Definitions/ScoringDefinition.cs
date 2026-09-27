@@ -14,7 +14,7 @@ namespace Piglings.Definitions
         [SerializeField, Min(0)] private int basePoints = 10;
 
         [Tooltip("Each robot's multiplier grows by this per step of its own depth. 1 → depth 0 ×1, depth 1 ×2, depth 2 ×3.")]
-        [SerializeField, Min(0f)] private float multiplierPerDepth = 1f;
+        [SerializeField, Min(0f)] private float multiplierPerDepth = 0.5f;
 
         public int BasePoints => basePoints;
         public float MultiplierPerDepth => multiplierPerDepth;
