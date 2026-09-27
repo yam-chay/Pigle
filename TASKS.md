@@ -1,5 +1,7 @@
 # TASKS — Piglings prototype
 
+> **Next up (end of 2026-09-27):** M7.3 Breaching (makes stone theft visible) → decide the empty-pile "dead time" (open questions) → M5.2 playtest + tune with the `[Night]` log lines.
+
 ☁ = cloud session OK (code/docs only) · 🖥 = local, needs the Unity editor (use Claude Code + unity-mcp)
 
 ## M0 — Setup 🖥
@@ -51,7 +53,8 @@
 Context (story frame, GDD): the villain is the Big Bad Wolf; the robots are his tools, driven by his remote, clearing the way so he can climb up and get the pigs. On a loss he goes down the chimney after them (off-screen / cartoon — the pigs are never shown eaten); the end-of-night sweep happens with it or just after. Exact sequence still being designed (see open questions). Structure: ARCHITECTURE.md → "Ammo on the perch" and the robot state machine.
 - [x] 🖥 M7.0 Already in the scene: breach line (TopZone) moved up under the pig's hole — (0, 7.2), 4.4 × 0.2; danger line (DangerZone) just above the wall's top beam — (0, 6.275), 4.4 × 0.2; perch pieces + hanging "no wolves" sign as art-only children of TopZone; night background that scrolls, with a day version fading in when the night ends (`ScrollingBackground` + `DayNightBackground`). See SETUP.md §7.
 - [x] ☁ M7.1 One life + a real pile (replaces the sprite-state ammo view): no breach limit; a breach takes the top stone, a breach on an empty pile = caught (the only loss); last stone thrown ≠ loss. `StonesChanged` (Thrown/Stolen/Added/Forfeited) from `NightReferee`; `AddStones(n)`. `StonePile` (Simulation) mirrors the count with real stones in pyramid slots (parked: no physics/collider); the top stone hops to the hand when the pig may throw; a thief carries its stone off (parked, never a weapon). CoreCheck for the rule and every count change.
-- [ ] 🖥 M7.2 Wire the pile on the right perch piece: `StonePile` (session, Stone prefab, hand = ThrowOrigin, spawner), `pile_rag.png` under it, `ThrowController.pile`; tune slots/spacing to the plank and the hop. Steps in the PR.
+- [x] 🖥 M7.2 Pile wired: `StonePile` on the right perch piece (session, Stone prefab, hand = ThrowOrigin, spawner), `ThrowController.pile` set; ThrowOrigin moved under the pig's throwing-hand bone and the held stone follows it without parenting (PR #17); Stone prefab on Sorting Layer **Pig**, order 20, so it draws over the arm.
+  - [ ] 🖥 `pile_rag.png` under the pile (not in the repo/scene yet).
 - [ ] ☁+🖥 M7.3 Robot `Breaching` state: `ReachedTop → Breaching → Removed(EnteredBarn)`. Collider off, alive for the breach animation, then jumps off the porch and falls. Never starts or joins a chain; never holds a chain or the night open (hard time limit). Physics changes only in `EnterState`. Code ☁, animation 🖥. The stolen stone rides on the breaching robot.
 
 ## Open design questions (from the GDD — don't implement until decided)
@@ -66,6 +69,8 @@ Context (story frame, GDD): the villain is the Big Bad Wolf; the robots are his 
 - **PROPOSAL** — Loadout size in the day phase (how many weapons you can take onto the perch).
 - **IDEA** — Hidden "Pacifist" achievement: lose every stone to the wolves without throwing once (possible weapon unlock).
 - *(Decided: breaches steal stones — option A; the 5-breach limit is gone. See M7.1.)*
+- **OPEN** — Empty-pile dead time: with 0 stones, nothing falling and the target not reached, the player can only watch robots climb until one breaches (~10–15 s). Fast-forward the wall once the player can't act, or make the wait the start of the loss scene (the wolf begins his climb)?
+- **WATCH in M5.2** — Death spiral: every breach takes a stone, fewer stones → fewer throws → more breaches. Fine if it's readable (the pile shows it); if a bad first minute always decides the night, tune spawn rate before stone count.
 
 ## Playtest log
 <!-- date · what you tried · what you felt · what to change -->

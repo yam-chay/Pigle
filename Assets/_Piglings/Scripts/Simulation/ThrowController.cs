@@ -45,7 +45,8 @@ namespace Piglings.Simulation
     {
         [SerializeField] private NightSession session;
         [SerializeField] private Throwable throwablePrefab;
-        [SerializeField] private Transform origin;       // the pig's hand / barn hole
+        [Tooltip("ThrowOrigin: a child of the pig's throwing-hand bone, so the aim line and the launch start from the hand as it animates.")]
+        [SerializeField] private Transform origin;
         [SerializeField] private Transform container;
         [SerializeField] private Camera cam;
         [Tooltip("The pile on the perch. Its stone in the pig's hand is the one thrown. Empty = the old way " +
