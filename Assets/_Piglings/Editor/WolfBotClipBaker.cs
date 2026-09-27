@@ -6,7 +6,8 @@ namespace Piglings.EditorTools
 {
     /// <summary>
     /// Piglings ▸ Animation ▸ Bake WolfBot Clips.
-    /// Reads the Wolf-Bot Rig Tester keyframes (Source/*.json) and writes them into WolfBot_Climb / WolfBot_Break.
+    /// Reads the Wolf-Bot Rig Tester keyframes (Source/*.json) and writes them into WolfBot_Climb / WolfBot_Break,
+    /// plus WolfBot_ClimbDanger: the Climb keyframes with red eyes and an antenna wiggle on top (no JSON of its own).
     /// Workflow: tweak a pose in the tester → Export JSON → paste into the Source file → bake again.
     /// Hand edits inside the .anim files are overwritten by the next bake.
     /// </summary>
@@ -59,6 +60,11 @@ namespace Piglings.EditorTools
 
         static readonly (string state, string sprite)[] Eyes = { ("on", "eye_on"), ("red", "eye_red"), ("x", "eye_x") };
 
+        // ClimbDanger = Climb + this. Generated from Climb instead of keyed by hand, so re-baking Climb
+        // keeps the two in step. Whole wiggles per loop, so the loop has no seam.
+        const float DangerWiggleDegrees = 8f;
+        const int DangerWigglesPerLoop = 3;   // Climb is 0.9 s, so ~3.3 wiggles a second: reads as alarm
+
         [MenuItem("Piglings/Animation/Bake WolfBot Clips")]
         static void BakeAll()
         {
@@ -66,9 +72,11 @@ namespace Piglings.EditorTools
             try
             {
                 var rig = new Rig(root.transform);
-                bool ok = Bake(rig, "WolfBot_Climb", loop: true) & Bake(rig, "WolfBot_Break", loop: false);
+                bool ok = Bake(rig, "WolfBot_Climb", loop: true)
+                        & Bake(rig, "WolfBot_Break", loop: false)
+                        & Bake(rig, "WolfBot_ClimbDanger", loop: true, source: "WolfBot_Climb", overlay: DangerOverlay);
                 AssetDatabase.SaveAssets();
-                if (ok) Debug.Log("[WolfBotClipBaker] Baked WolfBot_Climb and WolfBot_Break.");
+                if (ok) Debug.Log("[WolfBotClipBaker] Baked WolfBot_Climb, WolfBot_Break and WolfBot_ClimbDanger.");
             }
             finally
             {
@@ -76,26 +84,52 @@ namespace Piglings.EditorTools
             }
         }
 
-        static bool Bake(Rig rig, string clipName, bool loop)
+        // source: which JSON to read (defaults to the clip's own). overlay: changes each sampled pose before it's written.
+        static bool Bake(Rig rig, string clipName, bool loop, string source = null,
+                         System.Action<TesterAnimation.Pose, float, float> overlay = null)
         {
-            var source = AssetDatabase.LoadAssetAtPath<TextAsset>(SourceFolder + clipName + ".json");
+            string sourceName = source ?? clipName;
+            var json = AssetDatabase.LoadAssetAtPath<TextAsset>(SourceFolder + sourceName + ".json");
             var clip = AssetDatabase.LoadAssetAtPath<AnimationClip>(ClipFolder + clipName + ".anim");
-            if (source == null || clip == null)
+            if (json == null || clip == null)
             {
-                Debug.LogError($"[WolfBotClipBaker] Missing {SourceFolder}{clipName}.json or {ClipFolder}{clipName}.anim");
+                Debug.LogError($"[WolfBotClipBaker] Missing {SourceFolder}{sourceName}.json or {ClipFolder}{clipName}.anim");
                 return false;
             }
 
-            var anim = new TesterAnimation(source.text);
+            var anim = new TesterAnimation(json.text);
             var builder = new ClipBuilder();
             int frames = Mathf.CeilToInt(anim.Length * SampleRate);
             for (int f = 0; f <= frames; f++)
             {
                 float time = Mathf.Min(f / SampleRate, anim.Length);
-                WritePose(rig, anim.Sample(time), time, builder);
+                var pose = anim.Sample(time);
+                if (overlay != null)
+                {
+                    // Sample can hand back a keyframe's own Pose; copy it so the overlay never edits the source keys.
+                    pose = Copy(pose);
+                    overlay(pose, time, anim.Length);
+                }
+                WritePose(rig, pose, time, builder);
             }
             builder.WriteTo(clip, loop);
             return true;
+        }
+
+        // Red eyes, and the antenna wiggling around wherever Climb puts it.
+        static void DangerOverlay(TesterAnimation.Pose p, float time, float length)
+        {
+            p.Swaps["eye"] = "red";
+            float wiggle = DangerWiggleDegrees * Mathf.Sin(2f * Mathf.PI * DangerWigglesPerLoop * time / length);
+            p.Numbers["antenna"] = p.Get("antenna") + wiggle;
+        }
+
+        static TesterAnimation.Pose Copy(TesterAnimation.Pose source)
+        {
+            var copy = new TesterAnimation.Pose();
+            foreach (var n in source.Numbers) copy.Numbers[n.Key] = n.Value;
+            foreach (var s in source.Swaps) copy.Swaps[s.Key] = s.Value;
+            return copy;
         }
 
         static void WritePose(Rig rig, TesterAnimation.Pose p, float time, ClipBuilder clip)

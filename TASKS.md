@@ -32,13 +32,14 @@
 - [x] ☁ Night end condition in Rules (`NightReferee`): reach `targetScore` = win (once everything in flight settles); out of stones = lose; a robot reaching the top costs `stonesLostPerBreach` stones; `maxBreaches` = lose. Event: `NightEnded`. (Changed from "survive X seconds" — a timer rewards stalling; a score target rewards chains.)
 
 ## M6 — Night loop (a night that starts, ends and restarts)
-- [ ] ☁+🖥 M6.2 End panel: result + reason, score / target, score per stone, stones left, best chain, and a Restart button (reload the Night scene). Code ☁, UI wiring 🖥.
+- [ ] ☁+🖥 M6.2 End panel: result + reason, score / target, score per stone, stones left, best chain. Code ☁, UI wiring 🖥. (Restarting is M6.6.)
 - [ ] 🖥 M6.3 Stone readability (playtest TODO): colour/outline/trail so the stone is easy to follow.
 - [x] ☁ M6.4 Danger zone: `DangerZone` trigger (layer Zones) a little below the roof publishes `RobotEnteredDangerZone` once per robot; `RobotView` sets Animator bool `InDanger`. No robot state. Breach warning now; later the line that ends overtime.
-- [ ] 🖥 M6.4b Wire the danger zone: place the trigger, add `InDanger` + `WolfBot_ClimbDanger` clip (Climb + eye_red + antenna wiggle), Climb → ClimbDanger on `InDanger`, Break reachable from both. Steps in the PR.
+- [ ] 🖥 M6.4b Wire the danger zone: place the trigger, add `InDanger`, bake `WolfBot_ClimbDanger` (Piglings ▸ Animation ▸ Bake WolfBot Clips — Climb + red eyes + antenna wiggle, generated), Climb → ClimbDanger on `InDanger`, Break reachable from both. Steps in PR #7 and the play-again PR.
 - [ ] ☁+🖥 M6.5 Overtime — see the GDD section **"סוף הלילה: להמשיך או ללכת"** (the source of truth; not copied here).
   - Buildable now: the flow — pause at the target, choose stay or walk, soft end when a robot crosses the danger line, then the final fall (every robot on the wall falls and scores as a chain).
   - Waits for Meta: the XP destinations — score → barn mastery, leftover stones → weapon mastery.
+- [x] ☁ M6.6 Play again: after `NightEnded` the HUD shows "Click to play again"; the next click (after a short grace) reloads the active scene (`PlayAgain`, Simulation).
 
 ## Open design questions (from the GDD — don't implement until decided)
 - One robot line per run vs. mixed swarm.
