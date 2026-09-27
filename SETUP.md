@@ -50,7 +50,7 @@ Also create `Ball.physicsMaterial2D` (bounciness ~0.3) and assign it to Robot_Wo
 - child: the imported wolf-bot rig → `RobotView` on root (wire animator, eye_on / eye_red / eye_x, detachables = arm/leg uppers, antenna, tail_1)
 - Animator `WolfBot.controller`: Climb, ClimbDanger (bool `InDanger`), Break (trigger `Break`, reachable from both). Clips are baked by *Piglings ▸ Animation ▸ Bake WolfBot Clips*.
 
-**Stone.prefab** — Rigidbody2D (Dynamic), CircleCollider2D, `Throwable`, a simple stone sprite (placeholder circle is fine).
+**Stone.prefab** — Rigidbody2D (Dynamic), CircleCollider2D, `Throwable`, a simple stone sprite (placeholder circle is fine). Sprite on Sorting Layer **Pig**, Order 20, so the held stone draws over the pig's arm (the pig's sprites are all on the Pig layer).
 
 **Pig.prefab** — the pig rig + Animator (Idle, Aim, Throw) + `PigView`.
 
@@ -76,15 +76,16 @@ Barn
   Wall_L / Wall_R       BoxCollider2D 0.1 × 7.5 (offset y 0.5) at x ∓2.2, y 3.1; layer BarnWalls
   TopZone               THE BREACH LINE, just under the pig's hole: (0, 7.2), BoxCollider2D trigger 4.4 × 0.2,
                         layer Zones, Rigidbody2D Kinematic, BarnTopZone
-    barn_perch_0        art only (no collider): perch piece, local (-1.294, -0.228)
+    barn_perch_0        art only (no collider): perch piece, left, local (-1.294, -0.228)
+    barn_perch_1        art only: centre perch piece under the hole, local (0, -0.103)
       barn_perch_sign_0 art only: the hanging "no wolves" sign, local (0, -0.325)
-    barn_perch_2        art only: perch piece, local (1.294, -0.228)
-      StonePile         (M7.2) StonePile (session, Stone prefab, hand = ThrowOrigin, spawner); position = centre of the
-                        pile's bottom row on the plank; child SpriteRenderer = pile_rag.png just under it
+    barn_perch_2        art only: perch piece, right, local (1.294, -0.228)
+      StonePile         StonePile (session, Stone prefab, hand = ThrowOrigin, spawner), local (-0.3, 0.3) = centre of
+                        the pile's bottom row; (todo) child SpriteRenderer = pile_rag.png just under it
   DangerZone            THE DANGER LINE, just above the wall's top beam: (0, 6.275), BoxCollider2D trigger 4.4 × 0.2,
                         layer Zones, Rigidbody2D Kinematic, DangerZone (session)
     DangerLine          SpriteRenderer (thin square, scale ≈ 4.08 × 0.2), DangerZoneView (session)
-ThrowOrigin             empty, a CHILD OF THE PIG'S THROWING-HAND BONE, on the palm — it moves with the animation.
+ThrowOrigin             empty, a CHILD OF THE PIG'S THROWING-HAND BONE (inside the Pig), on the palm — it moves with the animation.
                         Only its position is used: the held stone follows it without being parented, so the rig's
                         scale never touches the stone. (Was a fixed point at (0.2, 7.7).)
 ThrowController         ThrowController (session, Stone prefab, origin, container = Throwables, camera, pile = StonePile)
