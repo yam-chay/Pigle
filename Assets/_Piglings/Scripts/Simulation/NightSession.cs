@@ -55,6 +55,9 @@ namespace Piglings.Simulation
                 Debug.LogWarning("NightSession: no ScoringDefinition assigned, using default scoring.", this);
                 return new ScoreCurve();
             }
+            if (scoring.OvertimeMultiplier <= 1)
+                Debug.LogWarning($"NightSession: {scoring.name} has Overtime Multiplier {scoring.OvertimeMultiplier}, " +
+                                 "so overtime doesn't double anything. Set it to 2 (select the asset in the Project window).", scoring);
             return new ScoreCurve(scoring.StoneValue, scoring.GrowthPerHit, scoring.WolfValue,
                                   scoring.MultiplierPerDepth, scoring.CarryScoredTotal, scoring.OvertimeMultiplier);
         }

@@ -237,6 +237,12 @@ static void NightChecks(){
    n.Bus.Subscribe<ChainScored>(e=>chains.Add(e));
    var t=n.Throw(3); n.Settle(t); n.Ref.Stay(); var o=n.Throw(2); n.Settle(o);
    Check(chains.Count==2 && !chains[0].InOvertime && chains[1].InOvertime,"ChainScored.InOvertime: false for the Running chain, true for the overtime one"); }
+ { // Robot popups decide "overtime" from the same record as the chain popup.
+   var n=new Night(new NightGoal(50,10,1,5));
+   var t=n.Throw(3); n.Settle(t); var run=n.Scored.ToArray(); n.Scored.Clear();
+   n.Ref.Stay(); var o=n.Throw(2); n.Settle(o); var ot=n.Scored.ToArray();
+   Check(run.Length==3 && !run[0].InOvertime && !run[2].InOvertime && ot.Length==2 && ot[0].InOvertime && ot[1].InOvertime && ot[0].OvertimeMultiplier==2,
+     "RobotScored.InOvertime: false for Running hits, true (and x2) for overtime hits"); }
  // --- Danger line in Running = warning only ---
  { var n=new Night(new NightGoal(500,5,1,3));
    n.Danger();

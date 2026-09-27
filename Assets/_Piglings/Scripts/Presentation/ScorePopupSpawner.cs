@@ -90,11 +90,12 @@ namespace Piglings.Presentation
             string total = $"+{e.Total}";
 
             // Show the sum only when something multiplies: a plain ×1 robot goes straight to "+10".
-            // Overtime gets its own tag ("OT×2") so the player sees which ×2 is the bonus, and its own colour.
-            bool overtime = e.OvertimeMultiplier > 1;
+            // Overtime gets its own colour (decided like the chain popup: was this chain thrown in overtime),
+            // and a tag ("OT×2") whenever it actually multiplies, so the player sees which ×2 is the bonus.
+            bool overtime = e.InOvertime;
             var color = overtime ? overtimeColor : robotColor;
             string why = e.Multiplier > 1f ? $"{e.Received} ×{e.Multiplier:0.##}" : $"{e.Received}";
-            if (overtime) why += $"  OT×{e.OvertimeMultiplier}";
+            if (e.OvertimeMultiplier > 1) why += $"  OT×{e.OvertimeMultiplier}";
 
             if (e.Multiplier > 1f || overtime) Spawn(t.position + robotOffset, why, color, depthT, scale, depthT, total);
             else Spawn(t.position + robotOffset, total, color, depthT, scale, depthT);
