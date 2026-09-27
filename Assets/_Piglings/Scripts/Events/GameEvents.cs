@@ -58,7 +58,9 @@ namespace Piglings.Events
     /// Published by the Rules layer right after RobotLostGrip: what that robot is worth, already
     /// added to the score. Received = the value its hitter (stone or ball) carried into it;
     /// Total = Received × Multiplier (rounded) × OvertimeMultiplier; Carries = what this robot's own ball now carries.
-    /// OvertimeMultiplier is 1 outside overtime. Order is its place in the chain (1 = first to lose grip).
+    /// OvertimeMultiplier is 1 outside overtime. InOvertime: this robot's chain was thrown in overtime — the
+    /// same flag as ChainScored.InOvertime, so robot and chain popups always agree on "is this bonus time".
+    /// Order is its place in the chain (1 = first to lose grip).
     /// Presentation shows "Received ×Multiplier OT×2", then "+Total".
     /// </summary>
     public readonly struct RobotScored
@@ -66,11 +68,13 @@ namespace Piglings.Events
         public readonly GameId Robot; public readonly ChainId Chain;
         public readonly int Order; public readonly int Depth;
         public readonly int Received; public readonly float Multiplier; public readonly int OvertimeMultiplier;
-        public readonly int Total; public readonly int Carries;
-        public RobotScored(GameId robot, ChainId chain, int order, int depth, int received, float multiplier, int overtimeMultiplier, int total, int carries)
+        public readonly int Total; public readonly int Carries; public readonly bool InOvertime;
+        public RobotScored(GameId robot, ChainId chain, int order, int depth, int received, float multiplier, int overtimeMultiplier,
+                           int total, int carries, bool inOvertime)
         {
             Robot = robot; Chain = chain; Order = order; Depth = depth;
             Received = received; Multiplier = multiplier; OvertimeMultiplier = overtimeMultiplier; Total = total; Carries = carries;
+            InOvertime = inOvertime;
         }
     }
 
