@@ -1896,7 +1896,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Piglings.Presentation::Piglings.Presentation.CameraShake
   session: {fileID: 1068153025}
   minDepth: 2
-  traumaPerDepth: 0.25
+  traumaPerDepth: 0.2
   bigChainTotal: 300
   chainTrauma: 0.6
   maxOffset: 0.15
