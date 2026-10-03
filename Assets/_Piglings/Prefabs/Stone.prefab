@@ -85,7 +85,7 @@ SpriteRenderer:
   m_SortingOrder: 20
   m_MaskInteraction: 0
   m_Sprite: {fileID: -2413806693520163455, guid: a86470a33a6bf42c4b3595704624658b, type: 3}
-  m_Color: {r: 0.33962262, g: 0.33962262, b: 0.33962262, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -172,3 +172,4 @@ MonoBehaviour:
   m_EditorClassIdentifier: Piglings.Simulation::Piglings.Simulation.Throwable
   body: {fileID: 359057849800564768}
   circle: {fileID: 807829804076733791}
+  look: {fileID: 0}
