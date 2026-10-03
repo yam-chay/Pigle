@@ -4057,7 +4057,7 @@ MonoBehaviour:
   bottomRow: 3
   spacing: 0.14
   rowHeight: 0.12
-  pegScale: 1
+  pegScale: 0.8
   pickRadius: 0.2
   sortingLayer: Pig
   sortingOrder: 20

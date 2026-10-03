@@ -25,4 +25,6 @@ MonoBehaviour:
     count: 3
   - peg: {fileID: 11400000, guid: c85f60bb8dc3a7f4f8dc038fc104a503, type: 2}
     count: 3
+  - peg: {fileID: 11400000, guid: 364b111cec0941b4982551187aa260be, type: 2}
+    count: 3
   pegThrowsPerThreshold: 1
