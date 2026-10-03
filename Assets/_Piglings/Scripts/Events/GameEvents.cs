@@ -109,7 +109,7 @@ namespace Piglings.Events
 
     /// <summary>
     /// "Hours until dawn" (GDD "שעות הלילה"): Running(hour) → PegPlacement → Running(hour+1) … → Ended (dawn, won),
-    /// or Running → Ended (caught, lost). The hour is NightState.ThresholdsReached + 1; it isn't a phase of its own.
+    /// or Running → Ended (caught, lost). The hour is NightState.Hour; it isn't a phase of its own.
     /// </summary>
     public enum NightPhase { Running, PegPlacement, Ended }
     public enum NightResult { Won, Lost }
@@ -146,9 +146,9 @@ namespace Piglings.Events
     }
 
     /// <summary>
-    /// The score crossed a threshold before the last one: a new hour starts. Hour is the new hour (2 after the first
-    /// threshold), Multiplier what its chains will score with, Threshold the score that was crossed. Throwing stops
-    /// now; a peg-placement round follows once every chain has settled.
+    /// A new hour starts: published when a threshold's placement round starts (inside the freeze), not at the
+    /// crossing — the hour's visuals and juice belong to this moment. Hour is the new hour (2 after the first
+    /// threshold), Multiplier what its throws will score with, Threshold the score that was crossed.
     /// </summary>
     public readonly struct HourReached
     {

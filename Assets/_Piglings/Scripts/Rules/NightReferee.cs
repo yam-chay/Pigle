@@ -13,8 +13,9 @@ namespace Piglings.Rules
     /// - Running: the normal night. The stones are the pig's life. A robot that breaches takes the top stone;
     ///   a robot that breaches while the pile is empty catches the pigs — the ONLY loss, possible until dawn.
     ///   Throwing your last stone isn't a loss: the night goes on, and a chain still in flight can cross a threshold.
-    /// - Crossing a threshold (not the last): HourReached. Play goes on — the wall keeps climbing and the pig keeps
-    ///   throwing (new throws already score at the new hour's multiplier). The placement round starts once the chains
+    /// - Crossing a threshold (not the last): play goes on — the wall keeps climbing and the pig keeps throwing, still
+    ///   at the current hour's multiplier. The new hour (HourReached, its multiplier) starts inside the freeze, when
+    ///   the placement round starts — that's the moment its visuals belong to. The placement round starts once the chains
     ///   that were in play AT the crossing have settled, so the chain that crossed is never cut. Chains thrown after
     ///   the crossing don't hold the round off (or steady throwing would postpone it forever): they keep falling and
     ///   scoring through the pause. A chain that crosses several thresholds earns one round each, back to back.
@@ -52,7 +53,7 @@ namespace Piglings.Rules
         public int NextThreshold => _goal.Thresholds[System.Math.Min(_state.ThresholdsReached, _goal.ThresholdCount - 1)];
 
         /// <summary>What chains thrown now score with.</summary>
-        public float HourMultiplier => _chains.Curve.HourMultiplier(_state.ThresholdsReached);
+        public float HourMultiplier => _chains.Curve.HourMultiplier(_state.Hour - 1);
 
         public NightReferee(EventBus bus, NightState state, ChainTracker chains, NightGoal goal = null, PegSetup pegs = null)
         {
@@ -212,7 +213,6 @@ namespace Piglings.Rules
                 {
                     _state.PendingPegRounds++;
                     _roundWaitsFor.Enqueue(new System.Collections.Generic.HashSet<GameId>(_chains.OpenChains));
-                    _bus.Publish(new HourReached(_state.Hour, HourMultiplier, _goal.Thresholds[_state.ThresholdsReached - 1]));
                 }
             }
             UpdateCanThrow();
@@ -306,6 +306,9 @@ namespace Piglings.Rules
             {
                 _state.PendingPegRounds--;
                 _roundWaitsFor.Dequeue();
+                // The new hour starts here, in the freeze: its multiplier applies to the next throw.
+                _state.Hour++;
+                _bus.Publish(new HourReached(_state.Hour, HourMultiplier, _goal.Thresholds[_state.Hour - 2]));
                 _state.PegThrowsLeft = _pegs.ThrowsPerThreshold;
                 // The refill lands during the pause, where the player can watch the pile grow.
                 if (_goal.StonesPerThreshold > 0) ChangeStones(_goal.StonesPerThreshold, StoneChange.Added, GameId.None);

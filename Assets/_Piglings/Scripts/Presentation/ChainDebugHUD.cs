@@ -27,7 +27,7 @@ namespace Piglings.Presentation
                 case NightPhase.Running:
                     if (s.Dawn) return "DAWN — letting the wall settle";
                     // Play goes on: the pause comes when the chain that crossed the line has landed.
-                    return s.PendingPegRounds > 0 ? $"HOUR {s.Hour}! Pause when the chain lands" : null;
+                    return s.PendingPegRounds > 0 ? $"THRESHOLD! Hour {s.Hour + 1} starts when the chain lands" : null;
                 case NightPhase.PegPlacement:
                     return s.PegThrowsLeft > 0 ? $"HOUR {s.Hour} — place pegs ({s.PegThrowsLeft} left)" : $"HOUR {s.Hour} — refill";
                 default: return null;

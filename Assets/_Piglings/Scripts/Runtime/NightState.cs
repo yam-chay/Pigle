@@ -26,7 +26,9 @@ namespace Piglings.Runtime
         public NightEndReason EndReason;
 
         // The hours (GDD "שעות הלילה").
-        public int ThresholdsReached;    // thresholds crossed so far; the hour being played is this + 1
+        public int ThresholdsReached;    // thresholds crossed so far (banking, the next threshold, dawn)
+        public int Hour = 1;             // the hour being played: +1 when a threshold's placement round STARTS (in the freeze),
+                                         // not at the crossing — throws in between still score at the old hour
         public bool Dawn;                // the last threshold was crossed: won, ends once every chain settles
         public int PendingPegRounds;     // thresholds crossed whose placement round hasn't been played yet
         public int PegThrowsLeft;        // in the current placement round
@@ -41,7 +43,6 @@ namespace Piglings.Runtime
 
         // Derived, not stored: Phase is the source of truth.
         public bool Ended => Phase == NightPhase.Ended;
-        public int Hour => ThresholdsReached + 1;
 
         // Robots climb and the spawner runs while the night is Running — including between a threshold crossing and
         // its round (the player keeps throwing then). The wall freezes only for the placement round itself.
