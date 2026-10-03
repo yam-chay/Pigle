@@ -5005,7 +5005,7 @@ MonoBehaviour:
   container: {fileID: 315329951}
   robotOffset: {x: 0, y: 0.25, z: 0}
   robotScale: 1
-  scalePerDepth: 0.2
+  scalePerDepth: 0.4
   robotColor:
     mode: 0
     gradient:
