@@ -32,8 +32,8 @@ namespace Piglings.Simulation
         // When the current placement round started (Time.time), for the refill pause.
         private float _roundStartedAt;
 
-        /// <summary>Robots climb and spawn only while the night is being played: paused for peg placement, stopped once over.</summary>
-        public bool WallMoving => State.Phase == NightPhase.Running;
+        /// <summary>Robots climb and spawn only while an hour is being played: frozen from a threshold crossing to the end of its round, stopped once over.</summary>
+        public bool WallMoving => State.WallMoving;
 
         // For views (Presentation can't reference Rules): the hours as plain numbers.
         public int NextThreshold => _referee.NextThreshold;

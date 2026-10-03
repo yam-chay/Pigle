@@ -43,7 +43,7 @@ namespace Piglings.Simulation
 
         private void Update()
         {
-            if (!session.WallMoving) return;   // paused for peg placement, or the night is over
+            if (!session.WallMoving) return;   // frozen for a threshold / peg placement, or the night is over
             var night = session.Night;
             _timer -= Time.deltaTime;
             if (_timer > 0f) return;

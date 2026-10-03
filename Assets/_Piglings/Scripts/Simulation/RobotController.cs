@@ -46,6 +46,7 @@ namespace Piglings.Simulation
         private float _climbSpeed;
         private float _breakTimer;
         private float _fallTimer;
+        private float _stuckTimer;     // how long a falling ball has been (nearly) still
         private float _breachElapsed;
         private Vector2 _breachFrom;   // where it touched the breach line
         private Vector2 _perch;        // its breach slot on the perch (BarnTopZone)
@@ -141,6 +142,7 @@ namespace Piglings.Simulation
                     break;
                 case RobotState.Falling:
                     _fallTimer = _def.MaxFallSeconds;
+                    _stuckTimer = 0f;
                     gameObject.layer = LayerMask.NameToLayer(PhysicsLayers.RobotBall);
                     body.bodyType = RigidbodyType2D.Dynamic;
                     body.angularVelocity = UnityEngine.Random.Range(-360f, 360f);
@@ -169,9 +171,13 @@ namespace Piglings.Simulation
             }
             else if (State == RobotState.Falling)
             {
-                // A ball resting on a hold would keep its chain open forever — and the night with it.
+                // A ball resting on a hold or wedged between pegs would keep its chain open — and the next hour with
+                // it. Two limits: still for StuckSeconds (the usual case, quick), or MaxFallSeconds in the air at all.
+                // A ball just starting to fall is still for a moment too, but gravity gets it past StuckSpeed in a
+                // few frames, well inside StuckSeconds.
                 _fallTimer -= Time.deltaTime;
-                if (_fallTimer <= 0f) Remove(RemovalReason.TimedOut);
+                _stuckTimer = body.linearVelocity.sqrMagnitude < _def.StuckSpeed * _def.StuckSpeed ? _stuckTimer + Time.deltaTime : 0f;
+                if (_fallTimer <= 0f || _stuckTimer >= _def.StuckSeconds) Remove(RemovalReason.TimedOut);
             }
         }
 

@@ -44,7 +44,8 @@ namespace Piglings.Events
         public RobotBreached(GameId robot) { Robot = robot; }
     }
 
-    // TimedOut: a falling ball that never reached the ground (e.g. resting on a hold) — removed so its chain can close.
+    // TimedOut: a falling ball that never reached the ground (stuck still on a hold or between pegs, or in the air too
+    // long) — removed so its chain can close.
     // EnteredBarn: a breaching robot's sequence is over. Cleanup only — the breach was counted at RobotBreached.
     public enum RemovalReason { HitGround, EnteredBarn, TimedOut }
 
