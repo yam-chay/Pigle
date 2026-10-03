@@ -38,12 +38,12 @@ namespace Piglings.Presentation
             _bus = null;
         }
 
-        // The wall pauses for the end-of-night choice: freeze the climb animation with it,
+        // The wall pauses for peg placement: freeze the climb animation with it,
         // so frozen robots don't keep pedalling in place. A breaching robot isn't paused (it finishes its sequence).
         private void Update()
         {
             if (animator == null || robot.Session == null) return;
-            bool paused = robot.Session.State.Phase == NightPhase.ChoicePending && robot.State == RobotState.Climbing;
+            bool paused = robot.Session.State.Phase == NightPhase.PegPlacement && robot.State == RobotState.Climbing;
             animator.speed = paused ? 0f : 1f;
         }
 

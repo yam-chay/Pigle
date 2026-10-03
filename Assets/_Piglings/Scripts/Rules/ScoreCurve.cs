@@ -28,17 +28,17 @@ namespace Piglings.Rules
         public int WolfValue { get; }
         public float MultiplierPerDepth { get; }
         public bool CarryScoredTotal { get; }
-        public int OvertimeMultiplier { get; }    // chain points in overtime are worth this many times more
+        public float HourMultiplierStep { get; }  // each hour reached adds this to what chains score: ×1, ×1.5, ×2…
 
         public ScoreCurve(int stoneValue = 10, int growthPerHit = 10, int wolfValue = 10,
-                          float multiplierPerDepth = 0.5f, bool carryScoredTotal = false, int overtimeMultiplier = 2)
+                          float multiplierPerDepth = 0.5f, bool carryScoredTotal = false, float hourMultiplierStep = 0.5f)
         {
             StoneValue = stoneValue;
             GrowthPerHit = growthPerHit;
             WolfValue = wolfValue;
             MultiplierPerDepth = Math.Max(0f, multiplierPerDepth);
             CarryScoredTotal = carryScoredTotal;
-            OvertimeMultiplier = Math.Max(1, overtimeMultiplier);
+            HourMultiplierStep = Math.Max(0f, hourMultiplierStep);
         }
 
         /// <summary>
@@ -49,16 +49,18 @@ namespace Piglings.Rules
 
         public float Multiplier(int depth) => 1f + MultiplierPerDepth * depth;
 
+        /// <summary>The score multiplier of the hour after this many thresholds: hour 1 ×1, hour 2 ×1.5, hour 3 ×2…</summary>
+        public float HourMultiplier(int thresholdsReached) => 1f + HourMultiplierStep * Math.Max(0, thresholdsReached);
+
         /// <summary>
-        /// What a robot knocked loose scores: received × depth multiplier, rounded, × phaseMultiplier.
-        /// The one place chain points are multiplied — depth, and overtime (phaseMultiplier = OvertimeMultiplier,
-        /// passed by ChainTracker only while the night is in Overtime). The phase multiplier is applied after
-        /// rounding, so an overtime robot is always exactly phaseMultiplier × its Running self.
+        /// What a robot knocked loose scores: received × depth multiplier × hour multiplier, rounded once.
+        /// The one place chain points are multiplied. ChainTracker passes the hour multiplier its chain was thrown
+        /// with. Rounded once at the end (not per factor), so ×1.5 hours don't stack rounding errors.
         /// </summary>
-        public int RobotTotal(int received, int depth, int phaseMultiplier = 1)
+        public int RobotTotal(int received, int depth, float hourMultiplier = 1f)
         {
-            double atDepth = Math.Round(received * (double)Multiplier(depth), MidpointRounding.AwayFromZero);
-            return ClampToInt(atDepth * Math.Max(1, phaseMultiplier));
+            double total = received * (double)Multiplier(depth) * Math.Max(1f, hourMultiplier);
+            return ClampToInt(Math.Round(total, MidpointRounding.AwayFromZero));
         }
 
         /// <summary>A stone or ball after it knocked one more robot loose.</summary>

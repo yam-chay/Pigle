@@ -10,8 +10,8 @@ namespace Piglings.Simulation
     ///
     /// Unlike BarnTopZone (a plain marker the robot checks for), this zone publishes the event
     /// itself: entering it changes nothing about the robot, so the robot shouldn't have to know
-    /// about it. No robot state either — "in danger" is a fact for views (and later for
-    /// overtime, where this line ends the night), not a phase of the robot's life.
+    /// about it. No robot state either — "in danger" is a warning for views, never a rule: it doesn't
+    /// end or change the night. Not a phase of the robot's life.
     /// </summary>
     [RequireComponent(typeof(Collider2D))]
     public sealed class DangerZone : MonoBehaviour

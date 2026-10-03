@@ -8,7 +8,7 @@ namespace Piglings.Simulation
     /// The pig's ammo as real stones on the perch: what you see is exactly what you have.
     ///
     /// It MIRRORS the count, it never decides it. NightState.StonesLeft (written only by NightReferee) is the
-    /// one truth; this listens to StonesChanged — Thrown, Stolen, Added, Forfeited — and makes the stones
+    /// one truth; this listens to StonesChanged — Thrown, Stolen, Added — and makes the stones
     /// match. So theft, refills and "empty" all come from the Rules, and CoreCheck can test them.
     ///
     /// - Stones sit in fixed pyramid slots on the rag, no physics, no collider (Throwable.Park).
@@ -111,9 +111,6 @@ namespace Piglings.Simulation
                     break;
                 case StoneChange.Added:
                     for (int i = 0; i < e.Delta; i++) AddToPile(animate: true);
-                    break;
-                case StoneChange.Forfeited:
-                    while (Total > 0) Destroy(TakeTop().gameObject);
                     break;
                 // Thrown: ThrowController already took the stone out of the hand (ReleaseHeld).
             }

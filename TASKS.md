@@ -1,7 +1,7 @@
 # TASKS — Piglings prototype
 
-> **Next up (2026-10-03):** 🖥 M7.3b wire + check Breaching in the editor → M6.3 stone readability → decide the empty-pile "dead time" (open questions) → M5.2 playtest + tune with the `[Night]` log lines.
-> Why this order: M5.2 tunes the death spiral, which you can only judge if you can *see* stones being stolen (M7.3) and *follow* the stone (M6.3). Juice and the M6.2 end panel wait until after M5.2.
+> **Next up (2026-10-03):** Hours until dawn — M8.1 ☁ (this PR) → 🖥 M8.1b set the thresholds + check in play → M8.2 pile refactor → M8.3 peg placement → M8.4 hour palettes → M8.5 Bouncy. Then M6.3 stone readability → decide the empty-pile "dead time" → M5.2.
+> Why: the hours change what a night is (no more Stay/Leave), so M5.2 tunes the new loop, not the old one. M5.2 still needs the theft (M7.3) and the stone (M6.3) readable.
 
 ☁ = cloud session OK (code/docs only) · 🖥 = local, needs the Unity editor (use Claude Code + unity-mcp)
 
@@ -33,21 +33,21 @@
 
 ## M5 — Walls matter
 - [ ] 🖥 Wall_Straw / Wall_Brick definitions with different hold bounciness; A/B them in play.
-- [ ] 🖥 M5.2 Tune the night: `targetScore`, `throwsAvailable` (the pile = the pig's life), spawn rate. Log whether the pile drains too fast to breaches.
+- [ ] 🖥 M5.2 Tune the night: `thresholds`, `stonesPerThreshold`, `throwsAvailable` (the pile = the pig's life), spawn rate. Log whether the pile drains too fast to breaches.
 - [x] ☁ Night end condition in Rules (`NightReferee`): reach `targetScore` = win (once everything in flight settles); *(loss rule since replaced by M7.1: one life, the pile)* Event: `NightEnded`. (Changed from "survive X seconds" — a timer rewards stalling; a score target rewards chains.)
 
 ## M6 — Night loop (a night that starts, ends and restarts)
-- [ ] ☁+🖥 M6.2 Real (uGUI) end panel and choice buttons, replacing the M6.5 OnGUI placeholders: result + reason, score / target, score per stone, mastery gained, best chain. (Restarting is M6.6.)
+- [ ] ☁+🖥 M6.2 Real (uGUI) end panel, replacing the OnGUI placeholder: result (dawn / caught), hours reached, score, banked, score per stone, mastery gained, best chain. (Restarting is M6.6.)
 - [ ] 🖥 M6.3 Stone readability (playtest TODO): colour/outline/trail so the stone is easy to follow.
 - [x] ☁ M6.4 Danger zone: `DangerZone` trigger (layer Zones) a little below the roof publishes `RobotEnteredDangerZone` once per robot; `RobotView` sets Animator bool `InDanger`. No robot state. Breach warning now; later the line that ends overtime.
 - [x] 🖥 M6.4b Wire the danger zone: place the trigger, add `InDanger`, bake `WolfBot_ClimbDanger` (Piglings ▸ Animation ▸ Bake WolfBot Clips — Climb + red eyes + antenna wiggle, generated), Climb → ClimbDanger on `InDanger`, Break reachable from both. Steps in PR #7 and the play-again PR.
-- [ ] M6.5 End-of-night choice + overtime — GDD section **"סוף הלילה: להמשיך או ללכת"** (source of truth). Phases `Running → ChoicePending → Overtime → Ended`, `ChoicePending → Ended` (Leave). Reaching the target ends the danger, not the night.
+- [x] ~~M6.5 End-of-night choice + overtime~~ — **replaced by Hours until dawn (M8)**; kept for history. Was: GDD section "סוף הלילה: להמשיך או ללכת". Phases `Running → ChoicePending → Overtime → Ended`, `ChoicePending → Ended` (Leave). Reaching the target ends the danger, not the night.
   - [x] ☁ M6.5a Rules/Events/Runtime: `NightPhase` state machine in `NightReferee` (SetPhase → EnterPhase); target reached + no open chain → ChoicePending; Stay → Overtime (overtime score, no weapon mastery), Leave → Ended; overtime ends on stones out or the danger line; the sweep scores every robot on the wall flat with the chain robot-value function; `NightBanked` events (Barn/Weapon) for Meta to consume later. CoreCheck for every transition, the no-weapon-mastery rule and the sweep.
   - [x] ☁ M6.5b Simulation/Presentation code: wall pauses in ChoicePending (no `Time.timeScale`), Stay/Leave buttons, sweep on Ended, falling-robot timeout (a ball resting on a hold can't keep a chain open forever), danger line looks different in Overtime, sweep counter, end screen (result, score vs target, barn/weapon mastery, play again), one tuning log line at Ended.
   - [x] 🖥 M6.5c Unity wiring: add `NightChoice`, `NightEndView`, `DangerZoneView` (+ a line sprite) to Night.unity; check `RobotDefinition.Max Fall Seconds`. Steps in the PR.
   - Waits for Meta: turning `NightBanked` into barn / weapon mastery.
-- [x] ☁ M6.7 Overtime doubles points in play: ×2 at scoring time in `ScoreCurve.RobotTotal` (`ScoringDefinition.overtimeMultiplier`), popups tagged `OT×2`; barn mastery banks points as scored (no second ×2); the sweep stays ×1 on both paths.
-- [x] ☁ M6.8 Overtime fairness + look: only robots spawned during overtime can end it at the danger line (no instant end from where robots froze); overtime chain results use their own style (animated rainbow); "Preview popups" context menu.
+- [x] ~~☁ M6.7~~ *(replaced by M8: hour multiplier)* Overtime doubles points in play: ×2 at scoring time in `ScoreCurve.RobotTotal` (`ScoringDefinition.overtimeMultiplier`), popups tagged `OT×2`; barn mastery banks points as scored (no second ×2); the sweep stays ×1 on both paths.
+- [x] ~~☁ M6.8~~ *(replaced by M8)* Overtime fairness + look: only robots spawned during overtime can end it at the danger line (no instant end from where robots froze); overtime chain results use their own style (animated rainbow); "Preview popups" context menu.
 - [x] ☁ M6.6 Play again: after `NightEnded` the HUD shows "Click to play again"; the next click (after a short grace) reloads the active scene (`PlayAgain`, Simulation).
 
 ## M7 — Ammo on the perch + breaches that play out
@@ -61,6 +61,15 @@ Context (story frame, GDD): the villain is the Big Bad Wolf; the robots are his 
   - [x] ☁ M7.3c Breach sequence (code): the robot climbs to the free breach slot nearest to where it arrived (fixed slots on the perch, above the throw line; overflow stands past the last slot), the stolen stone hops to it (lands at 60 %), it holds it, jumps off, is removed at `BreachSeconds` and frees its slot. All timed from `BreachSeconds` (`BreachTiming`, CoreCheck). `RobotView` lowers a breaching robot's opacity ("not a target"); its stone stays opaque.
   - [ ] 🖥 M7.3b Editor: add 4–5 breach-slot Transforms in a row beside the pile (above the throw line) and assign them, in order, to `BarnTopZone.Slots`; raise `Breach Seconds` (0.5 is too short for the sequence — try 1.5); check `Breach Opacity` (~0.7) on the robot prefab's `RobotView`. Play-check steps in the PR. A real breach clip (bones only, not colours) comes later.
 
+## M8 — Hours until dawn (GDD section **"שעות הלילה"** = source of truth)
+Replaces M6.5's Stay/Leave + overtime. A night = N score thresholds ("hours"); each one raises the score multiplier (+`hourMultiplierStep`), refills stones and pauses the wall for a peg-placement round; the last one is dawn (won). Loss unchanged (breach on an empty pile); a loss banks the last threshold reached. Structure: ARCHITECTURE.md → "Night phases: hours until dawn".
+- [x] ☁ M8.1 Rules/Runtime/Events: phases `Running → PegPlacement → Running … → Ended(Dawn)`, `Caught` from Running; hour multiplier in `ScoreCurve.RobotTotal` (fixed at throw, rounded once, never carried); `HourReached` / `DawnReached` / `PegPlaced` / `PegMerged`; refill per threshold; board (sockets) + shelf state; `PlacePeg` (place, merge, max level); loss banks the last threshold; sweep on both outcomes (scored only on a win). Overtime / choice removed. `PegDefinition` (id, maxLevel, mergeable), `NightDefinition` thresholds / refill / loadout / throws, `refillPauseSeconds` clock in `NightSession`. CoreCheck for all of it.
+  - [ ] 🖥 M8.1b Editor: set `Night_01` thresholds (and `stonesPerThreshold`), check `Scoring` hour step; remove the old NightChoice component; play to dawn and to caught. Steps in the PR.
+- [ ] ☁ M8.2 Pile refactor, no behaviour change: what `StonePile` does (slots, mirror-and-reconcile, hop) becomes one reusable piece; `StonePile` sits on it.
+- [ ] ☁+🖥 M8.3 Peg placement: sockets on the Holds, peg shelf (one pile per type, above the pig), next peg hops to the hand, right-click swaps / left-click picks, peg throw on the normal arc, snap to the nearest valid socket to the aimed point (radius; none = red line, refused), highlights, transparency, dim, shelf pulse / hover / cursor. Sprites on `PegDefinition` (missing = still runs).
+- [ ] ☁+🖥 M8.4 Hour palettes: one asset per hour (popup colours + background tint, night → dawn); day background on `DawnReached`.
+- [ ] ☁+🖥 M8.5 Bouncy peg: a ball that hits it gets +bonus (× level) on its depth multiplier for everything it scores after; once per peg per ball.
+
 ## Open design questions (from the GDD — don't implement until decided)
 - One robot line per run vs. mixed swarm.
 - House modification mid-run vs. between runs.
@@ -73,8 +82,8 @@ Context (story frame, GDD): the villain is the Big Bad Wolf; the robots are his 
 - **PROPOSAL** — Loadout size in the day phase (how many weapons you can take onto the perch).
 - **IDEA** — Hidden "Pacifist" achievement: lose every stone to the wolves without throwing once (possible weapon unlock).
 - *(Decided: breaches steal stones — option A; the 5-breach limit is gone. See M7.1.)*
-- **OPEN** — Empty-pile dead time: with 0 stones, nothing falling and the target not reached, the player can only watch robots climb until one breaches (~10–15 s). Fast-forward the wall once the player can't act, or make the wait the start of the loss scene (the wolf begins his climb)?
-  - **PROPOSAL C — "the wolf cranks the remote"**: when the player has **no possible action** (no stones, nothing in flight, below the target), the robots climb at a high multiplier, so the breach lands in ~2 s and the loss scene starts. The condition is "no possible action", not `StonesLeft == 0`: `AddStones` can refill the pile, and a falling chain can still win. Don't build it yet.
+- **OPEN** — Empty-pile dead time: with 0 stones, nothing falling and dawn not reached, the player can only watch robots climb until one breaches (~10–15 s). Fast-forward the wall once the player can't act, or make the wait the start of the loss scene (the wolf begins his climb)?
+  - **PROPOSAL C — "the wolf cranks the remote"**: when the player has **no possible action** (no stones, nothing in flight, below dawn), the robots climb at a high multiplier, so the breach lands in ~2 s and the loss scene starts. The condition is "no possible action", not `StonesLeft == 0`: `AddStones` can refill the pile, and a falling chain can still win. Don't build it yet.
 - **WATCH in M5.2** — Death spiral: every breach takes a stone, fewer stones → fewer throws → more breaches. Fine if it's readable (the pile shows it); if a bad first minute always decides the night, tune spawn rate before stone count.
 
 ## Playtest log

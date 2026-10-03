@@ -35,10 +35,6 @@ namespace Piglings.Presentation
         [Tooltip("Depth at which a robot popup is fully 'deep': right end of the gradient, full shake and extra life.")]
         [SerializeField, Min(1)] private int deepAtDepth = 3;
 
-        [Tooltip("Popups for points scored in overtime: an animated rainbow by default, so the bonus is unmistakable. " +
-                 "Only the popups — the danger line has its own Overtime Color (DangerLine → Danger Zone View).")]
-        [SerializeField] private PopupColor overtimeColor = new PopupColor
-            { mode = PopupColorMode.PerLetter, gradient = PopupColor.Rainbow(), speed = 1.2f, spread = 0.8f };
 
         [Header("Chain result")]
         [Tooltip("Where the chain result appears — a fixed spot (e.g. above the barn) so it's always read in the same place.")]
@@ -46,9 +42,6 @@ namespace Piglings.Presentation
         [SerializeField, Min(0.01f)] private float chainScale = 2f;
         [SerializeField] private PopupColor chainColor = new PopupColor
             { mode = PopupColorMode.Solid, gradient = PopupColor.Flat(new Color(1f, 0.85f, 0.3f)) };
-        [Tooltip("Chain result for a chain thrown in overtime: an animated rainbow by default, like the overtime popups.")]
-        [SerializeField] private PopupColor overtimeChainColor = new PopupColor
-            { mode = PopupColorMode.PerLetter, gradient = PopupColor.Rainbow(), speed = 1.2f, spread = 0.8f };
         [Tooltip("A chain worth this much (or more) gets the full treatment: longest life, strongest shake.")]
         [SerializeField, Min(1)] private int bigChainTotal = 300;
         [Tooltip("Smallest chain that gets the big popup. 1-robot chains already got their \"+N\"; 0 = misses.")]
@@ -89,16 +82,15 @@ namespace Piglings.Presentation
             float scale = robotScale * (1f + scalePerDepth * e.Depth);
             string total = $"+{e.Total}";
 
-            // Show the sum only when something multiplies: a plain ×1 robot goes straight to "+10".
-            // Overtime gets its own colour (decided like the chain popup: was this chain thrown in overtime),
-            // and a tag ("OT×2") whenever it actually multiplies, so the player sees which ×2 is the bonus.
-            bool overtime = e.InOvertime;
-            var color = overtime ? overtimeColor : robotColor;
+            // Show the sum only when something multiplies: a plain ×1 robot in hour 1 goes straight to "+10".
+            // The hour's multiplier gets its own tag ("H2×1.5"), so the player sees which part the hour added.
+            // (Each hour's own colours come with the hour palettes.)
+            bool hourBonus = e.HourMultiplier > 1f;
             string why = e.Multiplier > 1f ? $"{e.Received} ×{e.Multiplier:0.##}" : $"{e.Received}";
-            if (e.OvertimeMultiplier > 1) why += $"  OT×{e.OvertimeMultiplier}";
+            if (hourBonus) why += $"  H{e.Hour}×{e.HourMultiplier:0.##}";
 
-            if (e.Multiplier > 1f || overtime) Spawn(t.position + robotOffset, why, color, depthT, scale, depthT, total);
-            else Spawn(t.position + robotOffset, total, color, depthT, scale, depthT);
+            if (e.Multiplier > 1f || hourBonus) Spawn(t.position + robotOffset, why, robotColor, depthT, scale, depthT, total);
+            else Spawn(t.position + robotOffset, total, robotColor, depthT, scale, depthT);
         }
 
         private void OnChainScored(ChainScored e)
@@ -107,13 +99,12 @@ namespace Piglings.Presentation
 
             string robots = e.RobotsDropped == 1 ? "1 robot" : $"{e.RobotsDropped} robots";
             float size = Mathf.Clamp01(e.Total / (float)bigChainTotal);
-            var color = e.InOvertime ? overtimeChainColor : chainColor;
-            Spawn(chainAnchor.position, $"{robots} · depth {e.MaxDepth}\n+{e.Total}", color, 0f, chainScale, size);
+            Spawn(chainAnchor.position, $"{robots} · depth {e.MaxDepth}\n+{e.Total}", chainColor, 0f, chainScale, size);
         }
 
         // Inspector: ⋮ (or right-click the component header) → "Preview popups", in Play mode.
-        // Spawns one of every kind side by side at the chain anchor — depth 0..3, overtime, chain result —
-        // so colour modes, shake and life can be compared in seconds instead of playing into overtime.
+        // Spawns one of every kind side by side at the chain anchor — depth 0..3, an hour bonus, chain result —
+        // so colour modes, shake and life can be compared in seconds instead of playing into a later hour.
         // Visuals only: nothing is scored.
         [ContextMenu("Preview popups (Play mode)")]
         private void PreviewPopups()
@@ -133,9 +124,8 @@ namespace Piglings.Presentation
                 Spawn(pos, $"{10 * (depth + 1)} ×{mult:0.##}", robotColor, depthT, robotScale * (1f + scalePerDepth * depth), depthT,
                       $"+{Mathf.RoundToInt(10 * (depth + 1) * mult)}");
             }
-            Spawn(origin + new Vector3(0f, -2.2f, 0f), "20 ×1.5  OT×2", overtimeColor, 0.33f, robotScale * 1.2f, 0.33f, "+60");
+            Spawn(origin + new Vector3(0f, -2.2f, 0f), "20 ×1.5  H3×2", robotColor, 0.33f, robotScale * 1.2f, 0.33f, "+60");
             Spawn(origin, "5 robots · depth 3\n+300", chainColor, 0f, chainScale, 1f);
-            Spawn(origin + new Vector3(0f, 1.2f, 0f), "4 robots · depth 2 (OT)\n+400", overtimeChainColor, 0f, chainScale, 1f);
         }
 
         private void Spawn(Vector3 position, string text, PopupColor color, float colorKey, float scale, float intensity,

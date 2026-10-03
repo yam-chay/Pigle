@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Piglings.Events;
 
 namespace Piglings.Runtime
@@ -19,20 +20,44 @@ namespace Piglings.Runtime
 
         // Written by NightReferee. Simulation reads Phase and CanThrow; Presentation reads the rest.
         public NightPhase Phase;   // the one source of truth for where the night is
-        public int StonesLeft;     // throws left; a robot reaching the top (before the target) costs stones too
-        public bool CanThrow;      // false while paused, once out of stones, after the target (until Stay), or night over
+        public int StonesLeft;     // throws left; a robot that breaches takes one
+        public bool CanThrow;      // false during peg placement, once out of stones, after a threshold (until its round), or night over
         public NightResult Result;
         public NightEndReason EndReason;
-        public StayOrLeave Choice;
 
-        public int StonesAtTarget = -1;  // stones left when the score first reached the target; -1 = not yet
-        public int ScoreAtChoice;        // score when the choice appeared (target + overshoot)
-        public int OvertimeScore;        // chain points scored during overtime (already doubled); the sweep isn't in it
-        public int SweepScore;           // what the end-of-night sweep added
+        // The hours (GDD "שעות הלילה").
+        public int ThresholdsReached;    // thresholds crossed so far; the hour being played is this + 1
+        public bool Dawn;                // the last threshold was crossed: won, ends once every chain settles
+        public int PendingPegRounds;     // thresholds crossed whose placement round hasn't been played yet
+        public int PegThrowsLeft;        // in the current placement round
+
+        // The pegs. By string id, never a ScriptableObject: saves can store them, and Rules can't see Definitions.
+        public PegSocket[] Sockets = new PegSocket[0];        // index = socket id (one per Hold); max pegs = this length
+        public List<PegStack> Shelf = new List<PegStack>();   // in loadout order; up to PegSetup.ShelfCapacity types
+
+        public int SweepScore;           // what the end-of-night sweep added (0 on a loss: there it's visual only)
+        public int BankedScore;          // what the night keeps: the live score at dawn, the last threshold reached when caught
         public int BarnMastery;          // Σ Amount × Multiplier banked to the barn
-        public int WeaponMastery;        // Σ Amount × Multiplier banked to the weapon
 
         // Derived, not stored: Phase is the source of truth.
         public bool Ended => Phase == NightPhase.Ended;
+        public int Hour => ThresholdsReached + 1;
+    }
+
+    /// <summary>One socket on the wall (a Hold). Empty = a plain hold.</summary>
+    [System.Serializable]
+    public sealed class PegSocket
+    {
+        public string PegId;   // null or "" = empty
+        public int Level;      // 0 when empty; 1 when placed; +1 per merge, up to the type's max level
+        public bool IsEmpty => string.IsNullOrEmpty(PegId);
+    }
+
+    /// <summary>How many pegs of one type are left on the shelf.</summary>
+    [System.Serializable]
+    public sealed class PegStack
+    {
+        public string PegId;
+        public int Count;
     }
 }
