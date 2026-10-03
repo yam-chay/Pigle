@@ -88,6 +88,7 @@ MonoBehaviour:
   - {fileID: 8837286882924857491}
   - {fileID: 7508629624313504060}
   - {fileID: 934885069232273588}
+  breachOpacity: 0.85
 --- !u!50 &6388284224697651634
 Rigidbody2D:
   serializedVersion: 5
