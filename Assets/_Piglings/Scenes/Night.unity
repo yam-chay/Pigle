@@ -2057,7 +2057,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Piglings.Presentation::Piglings.Presentation.DangerZoneView
   session: {fileID: 1068153025}
   line: {fileID: 698291723}
-  warningColor: {r: 1, g: 0.27400643, b: 0, a: 0.35}
+  warningColor: {r: 1, g: 0, b: 0.058823705, a: 0.7372549}
   overtimeColor:
     mode: 3
     gradient:
@@ -2143,7 +2143,7 @@ SpriteRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_Sprite: {fileID: 7482667652216324306, guid: 311925a002f4447b3a28927169b83ea6, type: 3}
-  m_Color: {r: 1, g: 0.9858491, b: 0.9858491, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -5137,7 +5137,7 @@ BoxCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: 0, y: -0.038791463}
+  m_Offset: {x: 0, y: -0.016238213}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0.5, y: 0.5}
@@ -5147,7 +5147,7 @@ BoxCollider2D:
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
-  m_Size: {x: 4.4, y: 0.12241706}
+  m_Size: {x: 4.4, y: 0.07731056}
   m_EdgeRadius: 0
 --- !u!50 &2147037961
 Rigidbody2D:
