@@ -138,7 +138,10 @@ class Night{
  // Like the real wall: a robot spawns (in the current phase), then climbs into the zone / the barn.
  public GameId Spawn(){ var r=Ids.Next(); Bus.Publish(new RobotSpawned(r)); return r; }
  public void Breach(){ Breach(Spawn()); }
- public void Breach(GameId r){ Bus.Publish(new RobotRemoved(r,ChainId.None,RemovalReason.EnteredBarn)); }
+ // A whole breach, like the real robot: it starts (counted here) and, BreachSeconds later, is removed (cleanup).
+ public void Breach(GameId r){ BreachStart(r); BreachEnd(r); }
+ public void BreachStart(GameId r){ Bus.Publish(new RobotBreached(r)); }
+ public void BreachEnd(GameId r){ Bus.Publish(new RobotRemoved(r,ChainId.None,RemovalReason.EnteredBarn)); }
  public void Danger(){ Danger(Spawn()); }
  public void Danger(GameId r){ Bus.Publish(new RobotEnteredDangerZone(r)); }
  public int BankedTo(MasteryDestination d){ int t=0; foreach(var b in Banked) if(b.Destination==d) t+=b.Amount*b.Multiplier; return t; }
@@ -268,6 +271,40 @@ static void NightChecks(){
    Check(n.Ends.Count==1 && n.Ends[0].Reason==NightEndReason.Caught && n.Ends[0].Breaches==4,"4th breach on the empty pile -> caught");
    n.Breach();
    Check(n.Ends.Count==1 && n.St.RobotsReachedTop==4,"NightEnded fires once; nothing counts after the end"); }
+ // --- M7.3: the breach counts when it STARTS (Breaching), never again at the removal ---
+ { var n=new Night(new NightGoal(500,3)); var ch=new System.Collections.Generic.List<StonesChanged>();
+   n.Bus.Subscribe<StonesChanged>(e=>ch.Add(e));
+   var thief=n.Spawn(); n.BreachStart(thief);
+   Check(ch.Count==1 && ch[0].Cause==StoneChange.Stolen && ch[0].Robot==thief && n.St.StonesLeft==2 && n.St.RobotsReachedTop==1,
+     "breach with stones left: one Stolen at Breaching entry (3 -> 2), counted once");
+   n.BreachEnd(thief);
+   Check(ch.Count==1 && n.St.StonesLeft==2 && n.St.RobotsReachedTop==1 && n.Ends.Count==0,
+     "...and the removal at the end of the sequence counts nothing (no second Stolen, no second breach)"); }
+ { var n=new Night(new NightGoal(500,1));
+   var t=n.Throw(0); n.Settle(t);
+   var r=n.Spawn(); n.BreachStart(r);
+   Check(n.Ends.Count==1 && n.Ends[0].Reason==NightEndReason.Caught && n.St.Phase==NightPhase.Ended,
+     "breach on an empty pile: Caught at Breaching entry, before the robot is removed");
+   n.BreachEnd(r);
+   Check(n.Ends.Count==1 && n.St.RobotsReachedTop==1,"...the removal afterwards changes nothing"); }
+ { var n=new Night(new NightGoal(60,2)); var ch=new System.Collections.Generic.List<StonesChanged>();
+   n.Bus.Subscribe<StonesChanged>(e=>ch.Add(e));
+   var thief=n.Spawn(); n.BreachStart(thief);              // takes a stone: 2 -> 1
+   var t=n.Throw(3);                                       // the last stone's chain crosses the target while the thief is still breaching
+   n.BreachEnd(thief);                                     // the thief leaves with the pile now empty: NOT a breach on an empty pile
+   n.Settle(t);
+   Check(n.St.StonesLeft==0 && n.St.RobotsReachedTop==1 && n.Ends.Count==0 && n.St.Phase==NightPhase.ChoicePending,
+     "target reached by a chain during another robot's Breaching (after it stole): no catch, the night goes to the choice");
+   int stolen=0; foreach(var c in ch) if(c.Cause==StoneChange.Stolen) stolen++;
+   n.Ref.Leave();
+   Check(stolen==1 && n.Ends.Count==1 && n.Ends[0].Result==NightResult.Won,"...one theft in total, and the night is won"); }
+ { // An overtime robot's breach ends overtime when it starts, like the danger line (it crossed the line on the way).
+   var n=new Night(new NightGoal(50,10));
+   var t=n.Throw(3); n.Settle(t); n.Ref.Stay();
+   var r=n.Spawn(); n.BreachStart(r);
+   Check(n.Ends.Count==1 && n.Ends[0].Reason==NightEndReason.DangerLine,"overtime robot breaching: overtime ends at Breaching entry");
+   n.BreachEnd(r);
+   Check(n.Ends.Count==1,"...and its removal doesn't end anything twice"); }
  { var n=new Night(new NightGoal(500,1));
    var t=n.Throw(1); n.Breach();
    Check(n.Ends.Count==1 && n.Ends[0].Reason==NightEndReason.Caught,"breach on an empty pile loses even with a chain still falling (it didn't reach the target first)"); }

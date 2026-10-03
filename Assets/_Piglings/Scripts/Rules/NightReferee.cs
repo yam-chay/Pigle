@@ -56,7 +56,7 @@ namespace Piglings.Rules
 
             _bus.Subscribe<ThrowReleased>(OnThrow);
             _bus.Subscribe<RobotScored>(OnRobotScored);
-            _bus.Subscribe<RobotRemoved>(OnRobotRemoved);
+            _bus.Subscribe<RobotBreached>(OnRobotBreached);
             _bus.Subscribe<ChainScored>(OnChainScored);
             _bus.Subscribe<RobotEnteredDangerZone>(OnEnteredDangerZone);
             _bus.Subscribe<RobotSwept>(OnRobotSwept);
@@ -67,7 +67,7 @@ namespace Piglings.Rules
         {
             _bus.Unsubscribe<ThrowReleased>(OnThrow);
             _bus.Unsubscribe<RobotScored>(OnRobotScored);
-            _bus.Unsubscribe<RobotRemoved>(OnRobotRemoved);
+            _bus.Unsubscribe<RobotBreached>(OnRobotBreached);
             _bus.Unsubscribe<ChainScored>(OnChainScored);
             _bus.Unsubscribe<RobotEnteredDangerZone>(OnEnteredDangerZone);
             _bus.Unsubscribe<RobotSwept>(OnRobotSwept);
@@ -133,9 +133,14 @@ namespace Piglings.Rules
             UpdateCanThrow();
         }
 
-        private void OnRobotRemoved(RobotRemoved e)
+        // Counted when the breach STARTS, not when the robot is removed at the end of it. Why: the breach
+        // sequence takes time (RobotDefinition.BreachSeconds), and the outcome must be fixed at the moment the
+        // player sees the robot arrive — a chain landing during the sequence can't undo a theft, and an empty
+        // pile at the robot's later removal must not count as a second breach. RobotRemoved(EnteredBarn) is
+        // cleanup, and this class doesn't listen to it.
+        private void OnRobotBreached(RobotBreached e)
         {
-            if (e.Reason != RemovalReason.EnteredBarn || _state.Phase == NightPhase.Ended) return;
+            if (_state.Phase == NightPhase.Ended) return;
             _state.RobotsReachedTop++;
 
             switch (_state.Phase)

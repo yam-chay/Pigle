@@ -1,6 +1,7 @@
 # TASKS — Piglings prototype
 
-> **Next up (end of 2026-09-27):** M7.3 Breaching (makes stone theft visible) → decide the empty-pile "dead time" (open questions) → M5.2 playtest + tune with the `[Night]` log lines.
+> **Next up (2026-10-03):** 🖥 M7.3b wire + check Breaching in the editor → M6.3 stone readability → decide the empty-pile "dead time" (open questions) → M5.2 playtest + tune with the `[Night]` log lines.
+> Why this order: M5.2 tunes the death spiral, which you can only judge if you can *see* stones being stolen (M7.3) and *follow* the stone (M6.3). Juice and the M6.2 end panel wait until after M5.2.
 
 ☁ = cloud session OK (code/docs only) · 🖥 = local, needs the Unity editor (use Claude Code + unity-mcp)
 
@@ -55,7 +56,9 @@ Context (story frame, GDD): the villain is the Big Bad Wolf; the robots are his 
 - [x] ☁ M7.1 One life + a real pile (replaces the sprite-state ammo view): no breach limit; a breach takes the top stone, a breach on an empty pile = caught (the only loss); last stone thrown ≠ loss. `StonesChanged` (Thrown/Stolen/Added/Forfeited) from `NightReferee`; `AddStones(n)`. `StonePile` (Simulation) mirrors the count with real stones in pyramid slots (parked: no physics/collider); the top stone hops to the hand when the pig may throw; a thief carries its stone off (parked, never a weapon). CoreCheck for the rule and every count change.
 - [x] 🖥 M7.2 Pile wired: `StonePile` on the right perch piece (session, Stone prefab, hand = ThrowOrigin, spawner), `ThrowController.pile` set; ThrowOrigin moved under the pig's throwing-hand bone and the held stone follows it without parenting (PR #17); Stone prefab on Sorting Layer **Pig**, order 20, so it draws over the arm.
   - [ ] 🖥 `pile_rag.png` under the pile (not in the repo/scene yet).
-- [ ] ☁+🖥 M7.3 Robot `Breaching` state: `ReachedTop → Breaching → Removed(EnteredBarn)`. Collider off, alive for the breach animation, then jumps off the porch and falls. Never starts or joins a chain; never holds a chain or the night open (hard time limit). Physics changes only in `EnterState`. Code ☁, animation 🖥. The stolen stone rides on the breaching robot.
+- M7.3 Robot `Breaching` state: `Climbing → Breaching → Removed(EnteredBarn)`. Lean: no animation polish.
+  - [x] ☁ M7.3a Code: `ReachTop` enters `Breaching` and publishes `RobotBreached` — **the breach counts there** (Stolen / Caught at that moment; the stolen stone moves onto the robot then). `Removed(EnteredBarn)` at the end is cleanup, never counted again. `EnterState(Breaching)`: collider off, kinematic, still. Hard limit `RobotDefinition.BreachSeconds`. Not paused by ChoicePending; skipped by the Ended sweep. CoreCheck: Stolen once at entry, Caught at entry, a chain reaching the target during another robot's breach = win, overtime breach ends at entry.
+  - [ ] 🖥 M7.3b Set `Breach Seconds` in the robot asset; play-check: a breaching robot sits at the top holding the stolen stone, then disappears; it can't be hit; the pile drops at the moment it arrives. Breach animation (jump off the porch + fall) comes later.
 
 ## Open design questions (from the GDD — don't implement until decided)
 - One robot line per run vs. mixed swarm.
@@ -70,6 +73,7 @@ Context (story frame, GDD): the villain is the Big Bad Wolf; the robots are his 
 - **IDEA** — Hidden "Pacifist" achievement: lose every stone to the wolves without throwing once (possible weapon unlock).
 - *(Decided: breaches steal stones — option A; the 5-breach limit is gone. See M7.1.)*
 - **OPEN** — Empty-pile dead time: with 0 stones, nothing falling and the target not reached, the player can only watch robots climb until one breaches (~10–15 s). Fast-forward the wall once the player can't act, or make the wait the start of the loss scene (the wolf begins his climb)?
+  - **PROPOSAL C — "the wolf cranks the remote"**: when the player has **no possible action** (no stones, nothing in flight, below the target), the robots climb at a high multiplier, so the breach lands in ~2 s and the loss scene starts. The condition is "no possible action", not `StonesLeft == 0`: `AddStones` can refill the pile, and a falling chain can still win. Don't build it yet.
 - **WATCH in M5.2** — Death spiral: every breach takes a stone, fewer stones → fewer throws → more breaches. Fine if it's readable (the pile shows it); if a bad first minute always decides the night, tune spawn rate before stone count.
 
 ## Playtest log

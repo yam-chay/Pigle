@@ -15,6 +15,10 @@ namespace Piglings.Definitions
         [Tooltip("A falling ball still in the air after this many seconds is removed (e.g. it came to rest on a hold). " +
                  "Without it, its chain never closes and the night can't reach the choice.")]
         [SerializeField, Min(0.5f)] private float maxFallSeconds = 6f;
+        [Tooltip("Hard limit on the breach sequence (reached the roof → gone). Whatever the animation does, the robot is " +
+                 "removed after this many seconds — a breach must never hold the night open. The breach itself (stone " +
+                 "theft or catch) is counted when the sequence starts, so this changes only how long it's on screen.")]
+        [SerializeField, Min(0.1f)] private float breachSeconds = 1.5f;
 
         public string Id => id;
         public float ClimbSpeed => climbSpeed;
@@ -23,5 +27,6 @@ namespace Piglings.Definitions
         public float BallMass => ballMass;
         public PhysicsMaterial2D BallMaterial => ballMaterial;
         public float MaxFallSeconds => maxFallSeconds;
+        public float BreachSeconds => breachSeconds;
     }
 }
