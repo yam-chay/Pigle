@@ -9,7 +9,7 @@ Definitions   ScriptableObjects. Immutable design data (robots, throwables, wall
 Runtime       Plain C# state (NightState). No behaviour, no engine types. Serializable.
 Events        The backbone: EventBus + immutable event structs carrying ChainId + Attribution.
 Rules         Plain C#. Subscribes to events, writes Runtime state, publishes results (ChainTracker).
-Meta          Plain C#. Progression / currencies / grant pipeline. EMPTY until after the prototype.
+Meta          Plain C#. The player's progress across nights (PlayerProfile), the rules that apply a banked night to it, the save format.
 Simulation    Unity. Physics bodies and their state machines (RobotController, Throwable, spawner, zones).
 Presentation  Unity. Views, rigs, animation, HUD. Reads state and reacts to events. Never writes state.
 ```
@@ -21,10 +21,10 @@ Presentation  Unity. Views, rigs, animation, HUD. Reads state and reacts to even
 | Piglings.Events | — | no (`noEngineReferences`) |
 | Piglings.Runtime | Events | no |
 | Piglings.Rules | Events, Runtime | no |
-| Piglings.Meta | Events, Runtime | no |
+| Piglings.Meta | Events, Runtime (+ Newtonsoft.Json.dll, precompiled) | no |
 | Piglings.Definitions | — | yes |
-| Piglings.Simulation | Events, Runtime, Rules, Definitions | yes |
-| Piglings.Presentation | Events, Runtime, Definitions, Simulation | yes |
+| Piglings.Simulation | Events, Runtime, Rules, Meta, Definitions | yes |
+| Piglings.Presentation | Events, Runtime, Meta, Definitions, Simulation | yes |
 | Piglings.Editor | — (editor-only tooling) | yes, Editor platform only |
 
 - No game assembly may reference `Piglings.Editor`.
@@ -38,11 +38,11 @@ Presentation  Unity. Views, rigs, animation, HUD. Reads state and reacts to even
 There is no bootstrap scene, no bootstrap assembly, no service locator, no singletons, no `DontDestroyOnLoad`.
 
 Each playable scene has exactly one **scene-scoped owner**. For the prototype that's `NightSession` (Simulation):
-- `Awake` (execution order -1000) creates `EventBus`, `NightState`, `IdAllocator` and the Rules (`ChainTracker`, then `NightReferee`).
+- `Awake` (execution order -1000) creates `EventBus`, `NightState`, `IdAllocator`, the Rules (`ChainTracker`, then `NightReferee`, then `MasteryTally`), loads the player's profile from disk and creates Meta's `Progression` around it.
 - Every scene object that needs them gets the `NightSession` through a **serialized field** in the Inspector. No `FindObjectOfType`, no statics.
 - When the scene unloads, everything goes with it.
 
-> ⚠️ Decision to confirm (Yam): this owner is the thing that replaces the old AppServices/SceneBootstrap. It is scene-local and lives in Simulation, not a separate layer. When Day/Meta arrives, the persistent run data will need a home that survives scene changes — decide that then, not now.
+**Persistence (decided, M9.1): the disk is the home of everything that outlives a scene.** No object survives a scene change. Each scene owner loads what it needs from disk when it starts and saves what it changed when its work is done: `NightSession` loads the profile in `Awake` and saves it once, at `NightEnded`. Play Again reloads the scene, so the next night reads the profile again from disk. Quitting mid-night saves nothing (that night's hits are lost — fine). A future Day scene follows the same rule with its own owner. See "Mastery and the save".
 
 ## The event backbone: chains
 
@@ -70,7 +70,7 @@ Running(hour 1) ──threshold──▶ PegPlacement ──▶ Running(hour 2) 
 - **Dawn**: crossing the last threshold → `DawnReached`. The night can't be lost from there; throwing stops, and it ends (`Ended`, `Dawn`) once every chain has settled. No placement round, so no refill, at dawn.
 - **Caught**: a breach on an empty pile, in any hour before dawn (a threshold that isn't dawn protects nothing) → `Ended`, `Caught`.
 - **Ended**: while handling `NightPhaseChanged(→Ended)` (the bus is synchronous), `RobotSpawner` sweeps the wall: every climbing robot calls `Sweep()` → `RobotSwept`. On both outcomes the robots fall. Won: each is scored flat by the referee with `ScoreCurve.RobotValue()` (the same function chains use), ×1. Lost: visual only. Then `NightBanked(Barn, BankedScore)` and `NightEnded` once. **BankedScore** = the live score at dawn (sweep included); the last threshold reached when caught (`NightGoal.ScoreAtThreshold`) — 0 before the first.
-- Mastery is **only published** (`NightBanked`), never stored across nights: Meta subscribes later. Nothing banks to the weapon any more (leftover stones used to); weapon mastery will come from use + feats (Meta).
+- Banking: `NightBanked(destination, id, stat, amount, multiplier)` per mastery target, then `NightEnded`. Barn = the banked score; Weapon / Lineage = tonight's use (see "Mastery and the save"), banked on **both** outcomes. Meta's `Progression` applies them to the saved profile; the barn score isn't saved yet.
 - *Replaced:* the M6.5 end-of-night choice (Stay / Leave, `ChoicePending`, `Overtime` and its ×2, the danger line ending overtime, forfeited stones, leftover stones → weapon mastery). See TASKS.md history.
 
 **The pegs (Runtime, written only by `NightReferee`).** `NightState.Sockets` = one `PegSocket` per Hold (peg id + level, by string, never a ScriptableObject); its length is also the most pegs the wall can hold. `NightState.Shelf` = one `PegStack` (peg id + count) per type, in loadout order, at most `PegSetup.ShelfCapacity` (5) types. `PegThrowsLeft` = this round. Definitions: `PegDefinition` (id, maxLevel, mergeable); `NightDefinition.pegLoadout` is the shelf until the day phase exists. `NightSession` turns both into the Rules' plain `PegType` / `PegSetup`. 
@@ -141,7 +141,41 @@ Only `RobotClimbing` touches `Zones`, so zones only ever see climbing (or just-h
 - **Shared pile pieces (M8.2)** — what every "count mirrored with real objects" needs, so the peg shelf and future per-weapon ammo containers don't copy `StonePile`: `PileLayout` (engine-free pyramid slots; CoreCheck), `ItemPile<T>` (objects in their slots: add with a drop, take the top, put back, reconcile to a count), `HopMover` (the one hop arc to a moving target: hand, thief, slot; updated in `LateUpdate`). Plain classes owned by a component; the component keeps the serialized settings and the event wiring. `StonePile` = these + the hand + thefts.
 - **No object pool yet**: stones are instantiated from the Stone prefab and destroyed (`StonePile.AddToPile` / `Destroy`). The "Weapons pool" commit (f810c2e) wired the pile into the scene and set the Stone prefab's sorting — it added no pooling code. A pool can slot in behind `StonePile` later.
 
-**Coming:** mixed weapon types per night → the perch is the loadout, one container per weapon (needs a per-weapon count in Runtime; today there's one). The rag under the stones is the first container tier (rag → bindle → sack → dedicated tool); weapon mastery will show on it. Meta is still empty — don't build it.
+**Coming:** mixed weapon types per night → the perch is the loadout, one container per weapon (needs a per-weapon count in Runtime; today there's one). The rag under the stones is the first container tier (rag → bindle → sack → dedicated tool); weapon mastery will show on it.
+
+## Mastery and the save (M9)
+
+Weapon mastery comes from **use**: a weapon levels up from the robots it knocks loose itself. The save stores **causes** (counts), never results (levels): a level is derived from the saved count and the weapon definition's thresholds, so thresholds can be retuned without breaking a save.
+
+**Counting (Rules, `MasteryTally`)** into `NightState` (Runtime), keyed by definition id:
+- `WeaponHits[weapon]`: a `RobotLostGrip` with `Attribution.FromThrowable`. One throw that knocks several robots counts each.
+- `BallKnocks[type]` / `KnockedByBall[type]`: a `RobotLostGrip` with `FromRobotBall` — the knocker's type and the knocked robot's type. Never counts for the weapon. Recorded for future wolf-lineage mastery; nothing reads them yet.
+- The ids come from the events: `ThrowReleased.Weapon` (`ThrowableDefinition.Id`) and `RobotSpawned.RobotType` (`RobotDefinition.Id`). **These ids are save keys — never rename one** once players have a save (it'd orphan their progress, or need a migration).
+- The sweep (`RobotSwept`) never counts. Nothing counts once the night has ended (it's already banked).
+
+**Banking (`NightReferee.FinishNight`)**, on both outcomes (mastery from use, not score): `NightBanked(Weapon, weapon, DirectHits, n, 1)` per weapon, `NightBanked(Lineage, type, BallKnocks | KnockedByBall, n, 1)` per robot type, only for non-zero counts. Then `NightEnded`.
+
+**Applying (Meta, `Progression`)**: owns the `PlayerProfile`, applies each `NightBanked` (clamped add). By `NightEnded` the profile is complete; `NightSession` saves it then.
+
+**Levels (Meta, `MasteryLevels`)**: thresholds are cumulative totals, strictly rising (`[50, 150]` = level 2 at 50 hits, level 3 at 150). `LevelFor(hits, thresholds)`, `NextThreshold`, `Problem` (for an Inspector warning). The level a night plays with is fixed when it starts; a level earned tonight shows at night end and applies from the next night. *(M9.2 puts the thresholds and the per-level look on `ThrowableDefinition`.)*
+
+**The save format (Meta, `ProfileJson`)** — `piglings_profile.json` in `Application.persistentDataPath`:
+```json
+{
+  "version": 1,
+  "weapons": { "stone":         { "directHits": 137 } },
+  "robots":  { "wolfbot_basic": { "ballKnocks": 412, "knockedByBall": 300 } }
+}
+```
+- One object per id, so a new field (feats…) is an addition, not a new version. Unknown fields are ignored; missing ones read as 0.
+- Read strictly: bad JSON, wrong types, negative / fractional / too-large counts, empty or repeated ids → **Corrupt**. No version, or one this build doesn't know (e.g. a newer build's save) → **UnknownVersion**. Both are handled the same way (below). Older versions would be migrated in `ProfileJson.Read`; there are none yet.
+- Parsed with Newtonsoft's `JObject` (no reflection: IL2CPP-safe), shape checked by hand. Meta's asmdef references `Newtonsoft.Json.dll` (package `com.unity.nuget.newtonsoft-json`); CoreCheck uses the same version from NuGet.
+
+**The file (`Simulation/ProfileFile`)** — engine-free (like `ThrowSolver`), so CoreCheck runs it on a real temp folder; `NightSession` just passes `persistentDataPath` and logs.
+- **Save**: write `…json.tmp`, flush to disk, copy the current save to `piglings_profile.prev.json`, then `File.Replace` the .tmp over the save (one rename). Never a half-written save. A failed write is logged as an error; the old save is untouched and the game plays on.
+- **Load**: the save → if bad, copy it to `piglings_profile.corrupt-<UTC time>.json` and try `.prev` (at most one night lost) → if that's bad too, copy it aside (then remove it) and start fresh. Whatever it ends with is written back at once, so the next launch doesn't trip on the same file. A bad file is never deleted or overwritten without its copy; if the copy fails, saving is switched off for the session. A leftover `.tmp` is ignored.
+- **Logs**: one line on load (where from, the counts, the path; a warning with problems + backup paths if anything was wrong) and one on each save.
+- **Playtest tools** (`NightSession` context menu, play mode): *Mastery ▸ Reset progress* (empty profile, saved now — the old save is in `.prev`), *Mastery ▸ Add 10 hits* (into tonight's tally, so they bank and save at night end like real hits).
 
 ## Background
 `BackgroundNight` (`ScrollingBackground`: endless tiled scroll) with child `BackgroundDay` (`DayNightBackground`: fades in on `NightEnded`). Presentation only.

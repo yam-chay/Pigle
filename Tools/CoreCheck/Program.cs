@@ -1,11 +1,11 @@
 using System;
 using Piglings.Events; using Piglings.Rules; using Piglings.Runtime; using Piglings.Simulation;
-class P{static void Check(bool c,string m){Console.WriteLine((c?"PASS ":"FAIL ")+m); if(!c) Environment.ExitCode=1;}
+partial class P{static void Check(bool c,string m){Console.WriteLine((c?"PASS ":"FAIL ")+m); if(!c) Environment.ExitCode=1;}
 static void Main(){
  var bus=new EventBus(); var st=new NightState(); var ids=new IdAllocator(); var tr=new ChainTracker(bus,st); ChainClosed? closed=null;
  bus.Subscribe<ChainClosed>(e=>closed=e);
  var chain=new ChainId(ids.Next()); var stone=ids.Next(); var a=ids.Next(); var b=ids.Next();
- bus.Publish(new ThrowReleased(chain,stone));
+ bus.Publish(new ThrowReleased(chain,stone,"stone"));
  bus.Publish(new RobotLostGrip(a,chain,Attribution.FromThrowable(stone)));
  bus.Publish(new RobotLostGrip(b,chain,Attribution.FromRobotBall(a,0)));
  bus.Publish(new ThrowableRemoved(stone,chain)); bus.Publish(new RobotRemoved(a,chain,RemovalReason.HitGround));
@@ -23,6 +23,8 @@ static void Main(){
  BreachChecks();
  PileChecks();
  ComponentFileChecks();
+ MasteryChecks();
+ SaveChecks();
 }
 // Scoring: value flows down the chain. A hitter (stone or ball) carries a value; the robot it knocks
 // scores value x (1 + 0.5 x depth); the hitter grows +10 per hit; the robot then carries 10 + what it received.
@@ -34,7 +36,7 @@ static void ScoreChecks(){
  bus.Subscribe<ChainScored>(e=>scored=e);
  // Line: stone -> a -> b -> c
  var chain=new ChainId(ids.Next()); var stone=ids.Next(); var a=ids.Next(); var b=ids.Next(); var c=ids.Next();
- bus.Publish(new ThrowReleased(chain,stone));
+ bus.Publish(new ThrowReleased(chain,stone,"stone"));
  bus.Publish(new RobotLostGrip(a,chain,Attribution.FromThrowable(stone)));
  bus.Publish(new RobotLostGrip(b,chain,Attribution.FromRobotBall(a,0)));
  bus.Publish(new RobotLostGrip(c,chain,Attribution.FromRobotBall(b,1)));
@@ -50,7 +52,7 @@ static void ScoreChecks(){
  // Stone hits three directly: it grows 10 -> 20 -> 30 (all x1)
  hits.Clear(); scored=null; int before=st.Score;
  var ch2=new ChainId(ids.Next()); var s2=ids.Next(); var w=new[]{ids.Next(),ids.Next(),ids.Next()};
- bus.Publish(new ThrowReleased(ch2,s2));
+ bus.Publish(new ThrowReleased(ch2,s2,"stone"));
  foreach(var r in w) bus.Publish(new RobotLostGrip(r,ch2,Attribution.FromThrowable(s2)));
  Check(hits[0].Total==10 && hits[1].Total==20 && hits[2].Total==30,"stone multi-hit: 10, 20, 30");
  // ...then the 2nd robot's ball (carries 10 + 20 = 30) knocks two more: 30x1.5, then (grown) 40x1.5
@@ -62,12 +64,12 @@ static void ScoreChecks(){
  Check(scored.HasValue && scored.Value.Total==165 && st.Score==before+165,"mixed chain: 10+20+30+45+60 = 165");
  // Values belong to one chain: a new throw starts at 10 again
  hits.Clear(); var ch3=new ChainId(ids.Next()); var s3=ids.Next(); var f=ids.Next();
- bus.Publish(new ThrowReleased(ch3,s3)); bus.Publish(new RobotLostGrip(f,ch3,Attribution.FromThrowable(s3)));
+ bus.Publish(new ThrowReleased(ch3,s3,"stone")); bus.Publish(new RobotLostGrip(f,ch3,Attribution.FromThrowable(s3)));
  Check(hits.Count==1 && hits[0].Received==10 && hits[0].Order==1,"new chain starts fresh at 10");
  bus.Publish(new ThrowableRemoved(s3,ch3)); bus.Publish(new RobotRemoved(f,ch3,RemovalReason.HitGround));
  // A miss still publishes ChainScored, with zeros
  scored=null; before=st.Score; var miss=new ChainId(ids.Next()); var s4=ids.Next();
- bus.Publish(new ThrowReleased(miss,s4)); bus.Publish(new ThrowableRemoved(s4,miss));
+ bus.Publish(new ThrowReleased(miss,s4,"stone")); bus.Publish(new ThrowableRemoved(s4,miss));
  Check(scored.HasValue && scored.Value.RobotsDropped==0 && scored.Value.Total==0 && st.Score==before,"miss -> ChainScored 0, score unchanged");
  tr.Dispose();
  // Each setting pulls its own lever: stone 20, no growth, wolf 5, x1 per depth
@@ -77,14 +79,14 @@ static void ScoreChecks(){
  { var bus2=new EventBus(); var st2=new NightState(); var tr2=new ChainTracker(bus2,st2,new ScoreCurve(10,10,10,1f,true)); var totals=new System.Collections.Generic.List<int>();
    bus2.Subscribe<RobotScored>(x=>totals.Add(x.Total));
    var ch=new ChainId(ids.Next()); var st0=ids.Next(); var r1=ids.Next(); var r2=ids.Next(); var r3=ids.Next();
-   bus2.Publish(new ThrowReleased(ch,st0));
+   bus2.Publish(new ThrowReleased(ch,st0,"stone"));
    bus2.Publish(new RobotLostGrip(r1,ch,Attribution.FromThrowable(st0)));
    bus2.Publish(new RobotLostGrip(r2,ch,Attribution.FromRobotBall(r1,0)));
    bus2.Publish(new RobotLostGrip(r3,ch,Attribution.FromRobotBall(r2,1)));
    Check(totals.Count==3 && totals[0]==10 && totals[1]==40 && totals[2]==150,"carryScoredTotal on: line 10, 40, 150"); tr2.Dispose(); }
  // A very deep compounding line never wraps negative
  { var bus3=new EventBus(); var st3=new NightState(); var tr3=new ChainTracker(bus3,st3,new ScoreCurve(10,10,10,1f,true));
-   var ch=new ChainId(ids.Next()); var s0=ids.Next(); bus3.Publish(new ThrowReleased(ch,s0));
+   var ch=new ChainId(ids.Next()); var s0=ids.Next(); bus3.Publish(new ThrowReleased(ch,s0,"stone"));
    var prev=ids.Next(); bus3.Publish(new RobotLostGrip(prev,ch,Attribution.FromThrowable(s0)));
    for(int dd=0;dd<20;dd++){ var next=ids.Next(); bus3.Publish(new RobotLostGrip(next,ch,Attribution.FromRobotBall(prev,dd))); prev=next; }
    Check(st3.Score==int.MaxValue,"depth-20 compounding line saturates at int.MaxValue instead of going negative"); tr3.Dispose(); }
@@ -98,7 +100,7 @@ static int[] Totals(ScoreCurve curve, IdAllocator ids, out int[] carries){
  var t=new System.Collections.Generic.List<int>(); var cs=new System.Collections.Generic.List<int>();
  bus.Subscribe<RobotScored>(e=>{ t.Add(e.Total); cs.Add(e.Carries); });
  var ch=new ChainId(ids.Next()); var s=ids.Next(); var x=ids.Next(); var y=ids.Next(); var z=ids.Next();
- bus.Publish(new ThrowReleased(ch,s));
+ bus.Publish(new ThrowReleased(ch,s,"stone"));
  bus.Publish(new RobotLostGrip(x,ch,Attribution.FromThrowable(s)));
  bus.Publish(new RobotLostGrip(y,ch,Attribution.FromThrowable(s)));
  bus.Publish(new RobotLostGrip(z,ch,Attribution.FromRobotBall(x,0)));
@@ -133,7 +135,7 @@ class Night{
  // Throw a stone that knocks n robots directly (10, 20, 30... by default). Returns what's still in flight.
  public (ChainId chain, GameId stone, GameId[] robots) Throw(int n){
   var c=new ChainId(Ids.Next()); var s=Ids.Next(); var r=new GameId[n];
-  Bus.Publish(new ThrowReleased(c,s));
+  Bus.Publish(new ThrowReleased(c,s,"stone"));
   for(int i=0;i<n;i++){ r[i]=Ids.Next(); Bus.Publish(new RobotLostGrip(r[i],c,Attribution.FromThrowable(s))); }
   return (c,s,r);
  }
@@ -145,11 +147,11 @@ class Night{
  // Throw a stone that starts a line: stone -> r1, r1's ball -> r2 (depth 1), r2's ball -> r3 (depth 2)...
  public (ChainId chain, GameId stone, GameId[] robots) ThrowLine(int n){
   var c=new ChainId(Ids.Next()); var s=Ids.Next(); var r=new GameId[n];
-  Bus.Publish(new ThrowReleased(c,s));
+  Bus.Publish(new ThrowReleased(c,s,"stone"));
   for(int i=0;i<n;i++){ r[i]=Ids.Next(); Bus.Publish(new RobotLostGrip(r[i],c,i==0?Attribution.FromThrowable(s):Attribution.FromRobotBall(r[i-1],i-1))); }
   return (c,s,r);
  }
- public GameId Spawn(){ var r=Ids.Next(); Bus.Publish(new RobotSpawned(r)); return r; }
+ public GameId Spawn(){ var r=Ids.Next(); Bus.Publish(new RobotSpawned(r,"wolfbot")); return r; }
  // A whole breach, like the real robot: it starts (counted here) and, BreachSeconds later, is removed (cleanup).
  public void Breach(){ Breach(Spawn()); }
  public void Breach(GameId r){ BreachStart(r); BreachEnd(r); }

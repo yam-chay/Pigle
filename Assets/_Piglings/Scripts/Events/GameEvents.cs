@@ -3,16 +3,21 @@ namespace Piglings.Events
     // Every gameplay fact the rest of the game may care about is one of these.
     // Events are immutable facts ("this happened"), never commands ("do this").
 
+    /// <summary>
+    /// The pig released a throw: a new chain starts. Weapon = the thrown thing's definition id (ThrowableDefinition.Id,
+    /// "stone"), so the Rules can credit its hits to the right weapon without ever seeing a definition.
+    /// </summary>
     public readonly struct ThrowReleased
     {
-        public readonly ChainId Chain; public readonly GameId Throwable;
-        public ThrowReleased(ChainId chain, GameId throwable) { Chain = chain; Throwable = throwable; }
+        public readonly ChainId Chain; public readonly GameId Throwable; public readonly string Weapon;
+        public ThrowReleased(ChainId chain, GameId throwable, string weapon) { Chain = chain; Throwable = throwable; Weapon = weapon; }
     }
 
+    /// <summary>A robot joined the wall. RobotType = its definition id (RobotDefinition.Id), for per-type stats.</summary>
     public readonly struct RobotSpawned
     {
-        public readonly GameId Robot;
-        public RobotSpawned(GameId robot) { Robot = robot; }
+        public readonly GameId Robot; public readonly string RobotType;
+        public RobotSpawned(GameId robot, string robotType) { Robot = robot; RobotType = robotType; }
     }
 
     public readonly struct RobotLostGrip
@@ -132,8 +137,14 @@ namespace Piglings.Events
             Count = count; Delta = delta; Cause = cause; Robot = robot;
         }
     }
-    // Weapon: nothing banks to it any more (leftover stones used to). Kept for Meta: weapon mastery will come from use + feats.
-    public enum MasteryDestination { Barn, Weapon }
+    // Where a night's banking goes. Barn: the banked score. Weapon: a weapon's use (Id = the weapon id).
+    // Lineage: a robot type's ball stats (Id = the robot type) — recorded for future wolf-lineage mastery, unused for now.
+    public enum MasteryDestination { Barn, Weapon, Lineage }
+
+    // What was counted. Score → Barn. DirectHits → Weapon (a robot knocked loose by the thrown weapon itself).
+    // BallKnocks / KnockedByBall → Lineage: this type's ball knocked another robot loose / this type was knocked loose
+    // by a ball. Both sides are kept so the lineage design can pick later without losing data.
+    public enum MasteryStat { Score, DirectHits, BallKnocks, KnockedByBall }
 
     /// <summary>
     /// Published by NightReferee on every phase change. Simulation pauses, resumes and sweeps the wall off this.
@@ -192,14 +203,21 @@ namespace Piglings.Events
     }
 
     /// <summary>
-    /// Where points went when the night ended: Amount × Multiplier to Barn or Weapon mastery.
-    /// Published by NightReferee just before NightEnded, only for non-zero amounts. Meta subscribes later.
-    /// Today only Barn: the banked score (the live score at dawn; the last threshold reached when caught).
+    /// What the night banked: Amount × Multiplier of Stat, to Destination's mastery target Id.
+    /// Published by NightReferee just before NightEnded (on both outcomes), one per target, only for non-zero amounts.
+    /// - Barn, Score: the banked score (the live score at dawn; the last threshold reached when caught). Id is null.
+    /// - Weapon, DirectHits: Id = the weapon id ("stone"). Mastery from use, so a caught night banks its hits too.
+    /// - Lineage, BallKnocks / KnockedByBall: Id = the robot type.
+    /// Meta's Progression applies these to the saved profile; the save itself happens at NightEnded.
     /// </summary>
     public readonly struct NightBanked
     {
-        public readonly MasteryDestination Destination; public readonly int Amount; public readonly int Multiplier;
-        public NightBanked(MasteryDestination destination, int amount, int multiplier) { Destination = destination; Amount = amount; Multiplier = multiplier; }
+        public readonly MasteryDestination Destination; public readonly string Id; public readonly MasteryStat Stat;
+        public readonly int Amount; public readonly int Multiplier;
+        public NightBanked(MasteryDestination destination, string id, MasteryStat stat, int amount, int multiplier)
+        {
+            Destination = destination; Id = id; Stat = stat; Amount = amount; Multiplier = multiplier;
+        }
     }
 
     /// <summary>

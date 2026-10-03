@@ -57,7 +57,7 @@ namespace Piglings.Simulation
             circle.radius = def.Radius / Mathf.Max(0.0001f, transform.lossyScale.x);
             if (def.Material != null) circle.sharedMaterial = def.Material;
             body.linearVelocity = velocity;
-            session.Bus.Publish(new ThrowReleased(Chain, Id));
+            session.Bus.Publish(new ThrowReleased(Chain, Id, def.Id));
         }
 
         private void Update()
