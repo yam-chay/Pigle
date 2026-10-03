@@ -188,6 +188,18 @@ static void NightChecks(){
      "chain settles -> PegPlacement (no throwing)");
    n.Ref.EndPlacement();
    Check(n.St.Phase==NightPhase.Running && n.St.CanThrow && n.Ref.NextThreshold==500,"round over -> Running in hour 2, can throw, next threshold 500"); }
+ { // The wall freezes at the crossing, not at the round: no stretch where you can't throw but wolves climb.
+   var n=new Night(Hours(50,200));
+   Check(n.St.WallMoving,"hour 1: the wall moves");
+   var t=n.Throw(3);
+   Check(!n.St.WallMoving && n.St.Phase==NightPhase.Running && !n.St.CanThrow,"threshold crossed, chain still falling: the wall is already frozen (and no throwing)");
+   n.Settle(t);
+   Check(!n.St.WallMoving && n.St.Phase==NightPhase.PegPlacement,"placement round: still frozen");
+   n.Ref.EndPlacement();
+   Check(n.St.WallMoving,"round over: the wall moves again");
+   var u=n.Throw(4);   // hour 2: 100 x1.5 = 150 -> 210, dawn
+   Check(n.St.Dawn && !n.St.WallMoving,"dawn crossed: the wall freezes while the last chain lands");
+   n.Settle(u); }
  { // Two chains in flight: the round waits for both.
    var n=new Night(Hours(50,500)); var a=n.Throw(1); var b=n.Throw(3);
    n.Settle(b);

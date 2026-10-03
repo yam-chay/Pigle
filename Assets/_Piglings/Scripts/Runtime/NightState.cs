@@ -42,6 +42,12 @@ namespace Piglings.Runtime
         // Derived, not stored: Phase is the source of truth.
         public bool Ended => Phase == NightPhase.Ended;
         public int Hour => ThresholdsReached + 1;
+
+        // Robots climb and the spawner runs only while the hour is being played. The wall freezes the moment a
+        // threshold (or dawn) is crossed — not when the placement round starts — so there's no stretch where the
+        // pig can't throw but the wolves still climb. Falling balls are physics, not the wall: they keep falling,
+        // so the chain that crossed the line still finishes before the round starts.
+        public bool WallMoving => Phase == NightPhase.Running && PendingPegRounds == 0 && !Dawn;
     }
 
     /// <summary>One socket on the wall (a Hold). Empty = a plain hold.</summary>
