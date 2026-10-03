@@ -19,6 +19,8 @@ static void Main(){
  NightChecks();
  NameClashChecks();
  ThrowChecks();
+ BreachChecks();
+ ComponentFileChecks();
 }
 // Scoring: value flows down the chain. A hitter (stone or ball) carries a value; the robot it knocks
 // scores value x (1 + 0.5 x depth); the hitter grows +10 per hit; the robot then carries 10 + what it received.
@@ -436,6 +438,44 @@ static void NameClashChecks(){
  var shadow=new System.Collections.Generic.List<string>();
  foreach(var u in unity) if(where.ContainsKey(u)) shadow.Add(u);
  Check(shadow.Count==0,"no type shadows a common UnityEngine name"+(shadow.Count>0?": "+string.Join(", ",shadow):""));
+}
+// BreachTiming: the breach sequence happens in order for any BreachSeconds — on the perch, then the stone lands
+// (the robot visibly holds it), then the jump; and the robot doesn't pop when the jump starts.
+static void BreachChecks(){
+ Check(0f<BreachTiming.ClimbEnds && BreachTiming.ClimbEnds<BreachTiming.StoneLands && BreachTiming.StoneLands<BreachTiming.JumpStarts && BreachTiming.JumpStarts<1f,
+   "breach order: on the perch < stone lands < jump starts < removed");
+ foreach(var secs in new[]{0.5f,1.5f,4f}){
+  float landsAt=BreachTiming.StoneHopSeconds(secs), jumpAt=BreachTiming.JumpStarts*secs;
+  Check(landsAt>0f && landsAt<jumpAt && BreachTiming.JumpProgress(BreachTiming.Phase(landsAt,secs))==0f,
+    $"BreachSeconds {secs}: the stolen stone lands at {landsAt:0.00}s, before the jump at {jumpAt:0.00}s");
+ }
+ Check(BreachTiming.ClimbProgress(0f)==0f && BreachTiming.ClimbProgress(BreachTiming.ClimbEnds)==1f && BreachTiming.ClimbProgress(BreachTiming.JumpStarts)==1f,
+   "climb: starts where it touched the line, on the perch by ClimbEnds, stays there");
+ BreachTiming.JumpOffset(0f,1f,0.174f,out float dx0,out float dy0);
+ BreachTiming.JumpOffset(1f,1f,0.174f,out float dx1,out float dy1);
+ BreachTiming.JumpOffset(1f,-1f,0.174f,out float dxl,out _);
+ Check(dx0==0f && dy0==0f && dx1>0f && dxl<0f && dy1<0f,"jump: no pop at the start, ends out to its side and below the perch");
+ Check(BreachTiming.Phase(10f,1f)==1f && BreachTiming.Phase(0f,0f)==1f,"phase is clamped; a zero-length breach is over at once (never stuck)");
+}
+// Unity can only add a MonoBehaviour / ScriptableObject as a component or asset when it lives in a file of the
+// same name (the old Zones.cs bug). Plain types (events, enums, structs) may share a file. CLAUDE.md rule.
+static void ComponentFileChecks(){
+ var dir=new System.IO.DirectoryInfo(AppContext.BaseDirectory);
+ while(dir!=null && !System.IO.Directory.Exists(System.IO.Path.Combine(dir.FullName,"Assets"))) dir=dir.Parent;
+ if(dir==null){ Check(false,"component files: couldn't find the Assets folder"); return; }
+ var root=System.IO.Path.Combine(dir.FullName,"Assets","_Piglings");
+ var decl=new System.Text.RegularExpressions.Regex(@"^\s*(?:public|internal)?\s*(?:(?:sealed|abstract|partial)\s+)*class\s+([A-Za-z_]\w*)\s*:\s*(?:UnityEngine\.)?(MonoBehaviour|ScriptableObject)\b");
+ var bad=new System.Collections.Generic.List<string>(); int found=0;
+ foreach(var f in System.IO.Directory.GetFiles(root,"*.cs",System.IO.SearchOption.AllDirectories)){
+  int inFile=0; var name=System.IO.Path.GetFileNameWithoutExtension(f);
+  foreach(var line in System.IO.File.ReadAllLines(f)){
+   var m=decl.Match(line); if(!m.Success) continue;
+   found++; inFile++;
+   if(m.Groups[1].Value!=name) bad.Add(m.Groups[1].Value+" in "+name+".cs");
+  }
+  if(inFile>1) bad.Add(name+".cs has "+inFile+" MonoBehaviours/ScriptableObjects");
+ }
+ Check(found>20 && bad.Count==0,$"every MonoBehaviour / ScriptableObject ({found}) is alone in a file of its own name"+(bad.Count>0?": "+string.Join("; ",bad):""));
 }
 // ThrowSolver: the arc must pass through the target, and the stepped physics flight must stay on that arc.
 static void ThrowChecks(){

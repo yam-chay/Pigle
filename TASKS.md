@@ -58,7 +58,8 @@ Context (story frame, GDD): the villain is the Big Bad Wolf; the robots are his 
   - [ ] 🖥 `pile_rag.png` under the pile (not in the repo/scene yet).
 - M7.3 Robot `Breaching` state: `Climbing → Breaching → Removed(EnteredBarn)`. Lean: no animation polish.
   - [x] ☁ M7.3a Code: `ReachTop` enters `Breaching` and publishes `RobotBreached` — **the breach counts there** (Stolen / Caught at that moment; the stolen stone moves onto the robot then). `Removed(EnteredBarn)` at the end is cleanup, never counted again. `EnterState(Breaching)`: collider off, kinematic, still. Hard limit `RobotDefinition.BreachSeconds`. Not paused by ChoicePending; skipped by the Ended sweep. CoreCheck: Stolen once at entry, Caught at entry, a chain reaching the target during another robot's breach = win, overtime breach ends at entry.
-  - [ ] 🖥 M7.3b Set `Breach Seconds` in the robot asset; play-check: a breaching robot sits at the top holding the stolen stone, then disappears; it can't be hit; the pile drops at the moment it arrives. Breach animation (jump off the porch + fall) comes later.
+  - [x] ☁ M7.3c Breach sequence (code): the robot climbs onto the perch above the throw line, the stolen stone hops to it (lands at 60 %), it holds it, jumps off and is removed at `BreachSeconds`. All timed from `BreachSeconds` (`BreachTiming`, CoreCheck). `RobotView` tints a breaching robot ("not a target").
+  - [ ] 🖥 M7.3b Editor: add a `Perch` point under TopZone and assign it on `BarnTopZone`; raise `Breach Seconds` (0.5 is too short for the sequence — try ~2); check `Breach Tint` on the robot prefab's `RobotView`. Play-check steps in the PR. A real breach clip (bones only, not colours) comes later.
 
 ## Open design questions (from the GDD — don't implement until decided)
 - One robot line per run vs. mixed swarm.

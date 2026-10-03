@@ -16,11 +16,18 @@ namespace Piglings.Presentation
         [SerializeField] private GameObject eyeRed;
         [SerializeField] private GameObject eyeX;
         [SerializeField] private GameObject[] detachables;   // arms, legs, antenna, tail roots
+        [Tooltip("Breaching = out of play: the whole robot is tinted with this, so nobody aims at it. Alpha fades it too.")]
+        [SerializeField] private Color breachTint = new Color(0.55f, 0.55f, 0.65f, 0.75f);
 
         private static readonly int BreakTrigger = Animator.StringToHash("Break");
         private static readonly int InDangerBool = Animator.StringToHash("InDanger");
 
         private EventBus _bus;   // the robot's session bus, known once the robot is initialized
+        private SpriteRenderer[] _renderers;
+        private Color[] _breachColors;   // each part's colour when the breach started, already tinted; null until then
+
+        // Cached before anything is parented to the robot, so a stolen stone riding on it is never tinted.
+        private void Awake() => _renderers = GetComponentsInChildren<SpriteRenderer>(includeInactive: true);
 
         private void OnEnable() => robot.StateChanged += OnState;
 
@@ -38,6 +45,16 @@ namespace Piglings.Presentation
             if (animator == null || robot.Session == null) return;
             bool paused = robot.Session.State.Phase == NightPhase.ChoicePending && robot.State == RobotState.Climbing;
             animator.speed = paused ? 0f : 1f;
+        }
+
+        // After the Animator: the climb clips animate every part's colour (alpha, red eyes), so a tint set once would
+        // be overwritten next frame. Re-applied each frame instead, from the colours the parts had when the breach
+        // started (so parts hidden at that moment stay hidden). A future breach clip should move bones, not colours.
+        private void LateUpdate()
+        {
+            if (_breachColors == null) return;
+            for (int i = 0; i < _renderers.Length; i++)
+                if (_renderers[i]) _renderers[i].color = _breachColors[i];
         }
 
         // Every robot hears every danger event; it only reacts to its own. A few dozen a night.
@@ -63,6 +80,12 @@ namespace Piglings.Presentation
                     break;
                 case RobotState.Falling:
                     foreach (var d in detachables) if (d) d.SetActive(false);
+                    break;
+                case RobotState.Breaching:
+                    // "Not a target": the robot is already out of play (no collider). Multiplying keeps the art readable.
+                    _breachColors = new Color[_renderers.Length];
+                    for (int i = 0; i < _renderers.Length; i++)
+                        if (_renderers[i]) _breachColors[i] = _renderers[i].color * breachTint;
                     break;
             }
         }

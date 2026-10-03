@@ -11,6 +11,8 @@ Read first: `ARCHITECTURE.md` (structure, wins over this file), then `TASKS.md` 
 - No singletons, no static mutable state, no `Find*` lookups, no bootstrap. Scene objects get `NightSession` via `[SerializeField]`.
 - One source of truth per thing. State machines: transitions only through `SetState` → `EnterState`.
 - Events are immutable structs in `Piglings.Events`. Add a new event type rather than overloading an old one.
+- Runtime ids are `GameId`, never `EntityId` (clashes with `UnityEngine.EntityId` in Unity 6.5).
+- Every MonoBehaviour / ScriptableObject lives in its own file with the same name (Unity can't add it as a component otherwise — the old Zones.cs bug). Plain types (events, enums, structs) may share a file. CoreCheck enforces it.
 - Engine-free assemblies: C# 9 max (Unity's compiler), no `UnityEngine`.
 - Unity 6 API: `Rigidbody2D.linearVelocity` (not `velocity`); input via `UnityEngine.InputSystem`.
 - Comments explain **why**, not what. Yam reads every change and wants to understand it — keep code plain over clever.

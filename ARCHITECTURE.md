@@ -84,10 +84,16 @@ Spawned -> Climbing -> LosingGrip -> Falling -> Removed(HitGround | TimedOut)
 - `LosingGrip` = the break clip (flail → crack → limbs collapse). Still kinematic. Duration from `RobotDefinition.BreakDuration`.
 - `Falling` = dynamic ball on layer `RobotBall`, bounces through the Holds. Only a Falling robot passes a chain on. A ball still falling after `RobotDefinition.MaxFallSeconds` is removed (`TimedOut`) so it can't hold a chain open.
 - `Breaching` (M7.3) = the breach sequence. `ReachTop` (a climbing robot touching `BarnTopZone`) enters it, then publishes `RobotBreached`. **The breach counts on entering `Breaching`**: `StonesChanged(Stolen)` or `Caught` happen at that moment, and the stolen stone moves onto the robot then. Why at the start: the outcome is fixed when the player sees the robot arrive; a chain that reaches the target during the sequence can't undo a theft, and a pile that's empty by the time the robot leaves must not count as a second breach. State before event: if the breach ends the night, the sweep (inside the publish) already sees the robot as not climbing.
-  - `EnterState(Breaching)`: collider off, kinematic, still. It **never starts or joins a chain** (not `Falling`, no collider, touches no zone).
-  - Hard time limit `RobotDefinition.BreachSeconds` (tune in the asset) → `Removed(EnteredBarn)`, whatever the animation does — same class of bug as the stuck ball. That removal is **cleanup only**: `NightReferee` doesn't listen to it.
+  - `EnterState(Breaching)`: collider off, kinematic. It **never starts or joins a chain** (not `Falling`, no collider, touches no zone).
+  - **The sequence**, all timed from `RobotDefinition.BreachSeconds` (the one tuning value, in the asset) by `BreachTiming` (Simulation, engine-free, checked by CoreCheck), as fractions of it:
+    ```
+    0 ──climbs onto the perch──▶ 0.35 ──holds──▶ 0.8 ──jumps off──▶ 1 → Removed(EnteredBarn)
+    0 ──────stolen stone hops pile → robot──────▶ 0.6
+    ```
+    The perch point is `BarnTopZone.perch` (above the throw line, so the robot is clearly out of play and never sits where the player aims). The robot moves there along a kinematic path in `FixedUpdate`, and jumps off away from the barn's middle (jump shape in ball radii). `StonePile` times the stone's hop with the same timeline, so the stone always lands before the jump, whatever `BreachSeconds` is.
+  - The end at `BreachSeconds` is a hard limit — whatever the animation does, same class of bug as the stuck ball. That removal is **cleanup only**: `NightReferee` doesn't listen to it.
   - Not paused by ChoicePending (it isn't climbing — it finishes its sequence; `RobotView` doesn't freeze its Animator). Skipped by the Ended sweep (`Sweep` only takes climbing robots); its time limit removes it.
-  - The jump off the porch and the fall are animation (🖥), not physics, for now.
+  - "Not a target" look: `RobotView` tints the whole robot (`breachTint`, Inspector) from the state, re-applied in `LateUpdate` because the climb clips animate part colours. A future breach clip should move bones, not colours.
 
 ## Physics layers & matrix
 
@@ -120,7 +126,7 @@ Only `RobotClimbing` touches `Zones`, so zones only ever see climbing (or just-h
 - **Simulation** `StonePile` (on the right perch piece) **mirrors** the count with real stone GameObjects; it never decides it. It hands out the real throwables, which is why it's Simulation, not Presentation.
   - Stones sit in fixed pyramid slots, no physics, no collider (`Throwable.Park`). Top stone = last slot filled.
   - When the hand is empty and the pig may throw, the top stone hops to the hand (ThrowOrigin) and waits. `ThrowController` only aims with a stone in the hand, and launches *that* stone (`StonePile.ReleaseHeld` → `Throwable.Launch`). Hop < throw cooldown, so there's no input lag.
-  - `Stolen` (at `RobotBreached`, when the breach starts): the top stone is parented to the thief, stays parked (never a weapon, can't start a chain), rides on it through the breach sequence and is destroyed with it. `Added`: new stones drop onto the next free slots. `Forfeited`: overtime ended at the danger line, the unthrown stones go.
+  - `Stolen` (at `RobotBreached`, when the breach starts): the top stone hops from the pile to the thief (same arc as the hop to the hand), landing at `BreachTiming.StoneLands` of its `BreachSeconds`; then it's parented to the thief and rides it off. Parked all the way (never a weapon, can't start a chain); destroyed with the robot. `Added`: new stones drop onto the next free slots. `Forfeited`: overtime ended at the danger line, the unthrown stones go.
   - After every change the pile reconciles to the count, so it can never disagree with the HUD.
 - **No object pool yet**: stones are instantiated from the Stone prefab and destroyed (`StonePile.AddToPile` / `Destroy`). The "Weapons pool" commit (f810c2e) wired the pile into the scene and set the Stone prefab's sorting — it added no pooling code. A pool can slot in behind `StonePile` later.
 
