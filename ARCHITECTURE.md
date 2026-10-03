@@ -90,10 +90,10 @@ Spawned -> Climbing -> LosingGrip -> Falling -> Removed(HitGround | TimedOut)
     0 ──climbs onto the perch──▶ 0.35 ──holds──▶ 0.8 ──jumps off──▶ 1 → Removed(EnteredBarn)
     0 ──────stolen stone hops pile → robot──────▶ 0.6
     ```
-    The perch point is `BarnTopZone.perch` (above the throw line, so the robot is clearly out of play and never sits where the player aims). The robot moves there along a kinematic path in `FixedUpdate`, and jumps off away from the barn's middle (jump shape in ball radii). `StonePile` times the stone's hop with the same timeline, so the stone always lands before the jump, whatever `BreachSeconds` is.
+    Where it stands: a **breach slot** on the perch. `BarnTopZone.slots` are fixed Transforms in the scene (4–5, beside the pile, above the throw line, so a breaching robot is clearly out of play and never sits where the player aims). A breaching robot `Claim`s the free slot nearest to where it arrived and `Release`s it in `Remove`, so thieves line up side by side, each with its stone. All slots full: it stands past the last one, continuing the row at 0.7 × the slot spacing (a small overlap) — rare, but defined. The robot moves there along a kinematic path in `FixedUpdate`, and jumps off away from the barn's middle (jump shape in ball radii). `StonePile` times the stone's hop with the same timeline, so the stone always lands before the jump, whatever `BreachSeconds` is.
   - The end at `BreachSeconds` is a hard limit — whatever the animation does, same class of bug as the stuck ball. That removal is **cleanup only**: `NightReferee` doesn't listen to it.
   - Not paused by ChoicePending (it isn't climbing — it finishes its sequence; `RobotView` doesn't freeze its Animator). Skipped by the Ended sweep (`Sweep` only takes climbing robots); its time limit removes it.
-  - "Not a target" look: `RobotView` tints the whole robot (`breachTint`, Inspector) from the state, re-applied in `LateUpdate` because the climb clips animate part colours. A future breach clip should move bones, not colours.
+  - "Not a target" look: `RobotView` lowers the robot's opacity (`breachOpacity`, Inspector, ~0.7) from the state, re-applied in `LateUpdate` because the climb clips animate part colours. Its renderers are cached in `Awake`, so the stolen stone riding on it stays fully opaque. A future breach clip should move bones, not colours.
 
 ## Physics layers & matrix
 
@@ -113,7 +113,7 @@ Only `RobotClimbing` touches `Zones`, so zones only ever see climbing (or just-h
 
 | Zone | Where | What it does |
 |---|---|---|
-| `BarnTopZone` | the breach line, just under the pig's hole (y ≈ 7.2) | Marker. A climbing robot touching it calls `ReachTop` → `Breaching` + `RobotBreached` = the breach, counted at that moment. `RobotRemoved(EnteredBarn)` follows after `BreachSeconds` as cleanup (not counted). Its children are art only (perch pieces + the hanging "no wolves" sign): no colliders. |
+| `BarnTopZone` | the breach line, just under the pig's hole (y ≈ 7.2) | A climbing robot touching it calls `ReachTop` → `Breaching` + `RobotBreached` = the breach, counted at that moment. `RobotRemoved(EnteredBarn)` follows after `BreachSeconds` as cleanup (not counted). Owns the perch's breach slots (claimed / released by breaching robots). Its other children are art only (perch pieces + the hanging "no wolves" sign): no colliders. |
 | `DangerZone` | just above the wall's top beam (y ≈ 6.275) | Has `NightSession` (serialized). A climbing robot entering it → `RobotEnteredDangerZone`, once per robot, all night. `RobotView` sets the Animator bool `InDanger`. No robot state. In Overtime it's the line that ends the night; `DangerZoneView` shows it differently then. |
 | `GroundZone` | below the barn | Marker. Falling balls and throwables touching it are removed. |
 

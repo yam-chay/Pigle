@@ -48,7 +48,8 @@ namespace Piglings.Simulation
         private float _fallTimer;
         private float _breachElapsed;
         private Vector2 _breachFrom;   // where it touched the breach line
-        private Vector2 _perch;        // where it climbs to (BarnTopZone)
+        private Vector2 _perch;        // its breach slot on the perch (BarnTopZone)
+        private BarnTopZone _breachZone;  // holds that slot until this robot is removed
         private float _jumpAway;       // +1 / -1: the side it jumps off
 
         private void Reset()
@@ -99,7 +100,8 @@ namespace Piglings.Simulation
         {
             if (State != RobotState.Climbing) return;
             _breachFrom = body.position;
-            if (zone != null) _perch = zone.Perch(_breachFrom, out _jumpAway);
+            _breachZone = zone;
+            if (zone != null) _perch = zone.Claim(Id, _breachFrom, _def.BallRadius, out _jumpAway);
             else { _perch = _breachFrom; _jumpAway = 1f; }
             // State first, then the event: if this breach ends the night, the sweep runs inside the publish
             // (the bus is synchronous) and must already see this robot as not climbing, or it would sweep it.
@@ -112,6 +114,7 @@ namespace Piglings.Simulation
         {
             if (State == RobotState.Removed) return;
             SetState(RobotState.Removed);
+            if (_breachZone != null) _breachZone.Release(Id);
             _session.Bus.Publish(new RobotRemoved(Id, Chain, reason));
             Destroy(gameObject);
         }
