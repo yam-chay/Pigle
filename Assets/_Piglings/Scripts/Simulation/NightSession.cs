@@ -21,6 +21,9 @@ namespace Piglings.Simulation
         // Read once in Awake — edit the asset outside play mode (or restart play) to try a new curve.
         [SerializeField] private ScoringDefinition scoring;
 
+        [Tooltip("The wall's peg sockets (PegBoard on Barn). Empty = no sockets: every threshold is just a refill pause.")]
+        [SerializeField] private PegBoard board;
+
         public NightDefinition Night => night;
         public EventBus Bus { get; private set; }
         public NightState State { get; private set; }
@@ -40,10 +43,18 @@ namespace Piglings.Simulation
         public int ThresholdCount => _referee.Goal.ThresholdCount;
         public float HourMultiplier => _referee.HourMultiplier;
 
-        // Peg placement. Called by Simulation's placement code (next PR); the referee ignores them outside a round.
+        // Peg placement. Called by PegThrower; the referee ignores them outside a round.
         public bool PlacePeg(int socket, string pegId) => _referee.PlacePeg(socket, pegId);
         public bool IsValidPegTarget(int socket, string pegId) => _referee.IsValidTarget(socket, pegId);
         public bool CanPlaceAnyPeg => _referee.CanPlaceAnyPeg;
+
+        /// <summary>The night's PegDefinition for a peg id (sprites for the shelf and the board). Null if unknown.</summary>
+        public PegDefinition FindPeg(string id)
+        {
+            foreach (var entry in night.PegLoadout)
+                if (entry != null && entry.peg != null && entry.peg.Id == id) return entry.peg;
+            return null;
+        }
 
         private void Awake()
         {
@@ -73,8 +84,7 @@ namespace Piglings.Simulation
                 _referee.EndPlacement();
         }
 
-        // Sockets come with the placement PR (one per Hold); until then the wall has none, so every round is a
-        // refill pause.
+        // One socket per Hold (PegBoard). No board = no sockets: every round is then just a refill pause.
         private PegSetup BuildPegs()
         {
             var loadout = new List<(PegType, int)>();
@@ -83,7 +93,7 @@ namespace Piglings.Simulation
                 if (entry == null || entry.peg == null) continue;
                 loadout.Add((new PegType(entry.peg.Id, entry.peg.MaxLevel, entry.peg.Mergeable), entry.count));
             }
-            var pegs = new PegSetup(loadout, night.PegThrowsPerThreshold, socketCount: 0);
+            var pegs = new PegSetup(loadout, night.PegThrowsPerThreshold, board != null ? board.SocketCount : 0);
             if (pegs.DroppedTypes > 0)
                 Debug.LogWarning($"NightSession: {night.name} brings more than {PegSetup.ShelfCapacity} peg types; " +
                                  $"{pegs.DroppedTypes} ignored (the shelf holds {PegSetup.ShelfCapacity}).", night);

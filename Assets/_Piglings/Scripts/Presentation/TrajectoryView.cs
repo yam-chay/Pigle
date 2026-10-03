@@ -14,6 +14,8 @@ namespace Piglings.Presentation
     public sealed class TrajectoryView : MonoBehaviour
     {
         [SerializeField] private ThrowController thrower;
+        [Tooltip("Optional: the peg thrower. Only one of the two ever aims at a time (stones can't be thrown in a placement round).")]
+        [SerializeField] private PegThrower pegThrower;
         [SerializeField] private LineRenderer line;
 
         [Tooltip("Points sampled along the arc. More = smoother line.")]
@@ -41,6 +43,7 @@ namespace Piglings.Presentation
         private void LateUpdate()
         {
             ThrowAim aim = thrower.CurrentAim;
+            if (!aim.IsAiming && pegThrower != null) aim = pegThrower.CurrentAim;
             if (!aim.IsAiming)
             {
                 line.positionCount = 0;
@@ -61,7 +64,7 @@ namespace Piglings.Presentation
             line.SetPositions(_points);
 
             // Out of range only changes the colour: the line is still drawn so the player sees
-            // where the stone will actually go. The tail fades so the end doesn't read as a wall.
+            // where the stone will actually go. For a peg, red = no valid socket there: releasing won't throw. The tail fades so the end doesn't read as a wall.
             Color c = aim.InRange ? inRangeColor : outOfRangeColor;
             line.startColor = c;
             line.endColor = new Color(c.r, c.g, c.b, c.a * 0.25f);

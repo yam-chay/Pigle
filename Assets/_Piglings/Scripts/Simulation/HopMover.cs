@@ -18,6 +18,7 @@ namespace Piglings.Simulation
         private sealed class Hop
         {
             public Transform Item; public Vector3 From; public Transform Target; public Vector3 Offset;
+            public bool Fixed;   // true: Offset is a world position (a slot), there's no Target to lose
             public float Seconds; public float T; public Action<Transform> OnLand;
         }
 
@@ -37,6 +38,13 @@ namespace Piglings.Simulation
         {
             Cancel(item);
             _hops.Add(new Hop { Item = item, From = item.position, Target = target, Offset = offset, Seconds = seconds, T = 0f, OnLand = onLand });
+        }
+
+        /// <summary>A hop to a fixed world position (e.g. back into a pile slot). Nothing to lose mid-hop.</summary>
+        public void StartTo(Transform item, Vector3 position, float seconds, Action<Transform> onLand = null)
+        {
+            Cancel(item);
+            _hops.Add(new Hop { Item = item, From = item.position, Offset = position, Fixed = true, Seconds = seconds, T = 0f, OnLand = onLand });
         }
 
         public bool IsHopping(Transform item)
@@ -66,10 +74,11 @@ namespace Piglings.Simulation
             {
                 var h = _hops[i];
                 if (h.Item == null) { _hops.RemoveAt(i); continue; }
-                if (h.Target == null) { _hops.RemoveAt(i); _onLost?.Invoke(h.Item); continue; }
+                if (!h.Fixed && h.Target == null) { _hops.RemoveAt(i); _onLost?.Invoke(h.Item); continue; }
 
                 h.T = h.Seconds <= 0f ? 1f : Mathf.Min(1f, h.T + deltaTime / h.Seconds);
-                h.Item.position = Arc(h.From, h.Target.position + h.Offset, h.T, Height);
+                var to = h.Fixed ? h.Offset : h.Target.position + h.Offset;
+                h.Item.position = Arc(h.From, to, h.T, Height);
                 if (h.T < 1f) continue;
 
                 _hops.RemoveAt(i);
