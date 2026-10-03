@@ -189,7 +189,7 @@ namespace Piglings.Simulation
         }
 
         // The breach sequence, all timed from BreachSeconds (BreachTiming): up onto the perch, hold the stolen
-        // stone (StonePile hops it over), jump off. Runs while the wall is paused for the choice too — a breaching
+        // stone (StonePile hops it over), jump off. Runs while the wall is paused for peg placement too — a breaching
         // robot isn't climbing, it finishes its sequence — and after the night ends (the sweep skips it).
         // The removal is a hard limit, not "when the animation ends": an animation event that never fires would
         // leave the robot here forever. Moving a kinematic body is not a physics change, so EnterState stays the

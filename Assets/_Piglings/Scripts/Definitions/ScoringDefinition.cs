@@ -29,15 +29,15 @@ namespace Piglings.Definitions
                  "On: it passes on what it SCORED + wolfValue. Compounds hard — kept as a switch for a future late upgrade.")]
         [SerializeField] private bool carryScoredTotal = false;
 
-        [Tooltip("In overtime every chain point is worth this many times more, as it's scored (the popups show it). " +
-                 "The end-of-night sweep is never multiplied.")]
-        [SerializeField, Min(1)] private int overtimeMultiplier = 2;
+        [Tooltip("Each hour reached adds this to what chains score: 0.5 → hour 1 ×1, hour 2 ×1.5, hour 3 ×2… " +
+                 "Fixed when the stone is thrown; never applied to what a robot carries on, nor to the end-of-night sweep.")]
+        [SerializeField, Min(0f)] private float hourMultiplierStep = 0.5f;
 
         public int StoneValue => stoneValue;
         public int GrowthPerHit => growthPerHit;
         public int WolfValue => wolfValue;
         public float MultiplierPerDepth => multiplierPerDepth;
         public bool CarryScoredTotal => carryScoredTotal;
-        public int OvertimeMultiplier => overtimeMultiplier;
+        public float HourMultiplierStep => hourMultiplierStep;
     }
 }

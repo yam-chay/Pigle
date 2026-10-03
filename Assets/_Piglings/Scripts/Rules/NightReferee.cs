@@ -4,29 +4,28 @@ using Piglings.Runtime;
 namespace Piglings.Rules
 {
     /// <summary>
-    /// Runs the night's phases (GDD "סוף הלילה: להמשיך או ללכת"). The one state machine for the night:
+    /// Runs the night: the hours until dawn (GDD "שעות הלילה"). The one state machine for the night:
     /// transitions only through SetPhase → EnterPhase, and NightState.Phase is the source of truth.
     ///
-    ///   Running ──target reached, no chain open──▶ ChoicePending ──Stay──▶ Overtime ──▶ Ended
-    ///      │                                           └────────Leave─────────────────▶ Ended
-    ///      └──a robot breaches with no stones left (Caught, lost)───────────────────────▶ Ended
+    ///   Running(hour 1) ──threshold──▶ PegPlacement ──▶ Running(hour 2) ──▶ … ──last threshold──▶ Ended (dawn, won)
+    ///      └──a robot breaches with no stones left (caught, lost)─────────────────────────────▶ Ended
     ///
-    /// - Running: the normal night. The stones are the pig's life. A robot that breaches takes the top
-    ///   stone and leaves; a robot that breaches while the pile is empty catches the pigs — the ONLY loss.
-    ///   Throwing your last stone isn't a loss: the night goes on, and a chain still in flight can reach
-    ///   the target before the next breach. Once the score reaches the target the night can no longer be
-    ///   lost — throwing stops and we wait for what's falling to land, so a chain is never cut.
-    /// - ChoicePending: the wall pauses (Simulation reads Phase). Stay or Leave.
-    /// - Overtime (Stay): throwing and the wall resume. Every chain point is doubled as it's scored
-    ///   (ScoreCurve.RobotTotal, via ChainTracker) and banks to the barn as scored; the weapon earns
-    ///   nothing — that's what keeps Leave worth choosing. Ends when the stones run out (after the
-    ///   last chain closes) or when a robot that climbed on during overtime reaches the danger line.
-    ///   Robots already on the wall at Stay can't end it (see _overtimeRobots). No loss either way.
-    /// - Ended: Simulation sweeps the wall (every climbing robot falls); each one scores its own value,
-    ///   flat, with the same robot-value function chains use. Then mastery is banked and NightEnded published.
+    /// - Running: the normal night. The stones are the pig's life. A robot that breaches takes the top stone;
+    ///   a robot that breaches while the pile is empty catches the pigs — the ONLY loss, possible until dawn.
+    ///   Throwing your last stone isn't a loss: the night goes on, and a chain still in flight can cross a threshold.
+    /// - Crossing a threshold (not the last): HourReached. Throwing stops at once, and the placement round starts
+    ///   once every chain has settled — so a chain is never cut, and never straddles two hours. A chain that crosses
+    ///   several thresholds earns one round each, played one after the other.
+    /// - PegPlacement: the wall pauses (Simulation reads Phase). The pile gets its refill (StonesPerThreshold) and the
+    ///   player gets PegThrowsPerThreshold pegs to place (PlacePeg). The round ends when the throws are used, or —
+    ///   when nothing can be placed — when Simulation calls EndPlacement after the refill pause. Unused throws are lost.
+    /// - Crossing the last threshold: DawnReached. The night is won from here (no more catches) and ends once every
+    ///   chain has settled. No placement round at dawn, so no refill either.
+    /// - Ended: Simulation sweeps the wall (every climbing robot falls). Won: each scores its own value, flat, with the
+    ///   same robot-value function chains use. Lost: visual only. Then the score is banked and NightEnded published.
     ///
-    /// Owns Phase, StonesLeft, CanThrow, the breach count and the end-of-night tallies in NightState.
-    /// Reads chain progress and the robot-value function from ChainTracker, which must be constructed first.
+    /// Owns Phase, StonesLeft, CanThrow, the hours, the peg board and shelf, the breach count and the end-of-night
+    /// tallies in NightState. Reads chain progress and the curve from ChainTracker, which must be constructed first.
     /// </summary>
     public sealed class NightReferee
     {
@@ -34,33 +33,36 @@ namespace Piglings.Rules
         private readonly NightState _state;
         private readonly ChainTracker _chains;
         private readonly NightGoal _goal;
+        private readonly PegSetup _pegs;
 
         // True while Simulation sweeps the wall inside the Ended phase change; RobotSwept only counts then.
         private bool _sweeping;
 
-        // Robots that spawned during overtime — the only ones whose danger line ends it. Why: the wall
-        // resumes exactly as it froze, so a robot parked just under the line would end overtime the instant
-        // you press Stay. Robots already on the wall at Stay can't end it (they can still be knocked off
-        // for double points; reaching the top costs nothing). So the earliest overtime can end is the
-        // time a fresh robot takes to climb the wall: a fair, predictable window with no timer to tune.
-        private readonly System.Collections.Generic.HashSet<GameId> _overtimeRobots = new System.Collections.Generic.HashSet<GameId>();
-
         public NightGoal Goal => _goal;
+        public PegSetup Pegs => _pegs;
 
-        public NightReferee(EventBus bus, NightState state, ChainTracker chains, NightGoal goal = null)
+        /// <summary>The next threshold to cross; the last one once dawn is reached.</summary>
+        public int NextThreshold => _goal.Thresholds[System.Math.Min(_state.ThresholdsReached, _goal.ThresholdCount - 1)];
+
+        /// <summary>What chains thrown now score with.</summary>
+        public float HourMultiplier => _chains.Curve.HourMultiplier(_state.ThresholdsReached);
+
+        public NightReferee(EventBus bus, NightState state, ChainTracker chains, NightGoal goal = null, PegSetup pegs = null)
         {
-            _bus = bus; _state = state; _chains = chains; _goal = goal ?? new NightGoal();
+            _bus = bus; _state = state; _chains = chains; _goal = goal ?? new NightGoal(); _pegs = pegs ?? new PegSetup();
             _state.Phase = NightPhase.Running;
             _state.StonesLeft = _goal.ThrowsAvailable;
+            _state.Sockets = new PegSocket[_pegs.SocketCount];
+            for (int i = 0; i < _state.Sockets.Length; i++) _state.Sockets[i] = new PegSocket();
+            _state.Shelf.Clear();
+            foreach (var (type, count) in _pegs.Loadout) _state.Shelf.Add(new PegStack { PegId = type.Id, Count = count });
             UpdateCanThrow();
 
             _bus.Subscribe<ThrowReleased>(OnThrow);
             _bus.Subscribe<RobotScored>(OnRobotScored);
             _bus.Subscribe<RobotBreached>(OnRobotBreached);
             _bus.Subscribe<ChainScored>(OnChainScored);
-            _bus.Subscribe<RobotEnteredDangerZone>(OnEnteredDangerZone);
             _bus.Subscribe<RobotSwept>(OnRobotSwept);
-            _bus.Subscribe<RobotSpawned>(OnRobotSpawned);
         }
 
         public void Dispose()
@@ -69,32 +71,91 @@ namespace Piglings.Rules
             _bus.Unsubscribe<RobotScored>(OnRobotScored);
             _bus.Unsubscribe<RobotBreached>(OnRobotBreached);
             _bus.Unsubscribe<ChainScored>(OnChainScored);
-            _bus.Unsubscribe<RobotEnteredDangerZone>(OnEnteredDangerZone);
             _bus.Unsubscribe<RobotSwept>(OnRobotSwept);
-            _bus.Unsubscribe<RobotSpawned>(OnRobotSpawned);
         }
 
-        // ---------- the player's choice (called by Simulation's NightChoice; ignored outside ChoicePending) ----------
+        // ---------- pegs (called by Simulation during PegPlacement; ignored otherwise) ----------
 
-        public void Stay()
+        /// <summary>
+        /// Could a peg of this type go into this socket? An empty socket, or a placed peg of the same mergeable type
+        /// below its max level (= a merge). Simulation highlights these and snaps only to them.
+        /// </summary>
+        public bool IsValidTarget(int socket, string pegId)
         {
-            if (_state.Phase != NightPhase.ChoicePending) return;
-            _state.Choice = StayOrLeave.Stay;
-            _bus.Publish(new NightChoiceMade(StayOrLeave.Stay));
-            SetPhase(NightPhase.Overtime);
+            if (socket < 0 || socket >= _state.Sockets.Length) return false;
+            var type = _pegs.Find(pegId);
+            if (type == null) return false;
+            var s = _state.Sockets[socket];
+            if (s.IsEmpty) return true;
+            return s.PegId == pegId && type.Mergeable && s.Level < type.MaxLevel;
         }
 
-        public void Leave()
+        /// <summary>Pegs of this type left on the shelf.</summary>
+        public int ShelfCount(string pegId)
         {
-            if (_state.Phase != NightPhase.ChoicePending) return;
-            _state.Choice = StayOrLeave.Leave;
-            _bus.Publish(new NightChoiceMade(StayOrLeave.Leave));
-            End(NightResult.Won, NightEndReason.Left);
+            foreach (var stack in _state.Shelf) if (stack.PegId == pegId) return stack.Count;
+            return 0;
         }
 
-        // ---------- events ----------
+        /// <summary>Is there a peg on the shelf, a throw left this round, and a socket it could go into?</summary>
+        public bool CanPlaceAnyPeg
+        {
+            get
+            {
+                if (_state.Phase != NightPhase.PegPlacement || _state.PegThrowsLeft <= 0) return false;
+                foreach (var stack in _state.Shelf)
+                {
+                    if (stack.Count <= 0) continue;
+                    for (int i = 0; i < _state.Sockets.Length; i++)
+                        if (IsValidTarget(i, stack.PegId)) return true;
+                }
+                return false;
+            }
+        }
 
-        private bool TargetReached => _state.Score >= _goal.TargetScore;
+        /// <summary>
+        /// A peg thrown from the shelf landed on this socket. Places it (empty socket, level 1) or merges it (same type,
+        /// +1 level). False = refused, nothing used. Uses one peg and one throw; the round ends when the throws run out.
+        /// Never touches the stones and never starts a chain.
+        /// </summary>
+        public bool PlacePeg(int socket, string pegId)
+        {
+            if (_state.Phase != NightPhase.PegPlacement || _state.PegThrowsLeft <= 0) return false;
+            if (ShelfCount(pegId) <= 0 || !IsValidTarget(socket, pegId)) return false;
+
+            foreach (var stack in _state.Shelf) if (stack.PegId == pegId) { stack.Count--; break; }
+            _state.PegThrowsLeft--;
+
+            var s = _state.Sockets[socket];
+            if (s.IsEmpty)
+            {
+                s.PegId = pegId;
+                s.Level = 1;
+                _bus.Publish(new PegPlaced(socket, pegId, s.Level));
+            }
+            else
+            {
+                s.Level++;
+                _bus.Publish(new PegMerged(socket, pegId, s.Level));
+            }
+
+            if (_state.PegThrowsLeft <= 0) EndPlacement();
+            return true;
+        }
+
+        /// <summary>
+        /// Ends the current placement round: the next round if more thresholds are waiting, else back to Running.
+        /// Called here when the throws run out, and by Simulation when nothing can be placed (after the refill pause).
+        /// Unused throws are lost.
+        /// </summary>
+        public void EndPlacement()
+        {
+            if (_state.Phase != NightPhase.PegPlacement) return;
+            _state.PegThrowsLeft = 0;
+            SetPhase(_state.PendingPegRounds > 0 ? NightPhase.PegPlacement : NightPhase.Running);
+        }
+
+        // ---------- stones ----------
 
         private void OnThrow(ThrowReleased e)
         {
@@ -102,9 +163,7 @@ namespace Piglings.Rules
             else UpdateCanThrow();
         }
 
-        /// <summary>
-        /// Stones join the pile mid-run (a pickup, a reward — nothing calls this yet). Ignored once the night is over.
-        /// </summary>
+        /// <summary>Stones join the pile mid-run (a pickup, a reward). Ignored once the night is over.</summary>
         public void AddStones(int count)
         {
             if (count <= 0 || _state.Phase == NightPhase.Ended) return;
@@ -119,98 +178,74 @@ namespace Piglings.Rules
             _bus.Publish(new StonesChanged(_state.StonesLeft, delta, cause, robot));
         }
 
+        // ---------- the hours ----------
+
+        // ChainTracker has already added this robot's points to the score. One chain can cross several thresholds:
+        // each one counts (its own HourReached and, before dawn, its own placement round).
         private void OnRobotScored(RobotScored e)
         {
-            if (_state.Phase == NightPhase.Overtime)
-                _state.OvertimeScore = ScoreMath.AddClamped(_state.OvertimeScore, e.Total);
-
-            // First time over the line: throwing stops now, the choice comes once everything has landed.
-            if (_state.Phase == NightPhase.Running && _state.StonesAtTarget < 0 && TargetReached)
+            if (_state.Phase != NightPhase.Running) return;
+            while (!_state.Dawn && _state.Score >= _goal.Thresholds[_state.ThresholdsReached])
             {
-                _state.StonesAtTarget = _state.StonesLeft;
-                _bus.Publish(new NightTargetReached(_state.Score, _state.StonesLeft));
+                _state.ThresholdsReached++;
+                if (_state.ThresholdsReached >= _goal.ThresholdCount)
+                {
+                    _state.Dawn = true;
+                    _bus.Publish(new DawnReached(_state.Score));
+                }
+                else
+                {
+                    _state.PendingPegRounds++;
+                    _bus.Publish(new HourReached(_state.Hour, HourMultiplier, _goal.Thresholds[_state.ThresholdsReached - 1]));
+                }
             }
             UpdateCanThrow();
         }
 
-        // Counted when the breach STARTS, not when the robot is removed at the end of it. Why: the breach
-        // sequence takes time (RobotDefinition.BreachSeconds), and the outcome must be fixed at the moment the
-        // player sees the robot arrive — a chain landing during the sequence can't undo a theft, and an empty
-        // pile at the robot's later removal must not count as a second breach. RobotRemoved(EnteredBarn) is
-        // cleanup, and this class doesn't listen to it.
+        // Counted when the breach STARTS (RobotBreached), not when the robot is removed at the end of its sequence:
+        // the outcome is fixed the moment the player sees it arrive. RobotRemoved(EnteredBarn) is cleanup, and this
+        // class doesn't listen to it.
         private void OnRobotBreached(RobotBreached e)
         {
             if (_state.Phase == NightPhase.Ended) return;
             _state.RobotsReachedTop++;
 
-            switch (_state.Phase)
-            {
-                case NightPhase.Running when !TargetReached:
-                    // The robots are clearing the way for the wolf: disarming the pig is part of it.
-                    // Stones left: the robot takes the top one and leaves. None left: the pigs are caught.
-                    if (_state.StonesLeft > 0) ChangeStones(-1, StoneChange.Stolen, e.Robot);
-                    else End(NightResult.Lost, NightEndReason.Caught);
-                    return;
+            // Only a running night before dawn can be hurt. (In PegPlacement the wall is frozen, so no new breach
+            // starts; after dawn the night is already won.)
+            if (_state.Phase != NightPhase.Running || _state.Dawn) return;
 
-                case NightPhase.Overtime:
-                    // An overtime robot got to the top (it crossed the line on the way): the bonus is over.
-                    // A robot that was already on the wall at Stay costs nothing. Never a loss.
-                    if (_overtimeRobots.Contains(e.Robot)) End(NightResult.Won, NightEndReason.DangerLine);
-                    return;
-
-                // Running after the target, or ChoicePending: the night can't be lost any more. Counted, costs nothing.
-            }
-        }
-
-        // In Running it's a warning only (views turn the robot red). In Overtime it's the line that ends the bonus.
-        private void OnEnteredDangerZone(RobotEnteredDangerZone e)
-        {
-            if (_state.Phase == NightPhase.Overtime && _overtimeRobots.Contains(e.Robot))
-                End(NightResult.Won, NightEndReason.DangerLine);
-        }
-
-        private void OnRobotSpawned(RobotSpawned e)
-        {
-            if (_state.Phase == NightPhase.Overtime) _overtimeRobots.Add(e.Robot);
+            // The robots are clearing the way for the wolf: disarming the pig is part of it.
+            // Stones left: the robot takes the top one and leaves. None left: the pigs are caught.
+            if (_state.StonesLeft > 0) ChangeStones(-1, StoneChange.Stolen, e.Robot);
+            else End(NightResult.Lost, NightEndReason.Caught);
         }
 
         // ChainTracker publishes this after it has closed the chain, so OpenChainCount is current.
         private void OnChainScored(ChainScored e) => CheckSettled();
 
-        // Flat: the robot's own value, no order escalation, no depth multiplier — the same function chains use.
+        // Won: flat, the robot's own value, no order escalation, no depth or hour multiplier — the same function chains
+        // use. Lost: the robots still fall (Simulation), but nothing is scored: the bank stays at the last threshold.
         private void OnRobotSwept(RobotSwept e)
         {
-            if (!_sweeping) return;
+            if (!_sweeping || _state.Result != NightResult.Won) return;
             int points = _chains.Curve.RobotValue();
             _state.Score = ScoreMath.AddClamped(_state.Score, points);
             _state.SweepScore = ScoreMath.AddClamped(_state.SweepScore, points);
-            // ×1 on both paths: the sweep isn't earned by throwing, and doubling it would make Stay a free win.
         }
 
-        // Called whenever something may have finished: a chain closed, a breach took a stone, overtime began.
+        // Called whenever a chain closes: is it time for dawn, or for a placement round?
         private void CheckSettled()
         {
-            if (_chains.OpenChainCount > 0) return;
-
-            // Out of stones below the target is not a loss: the night goes on until a robot breaches.
-            if (_state.Phase == NightPhase.Running)
-            {
-                if (TargetReached) SetPhase(NightPhase.ChoicePending);
-            }
-            else if (_state.Phase == NightPhase.Overtime && _state.StonesLeft == 0)
-            {
-                End(NightResult.Won, NightEndReason.OutOfStones);
-            }
+            if (_state.Phase != NightPhase.Running || _chains.OpenChainCount > 0) return;
+            if (_state.Dawn) End(NightResult.Won, NightEndReason.Dawn);
+            else if (_state.PendingPegRounds > 0) SetPhase(NightPhase.PegPlacement);
         }
 
         private void UpdateCanThrow()
         {
-            switch (_state.Phase)
-            {
-                case NightPhase.Running: _state.CanThrow = _state.StonesLeft > 0 && !TargetReached; break;
-                case NightPhase.Overtime: _state.CanThrow = _state.StonesLeft > 0; break;
-                default: _state.CanThrow = false; break;   // paused for the choice, or over
-            }
+            // Not after a threshold until its round is played (a new chain would hold the round off), not after dawn.
+            _state.CanThrow = _state.Phase == NightPhase.Running && _state.StonesLeft > 0
+                              && _state.PendingPegRounds == 0 && !_state.Dawn;
         }
 
         // ---------- the state machine ----------
@@ -219,16 +254,15 @@ namespace Piglings.Rules
         {
             _state.Result = result;
             _state.EndReason = reason;
-            // Overtime cut short by the danger line: the unthrown stones are lost.
-            if (reason == NightEndReason.DangerLine && _state.StonesLeft > 0)
-                ChangeStones(-_state.StonesLeft, StoneChange.Forfeited, GameId.None);
             SetPhase(NightPhase.Ended);
         }
 
         private void SetPhase(NightPhase next)
         {
             var from = _state.Phase;
-            if (from == next || from == NightPhase.Ended) return;   // Ended is final
+            if (from == NightPhase.Ended) return;   // Ended is final
+            // PegPlacement → PegPlacement is a real change: the next round (one per threshold crossed).
+            if (from == next && next != NightPhase.PegPlacement) return;
 
             _state.Phase = next;
             EnterPhase(next);
@@ -240,31 +274,32 @@ namespace Piglings.Rules
             _sweeping = false;
 
             if (next == NightPhase.Ended) FinishNight();
-            // Stay with no stones left: nothing to play, overtime ends at once.
-            else if (next == NightPhase.Overtime) CheckSettled();
         }
 
         private void EnterPhase(NightPhase phase)
         {
-            if (phase == NightPhase.ChoicePending) _state.ScoreAtChoice = _state.Score;
+            if (phase == NightPhase.PegPlacement)
+            {
+                _state.PendingPegRounds--;
+                _state.PegThrowsLeft = _pegs.ThrowsPerThreshold;
+                // The refill lands during the pause, where the player can watch the pile grow.
+                if (_goal.StonesPerThreshold > 0) ChangeStones(_goal.StonesPerThreshold, StoneChange.Added, GameId.None);
+            }
             UpdateCanThrow();
         }
 
-        // After the sweep: bank mastery (Meta subscribes to NightBanked later), then announce the result.
+        // After the sweep: bank (Meta subscribes to NightBanked later), then announce the result.
         private void FinishNight()
         {
-            if (_state.Result == NightResult.Won)
-            {
-                // Everything above the target goes to the barn as scored, on both paths. Overtime's ×2 is
-                // already in those points (doubled when scored), so it isn't applied again here.
-                Bank(MasteryDestination.Barn, _state.Score - _goal.TargetScore, 1);
-                // Leftover stones go to the weapon only when you Leave. In overtime the weapon earns nothing:
-                // unthrown stones are lost, thrown ones were worth double.
-                if (_state.Choice == StayOrLeave.Leave) Bank(MasteryDestination.Weapon, _state.StonesLeft, 1);
-            }
+            // Dawn keeps the full live score (sweep included). Caught keeps only the last threshold reached:
+            // the hour you finished is yours, the one you were in is lost.
+            _state.BankedScore = _state.Result == NightResult.Won
+                ? _state.Score
+                : _goal.ScoreAtThreshold(_state.ThresholdsReached);
+            Bank(MasteryDestination.Barn, _state.BankedScore, 1);
 
-            _bus.Publish(new NightEnded(_state.Result, _state.EndReason, _state.Score, _goal.TargetScore,
-                _state.StonesLeft, _state.RobotsReachedTop, _state.ThrowsUsed));
+            _bus.Publish(new NightEnded(_state.Result, _state.EndReason, _state.Score, _state.BankedScore,
+                _state.ThresholdsReached, _state.StonesLeft, _state.RobotsReachedTop, _state.ThrowsUsed));
         }
 
         private void Bank(MasteryDestination destination, int amount, int multiplier)
@@ -272,7 +307,6 @@ namespace Piglings.Rules
             if (amount <= 0) return;
             int gained = (int)System.Math.Min(int.MaxValue, (long)amount * multiplier);
             if (destination == MasteryDestination.Barn) _state.BarnMastery = ScoreMath.AddClamped(_state.BarnMastery, gained);
-            else _state.WeaponMastery = ScoreMath.AddClamped(_state.WeaponMastery, gained);
             _bus.Publish(new NightBanked(destination, amount, multiplier));
         }
     }

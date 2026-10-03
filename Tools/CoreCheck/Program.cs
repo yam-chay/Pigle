@@ -17,6 +17,7 @@ static void Main(){
  tr.Dispose(); Check(tr.OpenChainCount==0,"dispose");
  ScoreChecks();
  NightChecks();
+ PegChecks();
  NameClashChecks();
  ThrowChecks();
  BreachChecks();
@@ -102,21 +103,31 @@ static int[] Totals(ScoreCurve curve, IdAllocator ids, out int[] carries){
  bus.Publish(new RobotLostGrip(z,ch,Attribution.FromRobotBall(x,0)));
  tr.Dispose(); carries=cs.ToArray(); return t.ToArray();
 }
-// NightReferee: phases Running -> ChoicePending -> Overtime -> Ended (or Leave), loss only before the target.
+// NightReferee: the hours until dawn. Running(hour) -> PegPlacement -> Running(hour+1) ... -> Ended (dawn), or caught.
 class Night{
  public EventBus Bus=new EventBus(); public NightState St=new NightState(); public IdAllocator Ids=new IdAllocator();
  public ChainTracker Tr; public NightReferee Ref;
  public System.Collections.Generic.List<NightEnded> Ends=new System.Collections.Generic.List<NightEnded>();
- public System.Collections.Generic.List<NightPhase> Phases=new System.Collections.Generic.List<NightPhase>();
+ public System.Collections.Generic.List<NightPhaseChanged> Phases=new System.Collections.Generic.List<NightPhaseChanged>();
  public System.Collections.Generic.List<NightBanked> Banked=new System.Collections.Generic.List<NightBanked>();
- public System.Collections.Generic.List<NightTargetReached> Targets=new System.Collections.Generic.List<NightTargetReached>();
+ public System.Collections.Generic.List<HourReached> Hours=new System.Collections.Generic.List<HourReached>();
+ public System.Collections.Generic.List<DawnReached> Dawns=new System.Collections.Generic.List<DawnReached>();
+ public System.Collections.Generic.List<StonesChanged> Stones=new System.Collections.Generic.List<StonesChanged>();
+ public System.Collections.Generic.List<RobotScored> Scored=new System.Collections.Generic.List<RobotScored>();
+ public System.Collections.Generic.List<ChainScored> Chains=new System.Collections.Generic.List<ChainScored>();
+ public System.Collections.Generic.List<ThrowReleased> Throws=new System.Collections.Generic.List<ThrowReleased>();
+ public System.Collections.Generic.List<PegPlaced> Placed=new System.Collections.Generic.List<PegPlaced>();
+ public System.Collections.Generic.List<PegMerged> Merged=new System.Collections.Generic.List<PegMerged>();
  // Robots still climbing: what Simulation's RobotSpawner would sweep when the night ends.
  public System.Collections.Generic.List<GameId> Wall=new System.Collections.Generic.List<GameId>();
- public Night(NightGoal g, ScoreCurve curve=null){
-  Tr=new ChainTracker(Bus,St,curve); Ref=new NightReferee(Bus,St,Tr,g);
-  Bus.Subscribe<NightEnded>(e=>Ends.Add(e)); Bus.Subscribe<NightBanked>(e=>Banked.Add(e)); Bus.Subscribe<RobotScored>(e=>Scored.Add(e)); Bus.Subscribe<NightTargetReached>(e=>Targets.Add(e));
+ public Night(NightGoal g, ScoreCurve curve=null, PegSetup pegs=null){
+  Tr=new ChainTracker(Bus,St,curve); Ref=new NightReferee(Bus,St,Tr,g,pegs);
+  Bus.Subscribe<NightEnded>(e=>Ends.Add(e)); Bus.Subscribe<NightBanked>(e=>Banked.Add(e)); Bus.Subscribe<RobotScored>(e=>Scored.Add(e));
+  Bus.Subscribe<HourReached>(e=>Hours.Add(e)); Bus.Subscribe<DawnReached>(e=>Dawns.Add(e)); Bus.Subscribe<StonesChanged>(e=>Stones.Add(e));
+  Bus.Subscribe<ChainScored>(e=>Chains.Add(e)); Bus.Subscribe<ThrowReleased>(e=>Throws.Add(e));
+  Bus.Subscribe<PegPlaced>(e=>Placed.Add(e)); Bus.Subscribe<PegMerged>(e=>Merged.Add(e));
   // Stand-in for RobotSpawner: on Ended, every robot still on the wall is swept (synchronously, like the real one).
-  Bus.Subscribe<NightPhaseChanged>(e=>{ Phases.Add(e.To); if(e.To==NightPhase.Ended) foreach(var r in Wall) Bus.Publish(new RobotSwept(r)); });
+  Bus.Subscribe<NightPhaseChanged>(e=>{ Phases.Add(e); if(e.To==NightPhase.Ended) foreach(var r in Wall) Bus.Publish(new RobotSwept(r)); });
  }
  // Throw a stone that knocks n robots directly (10, 20, 30... by default). Returns what's still in flight.
  public (ChainId chain, GameId stone, GameId[] robots) Throw(int n){
@@ -129,6 +140,7 @@ class Night{
   Bus.Publish(new ThrowableRemoved(t.stone,t.chain));
   foreach(var r in t.robots) Bus.Publish(new RobotRemoved(r,t.chain,RemovalReason.HitGround));
  }
+ public void Play(int n){ Settle(Throw(n)); }
  // Throw a stone that starts a line: stone -> r1, r1's ball -> r2 (depth 1), r2's ball -> r3 (depth 2)...
  public (ChainId chain, GameId stone, GameId[] robots) ThrowLine(int n){
   var c=new ChainId(Ids.Next()); var s=Ids.Next(); var r=new GameId[n];
@@ -136,278 +148,234 @@ class Night{
   for(int i=0;i<n;i++){ r[i]=Ids.Next(); Bus.Publish(new RobotLostGrip(r[i],c,i==0?Attribution.FromThrowable(s):Attribution.FromRobotBall(r[i-1],i-1))); }
   return (c,s,r);
  }
- public System.Collections.Generic.List<RobotScored> Scored=new System.Collections.Generic.List<RobotScored>();
- // Like the real wall: a robot spawns (in the current phase), then climbs into the zone / the barn.
  public GameId Spawn(){ var r=Ids.Next(); Bus.Publish(new RobotSpawned(r)); return r; }
- public void Breach(){ Breach(Spawn()); }
  // A whole breach, like the real robot: it starts (counted here) and, BreachSeconds later, is removed (cleanup).
+ public void Breach(){ Breach(Spawn()); }
  public void Breach(GameId r){ BreachStart(r); BreachEnd(r); }
  public void BreachStart(GameId r){ Bus.Publish(new RobotBreached(r)); }
  public void BreachEnd(GameId r){ Bus.Publish(new RobotRemoved(r,ChainId.None,RemovalReason.EnteredBarn)); }
- public void Danger(){ Danger(Spawn()); }
- public void Danger(GameId r){ Bus.Publish(new RobotEnteredDangerZone(r)); }
+ public void Danger(){ Bus.Publish(new RobotEnteredDangerZone(Spawn())); }
  public int BankedTo(MasteryDestination d){ int t=0; foreach(var b in Banked) if(b.Destination==d) t+=b.Amount*b.Multiplier; return t; }
- public bool AnyBankedTo(MasteryDestination d){ foreach(var b in Banked) if(b.Destination==d) return true; return false; }
+ public int Shelf(string id)=>Ref.ShelfCount(id);
+ public bool AnyWeapon(){ foreach(var b in Banked) if(b.Destination==MasteryDestination.Weapon) return true; return false; }
+}
+static NightGoal Hours(params int[] t)=>new NightGoal(t,10,0);
+static PegSetup Pegs(int sockets, int throws=1, params (string id,int count)[] shelf){
+ var l=new System.Collections.Generic.List<(PegType,int)>();
+ foreach(var (id,count) in shelf) l.Add((new PegType(id,3,true),count));
+ return new PegSetup(l,throws,sockets);
 }
 static void NightChecks(){
- // --- Running -> ChoicePending ---
- { var n=new Night(new NightGoal(50,10));
-   Check(n.St.Phase==NightPhase.Running && n.St.StonesLeft==10 && n.St.CanThrow,"night starts Running, all stones, can throw");
+ // --- The thresholds themselves ---
+ { var g=new NightGoal(new[]{0,500,400,1500});
+   Check(g.Thresholds[0]==1 && g.Thresholds[1]==500 && g.Thresholds[2]==501 && g.Thresholds[3]==1500,"thresholds: at least 1 and strictly rising (0 -> 1, 400 after 500 -> 501)");
+   Check(new NightGoal(null).ThresholdCount==1 && new NightGoal(new int[0]).ThresholdCount==1,"no thresholds -> one (the night must be winnable)");
+   Check(g.ScoreAtThreshold(0)==0 && g.ScoreAtThreshold(2)==500 && g.ScoreAtThreshold(9)==1500,"score kept at k thresholds: 0 before the first, else the k-th"); }
+ // --- Hour multiplier ---
+ { var c=new ScoreCurve(10,10,10,0.5f,false,0.5f);
+   Check(c.HourMultiplier(0)==1f && c.HourMultiplier(1)==1.5f && c.HourMultiplier(2)==2f && c.HourMultiplier(4)==3f,"hour multiplier: x1, x1.5, x2 ... x3 in hour 5 (step 0.5)");
+   Check(c.RobotTotal(25,1,1.5f)==56 && c.RobotTotal(15,1,1f)==23,"rounded once: 25 x1.5 x1.5 = 56.25 -> 56; hour 1 unchanged (22.5 -> 23)");
+   Check(new ScoreCurve(10,10,10,0.5f,false,-1f).HourMultiplier(3)==1f,"a negative step is clamped to 0"); }
+ // --- Running -> threshold -> PegPlacement -> Running(next hour) ---
+ { var n=new Night(Hours(50,500,1000));
+   Check(n.St.Phase==NightPhase.Running && n.St.Hour==1 && n.St.CanThrow && n.Ref.NextThreshold==50,"night starts Running, hour 1, can throw, next threshold 50");
    var t=n.Throw(3);   // 10+20+30 = 60 >= 50
-   Check(n.St.Phase==NightPhase.Running && !n.St.CanThrow && n.Targets.Count==1 && n.Targets[0].StonesLeft==9 && n.St.StonesAtTarget==9,
-     "target reached mid-chain: throwing stops, NightTargetReached (9 stones), still Running while it falls");
+   Check(n.Hours.Count==1 && n.Hours[0].Hour==2 && n.Hours[0].Multiplier==1.5f && n.Hours[0].Threshold==50 && n.St.Hour==2,"crossing 50: HourReached(hour 2, x1.5, threshold 50)");
+   Check(n.St.Phase==NightPhase.Running && !n.St.CanThrow && n.St.PendingPegRounds==1,"throwing stops at the crossing; still Running while the chain falls");
    n.Settle(t);
-   Check(n.St.Phase==NightPhase.ChoicePending && !n.St.CanThrow && n.St.ScoreAtChoice==60 && n.Ends.Count==0,
-     "chain settles -> ChoicePending: paused, no throwing, not ended");
-   n.Breach(); n.Breach(); n.Breach(); n.Breach(); n.Breach();
-   Check(n.St.Phase==NightPhase.ChoicePending && n.St.StonesLeft==9 && n.Ends.Count==0,"ChoicePending can't be lost: breaches cost nothing"); }
- { var n=new Night(new NightGoal(50,10));
-   var a=n.Throw(1); var b=n.Throw(3);   // b crosses the target while a is still in flight
+   Check(n.St.Phase==NightPhase.PegPlacement && n.Phases[0].From==NightPhase.Running && n.Phases[0].To==NightPhase.PegPlacement && !n.St.CanThrow,
+     "chain settles -> PegPlacement (no throwing)");
+   n.Ref.EndPlacement();
+   Check(n.St.Phase==NightPhase.Running && n.St.CanThrow && n.Ref.NextThreshold==500,"round over -> Running in hour 2, can throw, next threshold 500"); }
+ { // Two chains in flight: the round waits for both.
+   var n=new Night(Hours(50,500)); var a=n.Throw(1); var b=n.Throw(3);
    n.Settle(b);
-   Check(n.St.Phase==NightPhase.Running,"another chain still in flight -> no choice yet (never cut a chain)");
+   Check(n.St.Phase==NightPhase.Running,"one chain still open -> no round yet");
    n.Settle(a);
-   Check(n.St.Phase==NightPhase.ChoicePending && n.St.ScoreAtChoice==70,"last chain lands -> ChoicePending with its points (70)"); }
- { var n=new Night(new NightGoal(50,10));
-   var t=n.Throw(3); n.Breach(); n.Breach(); n.Breach();
-   Check(n.Ends.Count==0 && n.St.StonesLeft==9,"after the target (chain still falling) the night can't be lost: breaches don't end it or cost stones");
+   Check(n.St.Phase==NightPhase.PegPlacement,"last chain settles -> PegPlacement"); }
+ // --- Multiplier fixed at throw time, applies to what a robot scores, never to what it carries ---
+ { var curve=new ScoreCurve(15,10,10,0.5f,false,0.5f);
+   var n=new Night(Hours(50,100000),curve);
+   var r1=n.ThrowLine(3); n.Settle(r1); var run=n.Scored.ToArray(); n.Scored.Clear();
+   Check(run[0].Total==15 && run[1].Total==38 && run[2].Total==70 && run[0].HourMultiplier==1f && run[0].Hour==1,"hour 1 line: 15, 37.5->38, 70 (x1)");
+   n.Ref.EndPlacement();
+   var r2=n.ThrowLine(3); n.Settle(r2); var h2=n.Scored.ToArray();
+   Check(h2[0].Hour==2 && h2[0].HourMultiplier==1.5f && h2[0].Total==23 && h2[1].Total==56 && h2[2].Total==105,"hour 2 line: 15x1.5=22.5->23, 25x1.5x1.5=56.25->56, 35x2x1.5=105");
+   Check(h2[1].Received==run[1].Received && h2[2].Received==run[2].Received && h2[1].Carries==run[1].Carries,"what robots carry isn't multiplied by the hour (never compounds)");
+   Check(n.Chains[0].Hour==1 && n.Chains[n.Chains.Count-1].Hour==2,"ChainScored.Hour: 1, then 2"); }
+ { var curve=new ScoreCurve(10,10,10,1f,true,0.5f);   // compounding switch on: the hour still applies once
+   var n=new Night(Hours(10,100000),curve);
+   n.Play(1); n.Ref.EndPlacement(); n.Scored.Clear();
+   var t=n.ThrowLine(3); n.Settle(t);
+   Check(n.Scored[0].Total==15 && n.Scored[1].Total==60 && n.Scored[2].Total==225,"carryScoredTotal on, hour 2: 10x1.5, 40x1.5, 150x1.5 (the hour doesn't compound)"); }
+ // --- One chain crossing several thresholds: one round each, back to back ---
+ { var n=new Night(Hours(20,40,1000));
+   var t=n.Throw(3);   // 10, 30, 60: crosses 20 and 40
+   Check(n.Hours.Count==2 && n.Hours[0].Hour==2 && n.Hours[1].Hour==3 && n.St.PendingPegRounds==2,"one chain crosses 20 and 40: two HourReached, two rounds waiting");
    n.Settle(t);
-   Check(n.St.Phase==NightPhase.ChoicePending,"...and the choice still comes"); }
- { var n=new Night(new NightGoal(60,1));
+   Check(n.St.Phase==NightPhase.PegPlacement && n.St.PendingPegRounds==1,"first round");
+   n.Ref.EndPlacement();
+   Check(n.St.Phase==NightPhase.PegPlacement && n.St.PendingPegRounds==0 && n.Phases[n.Phases.Count-1].From==NightPhase.PegPlacement,
+     "second round right after (PegPlacement -> PegPlacement)");
+   n.Ref.EndPlacement();
+   Check(n.St.Phase==NightPhase.Running && n.St.CanThrow && n.St.Hour==3,"then Running, hour 3"); }
+ // --- Stone refill per threshold (not at dawn) ---
+ { var n=new Night(new NightGoal(new[]{50,200,400},5,2));
    var t=n.Throw(3); n.Settle(t);
-   Check(n.St.Phase==NightPhase.ChoicePending,"last stone's chain reaches the target -> ChoicePending, not Lost"); }
- // --- Leave ---
- { var n=new Night(new NightGoal(50,10));
-   n.Ref.Stay(); n.Ref.Leave();
-   Check(n.St.Phase==NightPhase.Running,"Stay/Leave are ignored outside ChoicePending");
-   var t=n.Throw(3); n.Settle(t); n.Ref.Leave();
-   Check(n.St.Phase==NightPhase.Ended && n.St.Choice==StayOrLeave.Leave && n.Ends.Count==1 && n.Ends[0].Result==NightResult.Won
-     && n.Ends[0].Reason==NightEndReason.Left,"Leave -> Ended at once, Won, reason Left");
-   Check(n.BankedTo(MasteryDestination.Barn)==10 && n.BankedTo(MasteryDestination.Weapon)==9 && n.St.BarnMastery==10 && n.St.WeaponMastery==9,
-     "Leave banks: score above target (60-50=10) to the barn x1, leftover stones (9) to the weapon");
-   n.Ref.Stay();
-   Check(n.St.Phase==NightPhase.Ended && n.Ends.Count==1,"Ended is final: a late Stay changes nothing"); }
- // --- Stay -> Overtime ---
- { var n=new Night(new NightGoal(50,3));
-   var t=n.Throw(3); n.Settle(t); n.Ref.Stay();
-   Check(n.St.Phase==NightPhase.Overtime && n.St.CanThrow && n.St.StonesLeft==2 && n.St.Choice==StayOrLeave.Stay,"Stay -> Overtime: throwing resumes (2 stones)");
-   var o=n.Throw(2);   // 10+20 = 30 overtime points
-   Check(n.St.OvertimeScore==60 && n.St.Phase==NightPhase.Overtime,"overtime chain points doubled as scored (10+20 -> 20+40 = 60)");
-   n.Settle(o);
-   n.Breach();   // (irrelevant here: covered below)
-   Check(n.St.Phase==NightPhase.Ended && n.Ends[0].Reason==NightEndReason.DangerLine,"a breach during overtime ends it (danger line)");
- }
- { var n=new Night(new NightGoal(50,3));
-   var t=n.Throw(3); n.Settle(t); n.Ref.Stay();
-   var o1=n.Throw(1); n.Settle(o1);
-   Check(n.St.Phase==NightPhase.Overtime,"overtime continues while stones remain");
-   var o2=n.Throw(2);
-   Check(n.St.Phase==NightPhase.Overtime && n.St.StonesLeft==0,"last stone thrown: overtime waits for its chain");
-   n.Settle(o2);
-   Check(n.St.Phase==NightPhase.Ended && n.Ends[0].Result==NightResult.Won && n.Ends[0].Reason==NightEndReason.OutOfStones,
-     "overtime stones used up, last chain closed -> Ended, Won (no loss in overtime)");
-   Check(n.St.OvertimeScore==80 && n.BankedTo(MasteryDestination.Barn)==10+80,"Stay banks the points as scored: overshoot 10 + overtime 80 (already doubled) = 90, no extra x2");
-   Check(!n.AnyBankedTo(MasteryDestination.Weapon) && n.St.WeaponMastery==0,"no weapon mastery from overtime"); }
- { // THE rule that keeps Leave worth choosing: overtime ended by the danger line with stones unthrown -> still no weapon mastery.
-   var n=new Night(new NightGoal(50,10));
-   var t=n.Throw(3); n.Settle(t); n.Ref.Stay();
-   var o=n.Throw(1);
-   n.Danger();
-   Check(n.St.Phase==NightPhase.Ended && n.Ends[0].Result==NightResult.Won && n.Ends[0].Reason==NightEndReason.DangerLine,
-     "overtime: a robot enters the danger zone -> Ended, Won (no loss), even with a chain in flight");
-   Check(n.St.StonesLeft==0 && !n.AnyBankedTo(MasteryDestination.Weapon),"danger-line end: the 8 unthrown stones are lost, weapon mastery 0");
-   Check(n.BankedTo(MasteryDestination.Barn)==10+20,"everything earned is kept: overshoot 10 + the overtime robot's doubled 20");
-   n.Settle(o);
-   Check(n.Ends.Count==1,"NightEnded fires once, even when the in-flight chain lands afterwards"); }
- { var n=new Night(new NightGoal(50,1));
-   var t=n.Throw(3); n.Settle(t);
-   Check(n.St.Phase==NightPhase.ChoicePending && n.St.StonesLeft==0,"choice appears even with 0 stones left");
-   n.Ref.Stay();
-   Check(n.St.Phase==NightPhase.Ended && n.Ends[0].Reason==NightEndReason.OutOfStones,"Stay with 0 stones -> overtime ends at once"); }
- // --- Overtime can't end instantly because of where robots were when you chose Stay ---
- { var n=new Night(new NightGoal(50,10));
-   var nearTop=n.Spawn(); var pastLine=n.Spawn();   // on the wall before the target
-   var t=n.Throw(3); n.Settle(t); n.Ref.Stay();
-   n.Danger(nearTop);
-   Check(n.St.Phase==NightPhase.Overtime,"a robot already on the wall at Stay crossing the danger line doesn't end overtime");
-   n.Breach(pastLine);
-   Check(n.St.Phase==NightPhase.Overtime && n.St.StonesLeft==9,"...nor reaching the top (no stone lost, can't lose)");
-   var fresh=n.Spawn(); n.Danger(fresh);
-   Check(n.St.Phase==NightPhase.Ended && n.Ends[0].Reason==NightEndReason.DangerLine,"a robot that climbed on during overtime reaching the line ends it"); }
- { var n=new Night(new NightGoal(50,10));
-   var t=n.Throw(3); n.Settle(t); n.Ref.Stay();
-   var fresh=n.Spawn(); n.Breach(fresh);
-   Check(n.St.Phase==NightPhase.Ended && n.Ends[0].Reason==NightEndReason.DangerLine,"an overtime robot reaching the top ends overtime (it crossed the line)"); }
- { // Chain results know whether they were overtime chains (for the rainbow chain popup).
-   var n=new Night(new NightGoal(50,10)); var chains=new System.Collections.Generic.List<ChainScored>();
-   n.Bus.Subscribe<ChainScored>(e=>chains.Add(e));
-   var t=n.Throw(3); n.Settle(t); n.Ref.Stay(); var o=n.Throw(2); n.Settle(o);
-   Check(chains.Count==2 && !chains[0].InOvertime && chains[1].InOvertime,"ChainScored.InOvertime: false for the Running chain, true for the overtime one"); }
- { // Robot popups decide "overtime" from the same record as the chain popup.
-   var n=new Night(new NightGoal(50,10));
-   var t=n.Throw(3); n.Settle(t); var run=n.Scored.ToArray(); n.Scored.Clear();
-   n.Ref.Stay(); var o=n.Throw(2); n.Settle(o); var ot=n.Scored.ToArray();
-   Check(run.Length==3 && !run[0].InOvertime && !run[2].InOvertime && ot.Length==2 && ot[0].InOvertime && ot[1].InOvertime && ot[0].OvertimeMultiplier==2,
-     "RobotScored.InOvertime: false for Running hits, true (and x2) for overtime hits"); }
- // --- Danger line in Running = warning only ---
- { var n=new Night(new NightGoal(500,5));
-   n.Danger();
-   Check(n.St.Phase==NightPhase.Running && n.St.StonesLeft==5 && n.St.RobotsReachedTop==0 && n.Ends.Count==0,
-     "Running: entering the danger zone is a warning only (no stone, no breach, no end)"); }
- // --- Losing: the pile is the pig's life. The only loss is a breach on an empty pile. ---
- { var n=new Night(new NightGoal(500,2));
+   Check(n.St.StonesLeft==6 && n.Stones[n.Stones.Count-1].Cause==StoneChange.Added && n.Stones[n.Stones.Count-1].Delta==2,
+     "placement round: +2 stones (StonesChanged Added), 4 -> 6");
+   var refills=0; foreach(var c in n.Stones) if(c.Cause==StoneChange.Added) refills++;
+   n.Ref.EndPlacement(); n.Play(4); n.Ref.EndPlacement();   // hour 2: (10+20+30+40) x1.5 = 150 -> 210, threshold 200
+   n.Play(4);   // hour 3: 100 x2 = 200 -> 410, dawn
+   int refillsAfter=0; foreach(var c in n.Stones) if(c.Cause==StoneChange.Added) refillsAfter++;
+   Check(refills==1 && refillsAfter==2 && n.Ends.Count==1 && n.Ends[0].Reason==NightEndReason.Dawn,"refill each hour (2), none at dawn"); }
+ { var n=new Night(new NightGoal(new[]{50,1000},5,0));
+   n.Play(3);
+   Check(n.St.Phase==NightPhase.PegPlacement && n.St.StonesLeft==4 && n.Stones.Count==1,"stonesPerThreshold 0: the round adds nothing"); }
+ // --- Dawn ---
+ { var n=new Night(Hours(50,120));
+   n.Play(3); n.Ref.EndPlacement();
+   var t=n.Throw(2);   // hour 2: 60 + 15 + 30 = 105 ... not yet
+   Check(n.Dawns.Count==0,"below the last threshold: no dawn");
+   var u=n.Throw(1);   // +15 = 120
+   Check(n.Dawns.Count==1 && n.St.Dawn && !n.St.CanThrow && n.St.Phase==NightPhase.Running && n.Ends.Count==0,"last threshold crossed: DawnReached, throwing stops, the night waits for the chains");
+   int stones=n.St.StonesLeft; n.Breach();
+   Check(n.Ends.Count==0 && n.St.StonesLeft==stones,"after dawn a breach can't catch anyone or steal");
+   n.Settle(t); n.Settle(u);
+   Check(n.Ends.Count==1 && n.Ends[0].Result==NightResult.Won && n.Ends[0].Reason==NightEndReason.Dawn && n.Ends[0].HoursReached==2,"chains settle -> Ended, won at dawn, 2 thresholds");
+   Check(n.Hours.Count==1,"no HourReached (and no placement round) for the last threshold");
+   bool placementAfterDawn=false; foreach(var p in n.Phases) if(p.To==NightPhase.PegPlacement && n.Phases.IndexOf(p)>0) placementAfterDawn=true;
+   Check(!placementAfterDawn,"no pause at dawn"); }
+ { var n=new Night(Hours(50));
+   n.Wall.Add(n.Ids.Next()); n.Wall.Add(n.Ids.Next());
+   n.Play(3);
+   Check(n.Ends.Count==1 && n.St.SweepScore==20 && n.Ends[0].Score==80 && n.Ends[0].BankedScore==80 && n.BankedTo(MasteryDestination.Barn)==80,
+     "dawn: the sweep scores flat (2 x 10) and the full live score is banked (60 + 20 = 80)");
+   Check(!n.AnyWeapon(),"nothing banks to the weapon any more"); }
+ // --- Losing: a breach on an empty pile, any hour before dawn ---
+ { var n=new Night(new NightGoal(new[]{500},2,0));
    var a=n.Throw(0); var b=n.Throw(1);
    Check(n.St.StonesLeft==0 && !n.St.CanThrow,"all stones thrown -> can't throw");
    n.Settle(a); n.Settle(b);
-   Check(n.Ends.Count==0 && n.St.Phase==NightPhase.Running,"last stone thrown and landed below target -> NOT a loss, the night goes on");
+   Check(n.Ends.Count==0 && n.St.Phase==NightPhase.Running,"last stone thrown and landed -> NOT a loss, the night goes on");
    n.Breach();
-   Check(n.Ends.Count==1 && n.Ends[0].Result==NightResult.Lost && n.Ends[0].Reason==NightEndReason.Caught,"then a robot breaches on the empty pile -> Lost, caught");
-   Check(n.Banked.Count==0 && n.St.BarnMastery==0 && n.St.WeaponMastery==0,"a lost night banks nothing"); }
- { var n=new Night(new NightGoal(500,3)); var ch=new System.Collections.Generic.List<StonesChanged>();
-   n.Bus.Subscribe<StonesChanged>(e=>ch.Add(e));
+   Check(n.Ends.Count==1 && n.Ends[0].Result==NightResult.Lost && n.Ends[0].Reason==NightEndReason.Caught,"then a robot breaches on the empty pile -> Lost, caught"); }
+ { var n=new Night(new NightGoal(new[]{50,100,5000},3,0));
+   n.Play(3); n.Ref.EndPlacement();   // 60: threshold 50
+   n.Play(3); n.Ref.EndPlacement();   // 150 (90 in hour 2): threshold 100
+   n.Wall.Add(n.Ids.Next());
+   n.Play(1);                         // 150 + 10x2 = 170; 0 stones left
+   n.Breach();
+   Check(n.Ends.Count==1 && n.Ends[0].Result==NightResult.Lost && n.Ends[0].Score==170 && n.Ends[0].BankedScore==100 && n.BankedTo(MasteryDestination.Barn)==100,
+     "caught in hour 3 at 170: banks the last threshold reached (100), not the live score");
+   Check(n.St.SweepScore==0 && n.St.Score==170,"a lost night's sweep is visual only: nothing scored"); }
+ { var n=new Night(new NightGoal(new[]{500},1,0)); n.Play(1); n.Breach();
+   Check(n.Ends[0].BankedScore==0 && n.Banked.Count==0,"caught before the first threshold: banks nothing"); }
+ { var n=new Night(new NightGoal(new[]{50,5000},1,0));
+   var t=n.Throw(3);   // crosses 50 with the last stone; 0 stones, round pending
+   n.Breach();
+   Check(n.Ends.Count==1 && n.Ends[0].Reason==NightEndReason.Caught && n.Ends[0].BankedScore==50,
+     "a threshold (not dawn) doesn't protect you: caught while its chain still falls, banks that threshold (50)"); }
+ { var n=new Night(new NightGoal(new[]{500},3,0));
    var thief=n.Spawn(); n.Breach(thief);
-   Check(n.St.StonesLeft==2 && n.Ends.Count==0 && ch.Count==1 && ch[0].Cause==StoneChange.Stolen && ch[0].Robot==thief && ch[0].Delta==-1 && ch[0].Count==2,
-     "breach with stones left: the robot takes the top stone (StonesChanged Stolen, thief id, 3 -> 2), no loss");
+   Check(n.St.StonesLeft==2 && n.Ends.Count==0 && n.Stones[0].Cause==StoneChange.Stolen && n.Stones[0].Robot==thief,"breach with stones left: the robot takes the top stone, no loss");
    n.Breach(); n.Breach();
    Check(n.St.StonesLeft==0 && n.Ends.Count==0 && n.St.RobotsReachedTop==3,"three breaches take all three stones — still not lost");
    n.Breach();
-   Check(n.Ends.Count==1 && n.Ends[0].Reason==NightEndReason.Caught && n.Ends[0].Breaches==4,"4th breach on the empty pile -> caught");
+   Check(n.Ends.Count==1 && n.Ends[0].Breaches==4,"4th breach on the empty pile -> caught");
    n.Breach();
    Check(n.Ends.Count==1 && n.St.RobotsReachedTop==4,"NightEnded fires once; nothing counts after the end"); }
- // --- M7.3: the breach counts when it STARTS (Breaching), never again at the removal ---
- { var n=new Night(new NightGoal(500,3)); var ch=new System.Collections.Generic.List<StonesChanged>();
-   n.Bus.Subscribe<StonesChanged>(e=>ch.Add(e));
+ // --- Breaches count when they start (M7.3), and never during a placement round ---
+ { var n=new Night(new NightGoal(new[]{500},3,0));
    var thief=n.Spawn(); n.BreachStart(thief);
-   Check(ch.Count==1 && ch[0].Cause==StoneChange.Stolen && ch[0].Robot==thief && n.St.StonesLeft==2 && n.St.RobotsReachedTop==1,
-     "breach with stones left: one Stolen at Breaching entry (3 -> 2), counted once");
+   Check(n.Stones.Count==1 && n.Stones[0].Cause==StoneChange.Stolen && n.St.StonesLeft==2 && n.St.RobotsReachedTop==1,"one Stolen at Breaching entry (3 -> 2)");
    n.BreachEnd(thief);
-   Check(ch.Count==1 && n.St.StonesLeft==2 && n.St.RobotsReachedTop==1 && n.Ends.Count==0,
-     "...and the removal at the end of the sequence counts nothing (no second Stolen, no second breach)"); }
- { var n=new Night(new NightGoal(500,1));
-   var t=n.Throw(0); n.Settle(t);
+   Check(n.Stones.Count==1 && n.St.RobotsReachedTop==1,"...the removal at the end of the sequence counts nothing"); }
+ { var n=new Night(new NightGoal(new[]{500},1,0)); n.Play(0);
    var r=n.Spawn(); n.BreachStart(r);
-   Check(n.Ends.Count==1 && n.Ends[0].Reason==NightEndReason.Caught && n.St.Phase==NightPhase.Ended,
-     "breach on an empty pile: Caught at Breaching entry, before the robot is removed");
-   n.BreachEnd(r);
-   Check(n.Ends.Count==1 && n.St.RobotsReachedTop==1,"...the removal afterwards changes nothing"); }
- { var n=new Night(new NightGoal(60,2)); var ch=new System.Collections.Generic.List<StonesChanged>();
-   n.Bus.Subscribe<StonesChanged>(e=>ch.Add(e));
-   var thief=n.Spawn(); n.BreachStart(thief);              // takes a stone: 2 -> 1
-   var t=n.Throw(3);                                       // the last stone's chain crosses the target while the thief is still breaching
-   n.BreachEnd(thief);                                     // the thief leaves with the pile now empty: NOT a breach on an empty pile
+   Check(n.Ends.Count==1 && n.Ends[0].Reason==NightEndReason.Caught,"empty pile: Caught at Breaching entry");
+   n.BreachEnd(r); Check(n.Ends.Count==1,"...the removal afterwards changes nothing"); }
+ { var n=new Night(new NightGoal(new[]{60,5000},2,0));
+   var thief=n.Spawn(); n.BreachStart(thief);   // 2 -> 1
+   var t=n.Throw(3);                            // the last stone's chain crosses 60 while the thief is still breaching
+   n.BreachEnd(thief);                          // leaves with the pile empty: not a second breach
    n.Settle(t);
-   Check(n.St.StonesLeft==0 && n.St.RobotsReachedTop==1 && n.Ends.Count==0 && n.St.Phase==NightPhase.ChoicePending,
-     "target reached by a chain during another robot's Breaching (after it stole): no catch, the night goes to the choice");
-   int stolen=0; foreach(var c in ch) if(c.Cause==StoneChange.Stolen) stolen++;
-   n.Ref.Leave();
-   Check(stolen==1 && n.Ends.Count==1 && n.Ends[0].Result==NightResult.Won,"...one theft in total, and the night is won"); }
- { // An overtime robot's breach ends overtime when it starts, like the danger line (it crossed the line on the way).
-   var n=new Night(new NightGoal(50,10));
-   var t=n.Throw(3); n.Settle(t); n.Ref.Stay();
-   var r=n.Spawn(); n.BreachStart(r);
-   Check(n.Ends.Count==1 && n.Ends[0].Reason==NightEndReason.DangerLine,"overtime robot breaching: overtime ends at Breaching entry");
-   n.BreachEnd(r);
-   Check(n.Ends.Count==1,"...and its removal doesn't end anything twice"); }
- { var n=new Night(new NightGoal(500,1));
-   var t=n.Throw(1); n.Breach();
-   Check(n.Ends.Count==1 && n.Ends[0].Reason==NightEndReason.Caught,"breach on an empty pile loses even with a chain still falling (it didn't reach the target first)"); }
- { var n=new Night(new NightGoal(60,1));
-   var t=n.Throw(3);   // the last stone's chain crosses the target...
-   n.Breach();         // ...so a robot arriving now can't catch anyone
-   Check(n.Ends.Count==0,"last stone's chain reaches the target before the breach -> can't lose any more");
-   n.Settle(t);
-   Check(n.St.Phase==NightPhase.ChoicePending,"...and the night goes to the choice (win)"); }
- { // Stones added mid-run, and every change reported with its cause.
-   var n=new Night(new NightGoal(500,5)); var ch=new System.Collections.Generic.List<StonesChanged>();
-   n.Bus.Subscribe<StonesChanged>(e=>ch.Add(e));
+   Check(n.St.StonesLeft==0 && n.St.RobotsReachedTop==1 && n.Ends.Count==0 && n.St.Phase==NightPhase.PegPlacement,
+     "threshold crossed during another robot's breach (after it stole): no catch, the round starts"); }
+ { var n=new Night(new NightGoal(new[]{50,5000},0,0)); n.Ref.AddStones(3); n.Play(3);
+   Check(n.St.Phase==NightPhase.PegPlacement,"in a placement round");
+   n.Breach();
+   Check(n.Ends.Count==0 && n.St.StonesLeft==2,"a breach during placement (a sequence finishing) costs nothing"); }
+ // --- The danger line is a warning only ---
+ { var n=new Night(new NightGoal(new[]{500},5,0)); n.Danger();
+   Check(n.St.Phase==NightPhase.Running && n.St.StonesLeft==5 && n.Ends.Count==0,"danger zone: a warning only (no stone, no breach, no end)"); }
+ // --- Stones added mid-run ---
+ { var n=new Night(new NightGoal(new[]{500},5,0));
    var t=n.Throw(1);
-   Check(ch.Count==1 && ch[0].Cause==StoneChange.Thrown && ch[0].Count==4,"a throw: StonesChanged Thrown, 5 -> 4");
+   Check(n.Stones[0].Cause==StoneChange.Thrown && n.Stones[0].Count==4,"a throw: StonesChanged Thrown, 5 -> 4");
    n.Ref.AddStones(3); n.Ref.AddStones(0);
-   Check(n.St.StonesLeft==7 && ch.Count==2 && ch[1].Cause==StoneChange.Added && ch[1].Delta==3 && n.St.CanThrow,"AddStones(3): 4 -> 7, StonesChanged Added; AddStones(0) is ignored");
+   Check(n.St.StonesLeft==7 && n.Stones.Count==2 && n.Stones[1].Cause==StoneChange.Added && n.St.CanThrow,"AddStones(3): 4 -> 7; AddStones(0) is ignored");
    n.Settle(t); }
- { var n=new Night(new NightGoal(500,0)); n.Ref.AddStones(2);
+ { var n=new Night(new NightGoal(new[]{500},0,0)); n.Ref.AddStones(2);
    Check(n.St.StonesLeft==2 && n.St.CanThrow,"an empty pile refilled mid-run can throw again"); }
- { // Overtime ending at the danger line: the unthrown stones are forfeited (the pile hears it).
-   var n=new Night(new NightGoal(50,10)); var ch=new System.Collections.Generic.List<StonesChanged>();
-   var t=n.Throw(3); n.Settle(t); n.Ref.Stay();
-   n.Bus.Subscribe<StonesChanged>(e=>ch.Add(e));
-   n.Danger();
-   Check(ch.Count==1 && ch[0].Cause==StoneChange.Forfeited && ch[0].Delta==-9 && ch[0].Count==0 && n.St.StonesLeft==0,"danger-line end: StonesChanged Forfeited, 9 -> 0");
-   n.Ref.AddStones(5);
+ { var n=new Night(new NightGoal(new[]{500},1,0)); n.Play(0); n.Breach(); n.Ref.AddStones(5);
    Check(n.St.StonesLeft==0,"AddStones after the night ended is ignored"); }
- // --- The sweep: flat robot value, same function as chains ---
- { var n=new Night(new NightGoal(50,10));
-   var t=n.Throw(3); n.Settle(t);
-   for(int i=0;i<4;i++) n.Wall.Add(n.Ids.Next());
-   n.Ref.Leave();
-   Check(n.St.SweepScore==40 && n.St.Score==100 && n.Ends[0].Score==100,"sweep: 4 robots x robot value 10, flat (no order escalation, no depth) = 40, in the final score");
-   Check(n.BankedTo(MasteryDestination.Barn)==50,"Leave path: the sweep counts as score above target (100-50) x1"); }
- { var curve=new ScoreCurve(10,10,7,0.5f,false);
-   var n=new Night(new NightGoal(50,10),curve);
-   var t=n.Throw(3); n.Settle(t);
-   for(int i=0;i<3;i++) n.Wall.Add(n.Ids.Next());
-   n.Ref.Leave();
-   Check(n.St.SweepScore==3*curve.RobotValue() && curve.RobotValue()==7,"sweep uses the chain's robot-value function (wolfValue 7 -> 21)"); }
- { var n=new Night(new NightGoal(50,3));
-   var t=n.Throw(3); n.Settle(t); n.Ref.Stay();
-   for(int i=0;i<2;i++) n.Wall.Add(n.Ids.Next());
-   n.Danger();
-   Check(n.St.SweepScore==20 && n.St.OvertimeScore==0 && n.BankedTo(MasteryDestination.Barn)==10+20,
-     "Stay path: the sweep stays x1 and isn't overtime score (overshoot 10 + sweep 20)"); }
- { var n=new Night(new NightGoal(500,10));
+ { var n=new Night(new NightGoal(new[]{500},10,0));
    n.Bus.Publish(new RobotSwept(n.Ids.Next()));
    Check(n.St.Score==0 && n.St.SweepScore==0,"RobotSwept outside the end sweep scores nothing"); }
- { var n=new Night(new NightGoal(500,1));
-   n.Wall.Add(n.Ids.Next());
-   var t=n.Throw(0); n.Settle(t); n.Breach();
-   Check(n.Ends[0].Result==NightResult.Lost && n.St.SweepScore==10 && n.Banked.Count==0,"a lost night is swept too, but banks nothing"); }
- // --- Overtime doubles points in play, once ---
- { // The same line of 3 in Running and in Overtime, with values that round (37.5): each robot exactly x2.
-   var curve=new ScoreCurve(15,10,10,0.5f,false,2);
-   var n=new Night(new NightGoal(50,10),curve);
-   var run=n.ThrowLine(3); n.Settle(run);
-   var r=n.Scored.ToArray(); n.Scored.Clear();
-   Check(r.Length==3 && r[0].Total==15 && r[1].Total==38 && r[2].Total==70 && r[0].OvertimeMultiplier==1,"Running line: 15, 25x1.5=37.5->38, 35x2=70 (OT x1)");
-   n.Ref.Stay();
-   var ot=n.ThrowLine(3); n.Settle(ot);
-   var o=n.Scored.ToArray();
-   Check(o.Length==3 && o[0].Total==2*r[0].Total && o[1].Total==2*r[1].Total && o[2].Total==2*r[2].Total,
-     "an overtime chain scores exactly 2x the same chain in Running, robot by robot (76, not 75)");
-   Check(o[0].OvertimeMultiplier==2 && o[1].Received==r[1].Received && o[2].Received==r[2].Received,
-     "RobotScored carries OT x2; what robots pass on isn't doubled (x2 never compounds down the chain)");
-   Check(n.St.OvertimeScore==2*(15+38+70),"overtime score = the doubled chain (246)"); }
- { var curve=new ScoreCurve(10,10,10,1f,true,2);   // compounding switch on: still exactly x2
-   var n=new Night(new NightGoal(50,10),curve);
-   var run=n.ThrowLine(3); n.Settle(run); var r=n.Scored.ToArray(); n.Scored.Clear();
-   n.Ref.Stay(); var ot=n.ThrowLine(3); n.Settle(ot); var o=n.Scored.ToArray();
-   Check(o[0].Total==2*r[0].Total && o[1].Total==2*r[1].Total && o[2].Total==2*r[2].Total,"with carryScoredTotal on, overtime is still exactly x2 (no compounding of the bonus)"); }
- { // Barn mastery from overtime = the overtime points, no extra multiplier.
-   var n=new Night(new NightGoal(50,3));
-   var t=n.Throw(3); n.Settle(t); n.Ref.Stay();
-   var o=n.Throw(2); n.Settle(o); var o2=n.Throw(1); n.Settle(o2);
-   bool allX1=true; foreach(var b in n.Banked) if(b.Multiplier!=1) allX1=false;
-   Check(n.St.Phase==NightPhase.Ended && n.BankedTo(MasteryDestination.Barn)==(n.St.ScoreAtChoice-50)+n.St.OvertimeScore && allX1,
-     "barn mastery = overshoot + overtime points as scored; every NightBanked is x1 (overtime pays x2 once, not x4)"); }
- { // The sweep is identical after Stay and after Leave.
-   var leave=new Night(new NightGoal(50,10)); var t1=leave.Throw(3); leave.Settle(t1);
-   for(int i=0;i<3;i++) leave.Wall.Add(leave.Ids.Next());
-   leave.Ref.Leave();
-   var stay=new Night(new NightGoal(50,10)); var t2=stay.Throw(3); stay.Settle(t2);
-   for(int i=0;i<3;i++) stay.Wall.Add(stay.Ids.Next());
-   stay.Ref.Stay(); stay.Danger();
-   Check(leave.St.SweepScore==30 && stay.St.SweepScore==30 && stay.St.OvertimeScore==0,"the sweep is x1 on both paths: 30 after Leave, 30 after Stay"); }
- { var n=new Night(new NightGoal(50,1)); var t=n.Throw(3); n.Settle(t);
-   n.Wall.Add(n.Ids.Next()); n.Ref.Stay();
-   var m=new Night(new NightGoal(50,1)); var t2=m.Throw(3); m.Settle(t2);
-   m.Wall.Add(m.Ids.Next()); m.Ref.Leave();
-   Check(n.St.BarnMastery==m.St.BarnMastery && n.St.WeaponMastery==0 && m.St.WeaponMastery==0,
-     "0 stones left: Stay and Leave now pay the same (the old free-win loophole is gone)"); }
- // --- Phase order, as published ---
- { var n=new Night(new NightGoal(50,2));
-   var t=n.Throw(3); n.Settle(t); n.Ref.Stay(); var o=n.Throw(1); n.Settle(o);
-   Check(n.Phases.Count==3 && n.Phases[0]==NightPhase.ChoicePending && n.Phases[1]==NightPhase.Overtime && n.Phases[2]==NightPhase.Ended,
-     "NightPhaseChanged: ChoicePending, Overtime, Ended — once each");
-   Check(n.Ends[0].ThrowsUsed==2 && n.Ends[0].StonesLeft==0,"NightEnded carries throws used"); }
- Check(new NightGoal(0).TargetScore==1,"a target of 0 becomes 1 (otherwise you could never throw)");
+ Check(new NightGoal().Thresholds[0]>=1,"default night has a reachable threshold");
+}
+// Pegs: the shelf, the board, placing and merging, throws per round.
+static void PegChecks(){
+ { var s=new PegSetup(new System.Collections.Generic.List<(PegType,int)>{
+     (new PegType("a"),2),(new PegType("b"),1),(new PegType("a"),3),(new PegType("c"),1),(new PegType("d"),1),(new PegType("e"),1),(new PegType("f"),4),(null,1),(new PegType("g"),0)},1,14);
+   Check(s.Loadout.Count==5 && s.Loadout[0].count==5 && s.DroppedTypes==1,"shelf: up to 5 types (6th dropped), same id adds up (a: 2+3), nulls and 0 counts ignored"); }
+ { var n=new Night(Hours(50,5000),null,Pegs(3,1,("bouncy",2),("plain",1)));
+   Check(n.St.Sockets.Length==3 && n.St.Shelf.Count==2 && n.Shelf("bouncy")==2,"board = socket count (max pegs), shelf from the loadout in order");
+   Check(!n.Ref.PlacePeg(0,"bouncy") && n.Shelf("bouncy")==2,"no placing while Running");
+   n.Play(3);
+   Check(n.St.Phase==NightPhase.PegPlacement && n.St.PegThrowsLeft==1 && n.Ref.CanPlaceAnyPeg,"round: 1 throw, something placeable");
+   int throwsBefore=n.St.ThrowsUsed, stonesBefore=n.St.StonesLeft, chainsBefore=n.Chains.Count, releases=n.Throws.Count;
+   Check(n.Ref.PlacePeg(1,"bouncy") && n.Placed.Count==1 && n.Placed[0].Socket==1 && n.Placed[0].PegId=="bouncy" && n.Placed[0].Level==1,
+     "PlacePeg on an empty socket: PegPlaced(1, bouncy, level 1)");
+   Check(n.Shelf("bouncy")==1 && n.St.Sockets[1].PegId=="bouncy" && n.St.Sockets[1].Level==1,"the shelf loses one, the board holds it");
+   Check(n.St.ThrowsUsed==throwsBefore && n.St.StonesLeft==stonesBefore && n.Throws.Count==releases && n.Chains.Count==chainsBefore,
+     "a peg throw costs no stone, counts as no throw and starts no chain");
+   Check(n.St.Phase==NightPhase.Running && n.St.CanThrow,"the round's only throw used -> back to Running"); }
+ { var n=new Night(Hours(50,100,5000),null,Pegs(2,2,("bouncy",5),("plain",1)));
+   n.Play(3);
+   Check(n.St.PegThrowsLeft==2,"pegThrowsPerThreshold 2 -> two throws this round");
+   n.Ref.PlacePeg(0,"bouncy");
+   Check(n.St.Phase==NightPhase.PegPlacement && n.St.PegThrowsLeft==1,"one throw left: still placing");
+   Check(n.Ref.IsValidTarget(0,"bouncy") && !n.Ref.IsValidTarget(0,"plain") && n.Ref.IsValidTarget(1,"plain"),
+     "valid targets: same type = merge; another type can't go on it; an empty socket takes anything");
+   Check(!n.Ref.PlacePeg(0,"plain") && n.St.PegThrowsLeft==1 && n.Shelf("plain")==1,"refused (wrong type on a peg): nothing used");
+   Check(n.Ref.PlacePeg(0,"bouncy") && n.Merged.Count==1 && n.Merged[0].Level==2 && n.St.Sockets[0].Level==2,"same type: PegMerged, level 2");
+   Check(n.St.Phase==NightPhase.Running,"both throws used -> Running");
+   n.Play(3);   // threshold 100
+   n.Ref.PlacePeg(0,"bouncy");   // level 3 = max
+   Check(n.St.Sockets[0].Level==3 && !n.Ref.IsValidTarget(0,"bouncy"),"max level 3: no more merging onto it");
+   Check(!n.Ref.PlacePeg(0,"bouncy") && n.St.Sockets[0].Level==3,"a merge past the max level is refused"); }
+ { var n=new Night(Hours(50,5000),null,new PegSetup(new System.Collections.Generic.List<(PegType,int)>{(new PegType("solid",3,false),3)},2,1));
+   n.Play(3); n.Ref.PlacePeg(0,"solid");
+   Check(!n.Ref.IsValidTarget(0,"solid") && !n.Ref.CanPlaceAnyPeg && n.St.PegThrowsLeft==1,"a non-mergeable type can't go on itself; board full -> nothing placeable (throw left)");
+   n.Ref.EndPlacement();
+   Check(n.St.Phase==NightPhase.Running && n.St.PegThrowsLeft==0,"EndPlacement (Simulation, after the refill pause): unused throws are lost"); }
+ { var n=new Night(Hours(50,5000),null,Pegs(14,1));
+   n.Play(3);
+   Check(n.St.Phase==NightPhase.PegPlacement && !n.Ref.CanPlaceAnyPeg,"empty shelf: the round still happens (refill pause) but nothing is placeable");
+   n.Ref.EndPlacement(); Check(n.St.Phase==NightPhase.Running,"...and ends when Simulation says so"); }
+ { var n=new Night(Hours(50,5000),null,Pegs(2,1,("plain",1)));
+   n.Play(3); n.Ref.PlacePeg(0,"plain");
+   n.Ref.EndPlacement();
+   Check(n.St.Phase==NightPhase.Running,"EndPlacement outside a round is ignored");
+   Check(!n.Ref.PlacePeg(1,"plain") && !n.Ref.PlacePeg(-1,"plain") && !n.Ref.PlacePeg(5,"plain") && !n.Ref.IsValidTarget(0,"ghost"),
+     "no placing outside a round, off the board, or an unknown type"); }
+ { // Max pegs = sockets: 2 sockets, 5 pegs of a type that can't merge -> 2 placed, then nothing.
+   var n=new Night(Hours(50,100,150,5000),null,new PegSetup(new System.Collections.Generic.List<(PegType,int)>{(new PegType("x",1,true),5)},1,2));
+   for(int i=0;i<3;i++){ n.Play(3); if(n.St.Phase==NightPhase.PegPlacement && n.Ref.CanPlaceAnyPeg){ for(int s=0;s<2;s++) if(n.Ref.PlacePeg(s,"x")) break; } else n.Ref.EndPlacement(); }
+   int onBoard=0; foreach(var s in n.St.Sockets) if(!s.IsEmpty) onBoard++;
+   Check(onBoard==2 && n.Shelf("x")==3,"max pegs = sockets: 2 on the board, 3 left on the shelf"); }
 }
 // Name clashes: CoreCheck can't compile Simulation/Presentation, so it can't see "ambiguous reference" errors
 // there. This scans every script instead: a type name declared in two of our namespaces (e.g. an enum in

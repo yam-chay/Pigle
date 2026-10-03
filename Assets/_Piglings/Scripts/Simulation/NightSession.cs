@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Piglings.Definitions;
 using Piglings.Events;
 using Piglings.Rules;
@@ -28,12 +29,21 @@ namespace Piglings.Simulation
         private ChainTracker _chains;
         private NightReferee _referee;
 
-        /// <summary>Robots climb and spawn only while the night is being played: paused for the choice, stopped once over.</summary>
-        public bool WallMoving => State.Phase == NightPhase.Running || State.Phase == NightPhase.Overtime;
+        // When the current placement round started (Time.time), for the refill pause.
+        private float _roundStartedAt;
 
-        // The end-of-night choice. Called by NightChoice (Simulation); the referee ignores them outside ChoicePending.
-        public void ChooseStay() => _referee.Stay();
-        public void ChooseLeave() => _referee.Leave();
+        /// <summary>Robots climb and spawn only while the night is being played: paused for peg placement, stopped once over.</summary>
+        public bool WallMoving => State.Phase == NightPhase.Running;
+
+        // For views (Presentation can't reference Rules): the hours as plain numbers.
+        public int NextThreshold => _referee.NextThreshold;
+        public int ThresholdCount => _referee.Goal.ThresholdCount;
+        public float HourMultiplier => _referee.HourMultiplier;
+
+        // Peg placement. Called by Simulation's placement code (next PR); the referee ignores them outside a round.
+        public bool PlacePeg(int socket, string pegId) => _referee.PlacePeg(socket, pegId);
+        public bool IsValidPegTarget(int socket, string pegId) => _referee.IsValidTarget(socket, pegId);
+        public bool CanPlaceAnyPeg => _referee.CanPlaceAnyPeg;
 
         private void Awake()
         {
@@ -43,10 +53,51 @@ namespace Piglings.Simulation
             _chains = new ChainTracker(Bus, State, BuildCurve());
             // After ChainTracker: the referee reads its open-chain count.
             _referee = new NightReferee(Bus, State, _chains,
-                new NightGoal(night.TargetScore, night.ThrowsAvailable));
+                new NightGoal(ToArray(night.Thresholds), night.ThrowsAvailable, night.StonesPerThreshold),
+                BuildPegs());
+            Bus.Subscribe<NightPhaseChanged>(OnPhaseChanged);
         }
 
-        // Without an asset the night still plays on ScoreCurve's defaults (10 / 10 / 10 / ×0.5),
+        private void OnPhaseChanged(NightPhaseChanged e)
+        {
+            if (e.To == NightPhase.PegPlacement) _roundStartedAt = Time.time;
+        }
+
+        // A placement round with nothing to place (empty shelf, no valid socket, or the throws ran out of targets)
+        // still pauses for the refill — long enough to watch the stones land — then ends by itself. Rules can't
+        // keep time, so the clock lives here. Unused throws are lost (the referee decides that).
+        private void Update()
+        {
+            if (State.Phase == NightPhase.PegPlacement && !_referee.CanPlaceAnyPeg
+                && Time.time - _roundStartedAt >= night.RefillPauseSeconds)
+                _referee.EndPlacement();
+        }
+
+        // Sockets come with the placement PR (one per Hold); until then the wall has none, so every round is a
+        // refill pause.
+        private PegSetup BuildPegs()
+        {
+            var loadout = new List<(PegType, int)>();
+            foreach (var entry in night.PegLoadout)
+            {
+                if (entry == null || entry.peg == null) continue;
+                loadout.Add((new PegType(entry.peg.Id, entry.peg.MaxLevel, entry.peg.Mergeable), entry.count));
+            }
+            var pegs = new PegSetup(loadout, night.PegThrowsPerThreshold, socketCount: 0);
+            if (pegs.DroppedTypes > 0)
+                Debug.LogWarning($"NightSession: {night.name} brings more than {PegSetup.ShelfCapacity} peg types; " +
+                                 $"{pegs.DroppedTypes} ignored (the shelf holds {PegSetup.ShelfCapacity}).", night);
+            return pegs;
+        }
+
+        private static int[] ToArray(IReadOnlyList<int> list)
+        {
+            var a = new int[list?.Count ?? 0];
+            for (int i = 0; i < a.Length; i++) a[i] = list[i];
+            return a;
+        }
+
+        // Without an asset the night still plays on ScoreCurve's defaults (10 / 10 / 10 / ×0.5, hours +0.5),
         // but says so — silently scoring on values nobody chose would make tuning confusing.
         private ScoreCurve BuildCurve()
         {
@@ -55,15 +106,13 @@ namespace Piglings.Simulation
                 Debug.LogWarning("NightSession: no ScoringDefinition assigned, using default scoring.", this);
                 return new ScoreCurve();
             }
-            if (scoring.OvertimeMultiplier <= 1)
-                Debug.LogWarning($"NightSession: {scoring.name} has Overtime Multiplier {scoring.OvertimeMultiplier}, " +
-                                 "so overtime doesn't double anything. Set it to 2 (select the asset in the Project window).", scoring);
             return new ScoreCurve(scoring.StoneValue, scoring.GrowthPerHit, scoring.WolfValue,
-                                  scoring.MultiplierPerDepth, scoring.CarryScoredTotal, scoring.OvertimeMultiplier);
+                                  scoring.MultiplierPerDepth, scoring.CarryScoredTotal, scoring.HourMultiplierStep);
         }
 
         private void OnDestroy()
         {
+            Bus?.Unsubscribe<NightPhaseChanged>(OnPhaseChanged);
             _referee?.Dispose();
             _chains?.Dispose();
         }

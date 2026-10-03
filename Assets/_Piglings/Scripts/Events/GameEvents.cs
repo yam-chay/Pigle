@@ -70,58 +70,53 @@ namespace Piglings.Events
     /// <summary>
     /// Published by the Rules layer right after RobotLostGrip: what that robot is worth, already
     /// added to the score. Received = the value its hitter (stone or ball) carried into it;
-    /// Total = Received × Multiplier (rounded) × OvertimeMultiplier; Carries = what this robot's own ball now carries.
-    /// OvertimeMultiplier is 1 outside overtime. InOvertime: this robot's chain was thrown in overtime — the
-    /// same flag as ChainScored.InOvertime, so robot and chain popups always agree on "is this bonus time".
+    /// Total = Received × Multiplier × HourMultiplier, rounded once; Carries = what this robot's own ball now carries.
+    /// Hour / HourMultiplier: the hour the chain's stone was thrown in, and its multiplier (×1 in hour 1) — fixed at
+    /// the throw, the same as ChainScored.Hour, so robot and chain popups always agree.
     /// Order is its place in the chain (1 = first to lose grip).
-    /// Presentation shows "Received ×Multiplier OT×2", then "+Total".
+    /// Presentation shows "Received ×Multiplier", then "+Total".
     /// </summary>
     public readonly struct RobotScored
     {
         public readonly GameId Robot; public readonly ChainId Chain;
         public readonly int Order; public readonly int Depth;
-        public readonly int Received; public readonly float Multiplier; public readonly int OvertimeMultiplier;
-        public readonly int Total; public readonly int Carries; public readonly bool InOvertime;
-        public RobotScored(GameId robot, ChainId chain, int order, int depth, int received, float multiplier, int overtimeMultiplier,
-                           int total, int carries, bool inOvertime)
+        public readonly int Received; public readonly float Multiplier; public readonly int Hour; public readonly float HourMultiplier;
+        public readonly int Total; public readonly int Carries;
+        public RobotScored(GameId robot, ChainId chain, int order, int depth, int received, float multiplier, int hour, float hourMultiplier,
+                           int total, int carries)
         {
             Robot = robot; Chain = chain; Order = order; Depth = depth;
-            Received = received; Multiplier = multiplier; OvertimeMultiplier = overtimeMultiplier; Total = total; Carries = carries;
-            InOvertime = inOvertime;
+            Received = received; Multiplier = multiplier; Hour = hour; HourMultiplier = hourMultiplier; Total = total; Carries = carries;
         }
     }
 
     /// <summary>
     /// Published by the Rules layer right after ChainClosed: the chain's value, which is the sum of
     /// its RobotScored totals (nothing extra is added at close). Also published for misses, with zeros.
-    /// InOvertime: the throw was made in overtime (a chain is never split across phases: the choice
-    /// only appears once no chain is open), so views can style it as bonus points.
+    /// Hour: the hour the throw was made in (a chain is never split across hours: throwing stops when a
+    /// threshold is crossed, and the next hour starts only once every chain has settled), so views can colour it.
     /// </summary>
     public readonly struct ChainScored
     {
         public readonly ChainId Chain; public readonly int RobotsDropped; public readonly int MaxDepth; public readonly int Total;
-        public readonly bool InOvertime;
-        public ChainScored(ChainId chain, int robotsDropped, int maxDepth, int total, bool inOvertime)
+        public readonly int Hour;
+        public ChainScored(ChainId chain, int robotsDropped, int maxDepth, int total, int hour)
         {
-            Chain = chain; RobotsDropped = robotsDropped; MaxDepth = maxDepth; Total = total; InOvertime = inOvertime;
+            Chain = chain; RobotsDropped = robotsDropped; MaxDepth = maxDepth; Total = total; Hour = hour;
         }
     }
 
     /// <summary>
-    /// Running → ChoicePending → Overtime → Ended, or ChoicePending → Ended (Leave), or Running → Ended (lost).
-    /// Reaching the target ends the danger, not the night: from ChoicePending on, the night can't be lost.
+    /// "Hours until dawn" (GDD "שעות הלילה"): Running(hour) → PegPlacement → Running(hour+1) … → Ended (dawn, won),
+    /// or Running → Ended (caught, lost). The hour is NightState.ThresholdsReached + 1; it isn't a phase of its own.
     /// </summary>
-    public enum NightPhase { Running, ChoicePending, Overtime, Ended }
-    // Named StayOrLeave, not NightChoice: Simulation has a NightChoice component (the buttons), and code that
-    // uses both namespaces (every Presentation view) would find the name ambiguous.
-    public enum StayOrLeave { None, Stay, Leave }
+    public enum NightPhase { Running, PegPlacement, Ended }
     public enum NightResult { Won, Lost }
-    // Caught: a robot breached while the pile was empty — the only way to lose. OutOfStones: overtime used up its
-    // stones (a win). Left: the player chose Leave. DangerLine: overtime ended by a robot at the line.
-    public enum NightEndReason { OutOfStones, Caught, Left, DangerLine }
+    // Caught: a robot breached while the pile was empty — the only way to lose. Dawn: the last threshold was reached.
+    public enum NightEndReason { Caught, Dawn }
 
-    // Forfeited: overtime ended at the danger line — the unthrown stones are lost.
-    public enum StoneChange { Thrown, Stolen, Added, Forfeited }
+    // Added: a refill (each hour reached, or AddStones).
+    public enum StoneChange { Thrown, Stolen, Added }
 
     /// <summary>
     /// The stone count changed (NightReferee, the one owner of the count). Count is the new total; Delta is
@@ -136,32 +131,58 @@ namespace Piglings.Events
             Count = count; Delta = delta; Cause = cause; Robot = robot;
         }
     }
+    // Weapon: nothing banks to it any more (leftover stones used to). Kept for Meta: weapon mastery will come from use + feats.
     public enum MasteryDestination { Barn, Weapon }
 
-    /// <summary>Published by NightReferee on every phase change. Simulation pauses, resumes and sweeps the wall off this.</summary>
+    /// <summary>
+    /// Published by NightReferee on every phase change. Simulation pauses, resumes and sweeps the wall off this.
+    /// PegPlacement → PegPlacement is a real change: one placement round per threshold, played one after the other.
+    /// </summary>
     public readonly struct NightPhaseChanged
     {
         public readonly NightPhase From; public readonly NightPhase To;
         public NightPhaseChanged(NightPhase from, NightPhase to) { From = from; To = to; }
     }
 
-    /// <summary>The score first reached the target (chains may still be falling). Once per night.</summary>
-    public readonly struct NightTargetReached
+    /// <summary>
+    /// The score crossed a threshold before the last one: a new hour starts. Hour is the new hour (2 after the first
+    /// threshold), Multiplier what its chains will score with, Threshold the score that was crossed. Throwing stops
+    /// now; a peg-placement round follows once every chain has settled.
+    /// </summary>
+    public readonly struct HourReached
     {
-        public readonly int Score; public readonly int StonesLeft;
-        public NightTargetReached(int score, int stonesLeft) { Score = score; StonesLeft = stonesLeft; }
+        public readonly int Hour; public readonly float Multiplier; public readonly int Threshold;
+        public HourReached(int hour, float multiplier, int threshold) { Hour = hour; Multiplier = multiplier; Threshold = threshold; }
     }
 
-    /// <summary>The player chose what their leftover stones are for.</summary>
-    public readonly struct NightChoiceMade
+    /// <summary>
+    /// The score crossed the last threshold: dawn, the night is won (it ends once every chain has settled, and can't
+    /// be lost from here). Once per night. Meta will turn it into a badge later.
+    /// </summary>
+    public readonly struct DawnReached
     {
-        public readonly StayOrLeave Choice;
-        public NightChoiceMade(StayOrLeave choice) { Choice = choice; }
+        public readonly int Score;
+        public DawnReached(int score) { Score = score; }
+    }
+
+    /// <summary>A peg from the shelf was placed in an empty socket (a Hold). Level starts at 1.</summary>
+    public readonly struct PegPlaced
+    {
+        public readonly int Socket; public readonly string PegId; public readonly int Level;
+        public PegPlaced(int socket, string pegId, int level) { Socket = socket; PegId = pegId; Level = level; }
+    }
+
+    /// <summary>A peg from the shelf was thrown onto a peg of the same type, which went up a level (now Level).</summary>
+    public readonly struct PegMerged
+    {
+        public readonly int Socket; public readonly string PegId; public readonly int Level;
+        public PegMerged(int socket, string pegId, int level) { Socket = socket; PegId = pegId; Level = level; }
     }
 
     /// <summary>
     /// A robot still on the wall was knocked off by the end-of-night sweep (published by Simulation while it
-    /// sweeps). Not part of any chain: NightReferee scores it flat with the robot-value function.
+    /// sweeps). Not part of any chain. Won: NightReferee scores it flat with the robot-value function. Lost: visual
+    /// only — the robots fall either way, but the bank stays at the last threshold reached.
     /// </summary>
     public readonly struct RobotSwept
     {
@@ -172,6 +193,7 @@ namespace Piglings.Events
     /// <summary>
     /// Where points went when the night ended: Amount × Multiplier to Barn or Weapon mastery.
     /// Published by NightReferee just before NightEnded, only for non-zero amounts. Meta subscribes later.
+    /// Today only Barn: the banked score (the live score at dawn; the last threshold reached when caught).
     /// </summary>
     public readonly struct NightBanked
     {
@@ -180,19 +202,21 @@ namespace Piglings.Events
     }
 
     /// <summary>
-    /// Published once by the Rules layer (NightReferee) when the night is decided.
-    /// All values are as of that moment. Leftover stones are recorded for future rewards;
-    /// ThrowsUsed counts stones actually thrown (not ones lost to breaches), for score per stone.
+    /// Published once by the Rules layer (NightReferee) when the night is decided. All values are as of that moment.
+    /// Score is the live score; BankedScore is what the night keeps (= Score at dawn, the last threshold reached
+    /// when caught). HoursReached = thresholds crossed (= the threshold count at dawn).
+    /// ThrowsUsed counts stones actually thrown (not ones lost to breaches, not pegs), for score per stone.
     /// </summary>
     public readonly struct NightEnded
     {
         public readonly NightResult Result; public readonly NightEndReason Reason;
-        public readonly int Score; public readonly int TargetScore; public readonly int StonesLeft; public readonly int Breaches;
-        public readonly int ThrowsUsed;
-        public NightEnded(NightResult result, NightEndReason reason, int score, int targetScore, int stonesLeft, int breaches, int throwsUsed)
+        public readonly int Score; public readonly int BankedScore; public readonly int HoursReached;
+        public readonly int StonesLeft; public readonly int Breaches; public readonly int ThrowsUsed;
+        public NightEnded(NightResult result, NightEndReason reason, int score, int bankedScore, int hoursReached,
+                          int stonesLeft, int breaches, int throwsUsed)
         {
-            Result = result; Reason = reason; Score = score; TargetScore = targetScore; StonesLeft = stonesLeft; Breaches = breaches;
-            ThrowsUsed = throwsUsed;
+            Result = result; Reason = reason; Score = score; BankedScore = bankedScore; HoursReached = hoursReached;
+            StonesLeft = stonesLeft; Breaches = breaches; ThrowsUsed = throwsUsed;
         }
     }
 }
