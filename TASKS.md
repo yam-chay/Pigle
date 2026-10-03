@@ -1,6 +1,6 @@
 # TASKS — Piglings prototype
 
-> **Next up (2026-10-03):** Hours until dawn — M8.1 ☁ (this PR) → 🖥 M8.1b set the thresholds + check in play → M8.2 pile refactor → M8.3 peg placement → M8.4 hour palettes → M8.5 Bouncy. Then M6.3 stone readability → decide the empty-pile "dead time" → M5.2.
+> **Next up (2026-10-03):** Hours until dawn — M8.1 ✔ → M8.2 pile refactor (☁ done, 🖥 check) → M8.3 peg placement → M8.4 hour palettes → M8.5 Bouncy. Then M6.3 stone readability → decide the empty-pile "dead time" → M5.2.
 > Why: the hours change what a night is (no more Stay/Leave), so M5.2 tunes the new loop, not the old one. M5.2 still needs the theft (M7.3) and the stone (M6.3) readable.
 
 ☁ = cloud session OK (code/docs only) · 🖥 = local, needs the Unity editor (use Claude Code + unity-mcp)
@@ -65,7 +65,8 @@ Context (story frame, GDD): the villain is the Big Bad Wolf; the robots are his 
 Replaces M6.5's Stay/Leave + overtime. A night = N score thresholds ("hours"); each one raises the score multiplier (+`hourMultiplierStep`), refills stones and pauses the wall for a peg-placement round; the last one is dawn (won). Loss unchanged (breach on an empty pile); a loss banks the last threshold reached. Structure: ARCHITECTURE.md → "Night phases: hours until dawn".
 - [x] ☁ M8.1 Rules/Runtime/Events: phases `Running → PegPlacement → Running … → Ended(Dawn)`, `Caught` from Running; hour multiplier in `ScoreCurve.RobotTotal` (fixed at throw, rounded once, never carried); `HourReached` / `DawnReached` / `PegPlaced` / `PegMerged`; refill per threshold; board (sockets) + shelf state; `PlacePeg` (place, merge, max level); loss banks the last threshold; sweep on both outcomes (scored only on a win). Overtime / choice removed. `PegDefinition` (id, maxLevel, mergeable), `NightDefinition` thresholds / refill / loadout / throws, `refillPauseSeconds` clock in `NightSession`. CoreCheck for all of it.
   - [ ] 🖥 M8.1b Editor: set `Night_01` thresholds (and `stonesPerThreshold`), check `Scoring` hour step; remove the old NightChoice component; play to dawn and to caught. Steps in the PR.
-- [ ] ☁ M8.2 Pile refactor, no behaviour change: what `StonePile` does (slots, mirror-and-reconcile, hop) becomes one reusable piece; `StonePile` sits on it.
+- [x] ☁ M8.2 Pile refactor, no behaviour change: `PileLayout` (slots, CoreCheck), `ItemPile<T>` (mirror-and-reconcile, drops, put back), `HopMover` (the hop to a moving target); `StonePile` sits on them, same serialized fields.
+  - [ ] 🖥 M8.2b Play-check the stone pile is unchanged (hop to hand, refill drop, theft hop). Steps in the PR.
 - [ ] ☁+🖥 M8.3 Peg placement: sockets on the Holds, peg shelf (one pile per type, above the pig), next peg hops to the hand, right-click swaps / left-click picks, peg throw on the normal arc, snap to the nearest valid socket to the aimed point (radius; none = red line, refused), highlights, transparency, dim, shelf pulse / hover / cursor. Sprites on `PegDefinition` (missing = still runs).
 - [ ] ☁+🖥 M8.4 Hour palettes: one asset per hour (popup colours + background tint, night → dawn); day background on `DawnReached`.
 - [ ] ☁+🖥 M8.5 Bouncy peg: a ball that hits it gets +bonus (× level) on its depth multiplier for everything it scores after; once per peg per ball.

@@ -14,5 +14,7 @@
     <Compile Include="../../Assets/_Piglings/Scripts/Simulation/ThrowSolver.cs" />
     <!-- And the breach sequence's timeline (M7.3): checks that its parts always happen in order. -->
     <Compile Include="../../Assets/_Piglings/Scripts/Simulation/BreachTiming.cs" />
+    <!-- And the pile layout every mirrored pile shares (stones, peg shelf). -->
+    <Compile Include="../../Assets/_Piglings/Scripts/Simulation/PileLayout.cs" />
   </ItemGroup>
 </Project>

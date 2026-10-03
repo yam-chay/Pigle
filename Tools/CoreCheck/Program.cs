@@ -21,6 +21,7 @@ static void Main(){
  NameClashChecks();
  ThrowChecks();
  BreachChecks();
+ PileChecks();
  ComponentFileChecks();
 }
 // Scoring: value flows down the chain. A hitter (stone or ball) carries a value; the robot it knocks
@@ -424,6 +425,17 @@ static void BreachChecks(){
  BreachTiming.JumpOffset(1f,-1f,0.174f,out float dxl,out _);
  Check(dx0==0f && dy0==0f && dx1>0f && dxl<0f && dy1<0f,"jump: no pop at the start, ends out to its side and below the perch");
  Check(BreachTiming.Phase(10f,1f)==1f && BreachTiming.Phase(0f,0f)==1f,"phase is clamped; a zero-length breach is over at once (never stuck)");
+}
+// PileLayout: the pyramid every mirrored pile uses (the stone pile's slots, unchanged by the M8.2 refactor).
+static void PileChecks(){
+ bool At(int i,int bottom,float ex,float ey){ PileLayout.Pyramid(i,bottom,1f,1f,out float x,out float y); return MathF.Abs(x-ex)<1e-5f && MathF.Abs(y-ey)<1e-5f; }
+ Check(At(0,3,-1f,0f) && At(1,3,0f,0f) && At(2,3,1f,0f),"pyramid of 3: bottom row -1, 0, 1, centred");
+ Check(At(3,3,-0.5f,1f) && At(4,3,0.5f,1f) && At(5,3,0f,2f),"rows above: one fewer each, centred (-0.5, 0.5 / 0)");
+ Check(At(6,3,0f,3f) && At(7,3,0f,4f),"past the top: a single column keeps stacking");
+ Check(At(0,1,0f,0f) && At(4,1,0f,4f),"bottomRow 1 = a stack");
+ Check(At(-2,3,-1f,0f) && At(0,0,0f,0f),"a negative index or a 0-wide row can't break it");
+ PileLayout.Pyramid(9,8,0.17f,0.14f,out float sx,out float sy);
+ Check(MathF.Abs(sx-(-0.34f))<1e-4f && MathF.Abs(sy-0.14f)<1e-5f,"the stone pile (8 wide, 0.17 / 0.14): stone 10 sits at (-0.34, 0.14), as before (2nd of the 7-wide row)");
 }
 // Unity can only add a MonoBehaviour / ScriptableObject as a component or asset when it lives in a file of the
 // same name (the old Zones.cs bug). Plain types (events, enums, structs) may share a file. CLAUDE.md rule.
