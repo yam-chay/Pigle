@@ -16,8 +16,10 @@ namespace Piglings.Simulation
     /// - When the hand is empty and the pig may throw, the top stone hops in an arc to the hand and waits.
     ///   ThrowController takes it on release (ReleaseHeld) and it becomes a normal dynamic Throwable.
     ///   The hop is shorter than the throw cooldown, so the next stone is in the hand when you can throw.
-    /// - A robot that breaches takes the top stone: it's parented to the robot, stays parked (never a weapon)
-    ///   and leaves with it.
+    /// - A robot that breaches takes the top stone: the stone hops from the pile to the robot (the same arc as the
+    ///   hop to the hand), timed to land at BreachTiming.StoneLands of the robot's BreachSeconds, so the robot
+    ///   always visibly holds it before it jumps off. Then it's parented to the robot, stays parked (never a
+    ///   weapon) and leaves with it.
     /// - Added stones drop onto the next free slots.
     ///
     /// Lives in Simulation because it hands out the real throwables. Put it on the perch piece; its position
@@ -46,11 +48,19 @@ namespace Piglings.Simulation
         [Tooltip("Added stones fall into their slot from this high.")]
         [SerializeField] private float dropHeight = 0.6f;
         [SerializeField, Min(0.05f)] private float dropSeconds = 0.3f;
-        [Tooltip("Where a stolen stone sits on the robot that took it (world offset from the robot's centre).")]
+        [Tooltip("Where a stolen stone sits on the robot that took it (world offset from the robot's centre). " +
+                 "Its hop there is timed from the robot's Breach Seconds, and arcs as high as Hop Height.")]
         [SerializeField] private Vector3 stolenOffset = new Vector3(0f, 0.25f, 0f);
 
         private readonly List<Throwable> _pile = new List<Throwable>();   // index = slot; last = top
-        private readonly Dictionary<GameId, Transform> _robots = new Dictionary<GameId, Transform>();
+        private readonly Dictionary<GameId, RobotController> _robots = new Dictionary<GameId, RobotController>();
+
+        // Stolen stones on their way from the pile to the robot that took them.
+        private sealed class Theft
+        {
+            public Throwable Stone; public RobotController Thief; public Vector3 From; public float T; public float Seconds;
+        }
+        private readonly List<Theft> _thefts = new List<Theft>();
 
         private Throwable _held;          // in the hand, or on its way there
         private float _hopT = -1f;        // 0..1 while hopping; -1 when not
@@ -121,13 +131,13 @@ namespace Piglings.Simulation
         {
             if (Total == 0) return;
             var stone = TakeTop();
+            // Parked (no collider, no physics) the whole way: it can never start a chain.
             if (_robots.TryGetValue(robot, out var thief) && thief != null)
-            {
-                // Parked (no collider, no physics): it leaves with the robot and can never start a chain.
-                // worldPositionStays keeps the stone's own size — the robot is scaled 0.3.
-                stone.transform.SetParent(thief, worldPositionStays: true);
-                stone.transform.position = thief.position + stolenOffset;
-            }
+                _thefts.Add(new Theft
+                {
+                    Stone = stone, Thief = thief, From = stone.transform.position, T = 0f,
+                    Seconds = BreachTiming.StoneHopSeconds(thief.BreachSeconds)
+                });
             else Destroy(stone.gameObject);
         }
 
@@ -201,14 +211,13 @@ namespace Piglings.Simulation
         // through idle, aim and throw.
         private void LateUpdate()
         {
+            UpdateThefts();
             if (_held == null || hand == null) return;
 
             if (_hopT >= 0f)
             {
                 _hopT = Mathf.Min(1f, _hopT + Time.deltaTime / hopSeconds);
-                // Arc: straight line to the (moving) hand plus a parabola bump at the middle.
-                _held.transform.position = Vector3.Lerp(_hopFrom, hand.position, _hopT)
-                                           + Vector3.up * (hopHeight * 4f * _hopT * (1f - _hopT));
+                _held.transform.position = Hop(_hopFrom, hand.position, _hopT);
                 if (_hopT >= 1f) _hopT = -1f;   // arrived: from now on it just follows the hand
                 return;
             }
@@ -216,10 +225,44 @@ namespace Piglings.Simulation
             _held.transform.position = hand.position;
         }
 
-        private void OnSpawned(RobotController robot) => _robots[robot.Id] = robot.transform;
+        // A stolen stone flies to the (moving) robot, then rides on it: parented on landing so it follows the jump
+        // off. worldPositionStays keeps the stone's own size — the robot is scaled 0.3.
+        private void UpdateThefts()
+        {
+            for (int i = _thefts.Count - 1; i >= 0; i--)
+            {
+                var f = _thefts[i];
+                if (f.Stone == null) { _thefts.RemoveAt(i); continue; }
+                if (f.Thief == null) { Destroy(f.Stone.gameObject); _thefts.RemoveAt(i); continue; }
 
-        // The theft happens at RobotBreached, while the thief is still alive (and in the map); it's removed at the
-        // end of its breach sequence, taking the parented stone with it.
-        private void OnRobotRemoved(RobotRemoved e) => _robots.Remove(e.Robot);
+                f.T = f.Seconds <= 0f ? 1f : Mathf.Min(1f, f.T + Time.deltaTime / f.Seconds);
+                var seat = f.Thief.transform.position + stolenOffset;
+                f.Stone.transform.position = Hop(f.From, seat, f.T);
+                if (f.T < 1f) continue;
+
+                f.Stone.transform.SetParent(f.Thief.transform, worldPositionStays: true);
+                _thefts.RemoveAt(i);
+            }
+        }
+
+        // The pile's one hop shape (to the hand, to a thief): a straight line to a target that may be moving,
+        // plus a parabola bump at the middle.
+        private Vector3 Hop(Vector3 from, Vector3 to, float t) =>
+            Vector3.Lerp(from, to, t) + Vector3.up * (hopHeight * 4f * t * (1f - t));
+
+        private void OnSpawned(RobotController robot) => _robots[robot.Id] = robot;
+
+        // The theft happens at RobotBreached, while the thief is still alive (and in the map). It's removed at the
+        // end of its breach sequence, taking the parented stone with it; a stone still mid-hop goes with it too.
+        private void OnRobotRemoved(RobotRemoved e)
+        {
+            _robots.Remove(e.Robot);
+            for (int i = _thefts.Count - 1; i >= 0; i--)
+            {
+                if (_thefts[i].Thief != null && _thefts[i].Thief.Id != e.Robot) continue;
+                if (_thefts[i].Stone != null) Destroy(_thefts[i].Stone.gameObject);
+                _thefts.RemoveAt(i);
+            }
+        }
     }
 }
