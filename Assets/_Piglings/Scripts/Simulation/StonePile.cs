@@ -178,6 +178,13 @@ namespace Piglings.Simulation
                 _held = _pile.TakeTop();
                 _hops.Start(_held.transform, hand, Vector3.zero, hopSeconds);
             }
+            // A placement round needs the hand for pegs: the stone hops back onto the pile, and comes up again after.
+            else if (_held != null && session.State.Phase == NightPhase.PegPlacement)
+            {
+                var stone = _held;
+                _held = null;
+                _hops.StartTo(stone.transform, _pile.PutBack(stone), hopSeconds);
+            }
 
             _pile.UpdateDrops(Time.deltaTime);
         }
