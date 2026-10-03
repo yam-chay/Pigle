@@ -15,3 +15,5 @@ MonoBehaviour:
   id: Peg_Bouncy
   maxLevel: 3
   mergeable: 1
+  sprite: {fileID: 21300000, guid: c7110a1d893275b479d2bb3920a9733b, type: 3}
+  fallbackTint: {r: 0.6, g: 0.9, b: 1, a: 1}

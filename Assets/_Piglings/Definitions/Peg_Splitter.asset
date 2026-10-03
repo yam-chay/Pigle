@@ -15,3 +15,5 @@ MonoBehaviour:
   id: Peg_Splitter
   maxLevel: 3
   mergeable: 1
+  sprite: {fileID: 21300000, guid: 51390f13ebad05e49b32d582bfc361e8, type: 3}
+  fallbackTint: {r: 0.6, g: 0.9, b: 1, a: 1}

@@ -20,5 +20,9 @@ MonoBehaviour:
   thresholds: 2c010000dc050000c4090000a00f000070170000
   stonesPerThreshold: 2
   refillPauseSeconds: 1
-  pegLoadout: []
+  pegLoadout:
+  - peg: {fileID: 11400000, guid: d29abeb2a2ec00f468b743f864604a71, type: 2}
+    count: 3
+  - peg: {fileID: 11400000, guid: c85f60bb8dc3a7f4f8dc038fc104a503, type: 2}
+    count: 3
   pegThrowsPerThreshold: 1
