@@ -13,14 +13,16 @@ namespace Piglings.Rules
     /// - Running: the normal night. The stones are the pig's life. A robot that breaches takes the top stone;
     ///   a robot that breaches while the pile is empty catches the pigs — the ONLY loss, possible until dawn.
     ///   Throwing your last stone isn't a loss: the night goes on, and a chain still in flight can cross a threshold.
-    /// - Crossing a threshold (not the last): HourReached. Throwing stops at once, and the placement round starts
-    ///   once every chain has settled — so a chain is never cut, and never straddles two hours. A chain that crosses
-    ///   several thresholds earns one round each, played one after the other.
+    /// - Crossing a threshold (not the last): HourReached. Play goes on — the wall keeps climbing and the pig keeps
+    ///   throwing (new throws already score at the new hour's multiplier). The placement round starts once the chains
+    ///   that were in play AT the crossing have settled, so the chain that crossed is never cut. Chains thrown after
+    ///   the crossing don't hold the round off (or steady throwing would postpone it forever): they keep falling and
+    ///   scoring through the pause. A chain that crosses several thresholds earns one round each, back to back.
     /// - PegPlacement: the wall pauses (Simulation reads Phase). The pile gets its refill (StonesPerThreshold) and the
     ///   player gets PegThrowsPerThreshold pegs to place (PlacePeg). The round ends when the throws are used, or —
     ///   when nothing can be placed — when Simulation calls EndPlacement after the refill pause. Unused throws are lost.
-    /// - Crossing the last threshold: DawnReached. The night is won from here (no more catches) and ends once every
-    ///   chain has settled. No placement round at dawn, so no refill either.
+    /// - Crossing the last threshold: DawnReached. The night is won from here (no more catches); throwing stops, and
+    ///   it ends once every chain has settled. No placement round at dawn, so no refill either.
     /// - Ended: Simulation sweeps the wall (every climbing robot falls). Won: each scores its own value, flat, with the
     ///   same robot-value function chains use. Lost: visual only. Then the score is banked and NightEnded published.
     ///
@@ -37,6 +39,11 @@ namespace Piglings.Rules
 
         // True while Simulation sweeps the wall inside the Ended phase change; RobotSwept only counts then.
         private bool _sweeping;
+
+        // One entry per round still to play, in order: the chains that were in play when its threshold was crossed.
+        // A round waits for its own chains only — not for chains thrown later, nor for a later threshold's chains.
+        private readonly System.Collections.Generic.Queue<System.Collections.Generic.HashSet<GameId>> _roundWaitsFor =
+            new System.Collections.Generic.Queue<System.Collections.Generic.HashSet<GameId>>();
 
         public NightGoal Goal => _goal;
         public PegSetup Pegs => _pegs;
@@ -144,16 +151,23 @@ namespace Piglings.Rules
         }
 
         /// <summary>
-        /// Ends the current placement round: the next round if more thresholds are waiting, else back to Running.
-        /// Called here when the throws run out, and by Simulation when nothing can be placed (after the refill pause).
-        /// Unused throws are lost.
+        /// Ends the current placement round: straight into the next one if another threshold is waiting and ready,
+        /// else back to Running. Called here when the throws run out, and by Simulation when nothing can be placed
+        /// (after the refill pause). Unused throws are lost.
         /// </summary>
         public void EndPlacement()
         {
             if (_state.Phase != NightPhase.PegPlacement) return;
             _state.PegThrowsLeft = 0;
-            SetPhase(_state.PendingPegRounds > 0 ? NightPhase.PegPlacement : NightPhase.Running);
+            if (RoundReady) SetPhase(NightPhase.PegPlacement);
+            else
+            {
+                SetPhase(NightPhase.Running);
+                CheckSettled();   // dawn may have been reached by a chain that fell during the round
+            }
         }
+
+        private bool RoundReady => !_state.Dawn && _roundWaitsFor.Count > 0 && _roundWaitsFor.Peek().Count == 0;
 
         // ---------- stones ----------
 
@@ -182,9 +196,10 @@ namespace Piglings.Rules
 
         // ChainTracker has already added this robot's points to the score. One chain can cross several thresholds:
         // each one counts (its own HourReached and, before dawn, its own placement round).
+        // Also during a placement round: a chain thrown after a crossing keeps falling and scoring through it.
         private void OnRobotScored(RobotScored e)
         {
-            if (_state.Phase != NightPhase.Running) return;
+            if (_state.Phase == NightPhase.Ended) return;
             while (!_state.Dawn && _state.Score >= _goal.Thresholds[_state.ThresholdsReached])
             {
                 _state.ThresholdsReached++;
@@ -196,6 +211,7 @@ namespace Piglings.Rules
                 else
                 {
                     _state.PendingPegRounds++;
+                    _roundWaitsFor.Enqueue(new System.Collections.Generic.HashSet<GameId>(_chains.OpenChains));
                     _bus.Publish(new HourReached(_state.Hour, HourMultiplier, _goal.Thresholds[_state.ThresholdsReached - 1]));
                 }
             }
@@ -221,7 +237,11 @@ namespace Piglings.Rules
         }
 
         // ChainTracker publishes this after it has closed the chain, so OpenChainCount is current.
-        private void OnChainScored(ChainScored e) => CheckSettled();
+        private void OnChainScored(ChainScored e)
+        {
+            foreach (var waiting in _roundWaitsFor) waiting.Remove(e.Chain.Id);
+            CheckSettled();
+        }
 
         // Won: flat, the robot's own value, no order escalation, no depth or hour multiplier — the same function chains
         // use. Lost: the robots still fall (Simulation), but nothing is scored: the bank stays at the last threshold.
@@ -234,18 +254,22 @@ namespace Piglings.Rules
         }
 
         // Called whenever a chain closes: is it time for dawn, or for a placement round?
+        // Dawn waits for every chain (the night ends once all is still); a round only for those open at its crossing.
         private void CheckSettled()
         {
-            if (_state.Phase != NightPhase.Running || _chains.OpenChainCount > 0) return;
-            if (_state.Dawn) End(NightResult.Won, NightEndReason.Dawn);
-            else if (_state.PendingPegRounds > 0) SetPhase(NightPhase.PegPlacement);
+            if (_state.Phase != NightPhase.Running) return;
+            if (_state.Dawn)
+            {
+                if (_chains.OpenChainCount == 0) End(NightResult.Won, NightEndReason.Dawn);
+            }
+            else if (RoundReady) SetPhase(NightPhase.PegPlacement);
         }
 
         private void UpdateCanThrow()
         {
-            // Not after a threshold until its round is played (a new chain would hold the round off), not after dawn.
-            _state.CanThrow = _state.Phase == NightPhase.Running && _state.StonesLeft > 0
-                              && _state.PendingPegRounds == 0 && !_state.Dawn;
+            // Throwing goes on after a threshold (the round doesn't wait for new chains); it stops at dawn, when the
+            // night is won and only waits for what's falling.
+            _state.CanThrow = _state.Phase == NightPhase.Running && _state.StonesLeft > 0 && !_state.Dawn;
         }
 
         // ---------- the state machine ----------
@@ -281,6 +305,7 @@ namespace Piglings.Rules
             if (phase == NightPhase.PegPlacement)
             {
                 _state.PendingPegRounds--;
+                _roundWaitsFor.Dequeue();
                 _state.PegThrowsLeft = _pegs.ThrowsPerThreshold;
                 // The refill lands during the pause, where the player can watch the pile grow.
                 if (_goal.StonesPerThreshold > 0) ChangeStones(_goal.StonesPerThreshold, StoneChange.Added, GameId.None);

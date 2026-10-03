@@ -30,6 +30,8 @@ namespace Piglings.Rules
         private readonly Dictionary<GameId, Open> _open = new Dictionary<GameId, Open>();
 
         public int OpenChainCount => _open.Count;
+        /// <summary>The chains still in play right now (ids).</summary>
+        public IEnumerable<GameId> OpenChains => _open.Keys;
         public ScoreCurve Curve => _curve;
 
         public ChainTracker(EventBus bus, NightState state, ScoreCurve curve = null)

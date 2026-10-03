@@ -38,7 +38,7 @@ namespace Piglings.Presentation
             _bus = null;
         }
 
-        // The wall freezes at a threshold and through peg placement: freeze the climb animation with it,
+        // The wall freezes for peg placement: freeze the climb animation with it,
         // so frozen robots don't keep pedalling in place. A breaching robot isn't paused (it finishes its sequence).
         private void Update()
         {

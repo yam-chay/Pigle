@@ -21,7 +21,7 @@ namespace Piglings.Runtime
         // Written by NightReferee. Simulation reads Phase and CanThrow; Presentation reads the rest.
         public NightPhase Phase;   // the one source of truth for where the night is
         public int StonesLeft;     // throws left; a robot that breaches takes one
-        public bool CanThrow;      // false during peg placement, once out of stones, after a threshold (until its round), or night over
+        public bool CanThrow;      // false during peg placement, once out of stones, after dawn, or night over
         public NightResult Result;
         public NightEndReason EndReason;
 
@@ -43,11 +43,9 @@ namespace Piglings.Runtime
         public bool Ended => Phase == NightPhase.Ended;
         public int Hour => ThresholdsReached + 1;
 
-        // Robots climb and the spawner runs only while the hour is being played. The wall freezes the moment a
-        // threshold (or dawn) is crossed — not when the placement round starts — so there's no stretch where the
-        // pig can't throw but the wolves still climb. Falling balls are physics, not the wall: they keep falling,
-        // so the chain that crossed the line still finishes before the round starts.
-        public bool WallMoving => Phase == NightPhase.Running && PendingPegRounds == 0 && !Dawn;
+        // Robots climb and the spawner runs while the night is Running — including between a threshold crossing and
+        // its round (the player keeps throwing then). The wall freezes only for the placement round itself.
+        public bool WallMoving => Phase == NightPhase.Running;
     }
 
     /// <summary>One socket on the wall (a Hold). Empty = a plain hold.</summary>
