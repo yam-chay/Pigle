@@ -165,6 +165,13 @@ Weapon mastery comes from **use**: a weapon levels up from the robots it knocks 
 - `Throwable.ApplyLevel(def, level)`: the level's sprite, and a uniform scale that makes **the sprite exactly as wide as the collider** (computed from the sprite's own bounds, so any pixels-per-unit works; the parent's scale divided out). `Launch` always applies `WeaponLevel`, so play never depends on what the pile is showing.
 - `StonePile`: creates stones at the night's level and spreads its slots by the level's size (`spacing`/`rowHeight` are for level 1). At `NightEnded`, if the night earned a level, every stone on the pile (and in the hand) switches to it and the pile relayouts (`ItemPile.Relayout`) — the look only; nothing can be thrown after the end.
 
+**Shown during the night (M9.3, Presentation — progress is shown, never applied; no progress bars)**:
+- `NightSession.WeaponHitsSoFar` (saved at night start + tonight), `WeaponProgress` (0..1 from tonight's level toward the next, `MasteryLevels.ProgressFrom`, CoreCheck), `WeaponUpgradeReady` (tonight reached the next level). `StonePile.Stones` / `Held` and `Throwable.Look` / `InFlight` / `Definition` are read-only hooks for the views.
+- `StoneHitFx`: on each direct hit (`RobotLostGrip` from the throwable — what MasteryTally counts), a hit star + a small rising sparkle at the robot (GameId → Transform map from `RobotSpawner.Spawned`, like the score popups). Ball knocks get none.
+- `StonePileMasteryView` (on the pile): sparkles glint on random stones, more often as `WeaponProgress` rises; once `WeaponUpgradeReady`, the stones pulse gold (tint only — size is gameplay; a stone that leaves the pile mid-pulse gets its rest colour back); at `NightEnded` with a level earned, a burst ring over the pile while `StonePile` swaps the stones.
+- `StoneTrail` (on the Stone prefab, with a `TrailRenderer` using fx_trail): emits only in flight, cleared at launch, coloured by the level's Trail Colour, as wide as the stone. This is also the stone-readability fix (M6.3).
+- `FxSprites`: the shared one-shot effect sprite (spawn, grow, rise, spin, fade, destroy). Plain class owned by a view, like `ItemPile`. A missing sprite = no effect.
+
 **The save format (Meta, `ProfileJson`)** — `piglings_profile.json` in `Application.persistentDataPath`:
 ```json
 {

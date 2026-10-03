@@ -63,6 +63,12 @@ namespace Piglings.Simulation
         private Throwable _held;          // in the hand, or hopping there
         private int _shownLevel = 1;      // the mastery level the stones look like (the night's; the next night's once banked)
 
+        /// <summary>The stones sitting on the pile (bottom row first), for views (glints, the gold pulse). Read only.</summary>
+        public IReadOnlyList<Throwable> Stones => _pile.Items;
+
+        /// <summary>The stone in the hand or hopping there; null when none.</summary>
+        public Throwable Held => _held;
+
         /// <summary>A stone is waiting in the hand (not still hopping). ThrowController won't aim without one.</summary>
         public bool HasStoneInHand => _held != null && !_hops.IsHopping(_held.transform);
 

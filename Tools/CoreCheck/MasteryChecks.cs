@@ -102,6 +102,12 @@ static void MasteryChecks(){
    Check(MasteryLevels.LevelFor(500,new int[0])==1 && MasteryLevels.LevelFor(500,null)==1,"no thresholds: always level 1");
    Check(MasteryLevels.LevelFor(120,new[]{50})==2 && MasteryLevels.LevelFor(120,new[]{50,100})==3,"retuning thresholds re-derives the level from the same saved hits (120: [50] → 2, [50,100] → 3)");
    Check(MasteryLevels.NextThreshold(0,one)==50 && MasteryLevels.NextThreshold(60,two)==150 && MasteryLevels.NextThreshold(50,one)==-1,"next threshold: 50, 150, -1 at the top");
+   bool Near(float x,float y)=>MathF.Abs(x-y)<1e-5f;
+   Check(Near(MasteryLevels.ProgressFrom(1,0,one),0f) && Near(MasteryLevels.ProgressFrom(1,25,one),0.5f) && Near(MasteryLevels.ProgressFrom(1,50,one),1f) && Near(MasteryLevels.ProgressFrom(1,80,one),1f),
+         "progress from level 1 toward [50]: 0, 25 → 0.5, 50 → 1, past it stays 1 (upgrade ready)");
+   Check(Near(MasteryLevels.ProgressFrom(2,100,two),0.5f) && Near(MasteryLevels.ProgressFrom(2,50,two),0f),"progress counts from the level's own threshold: level 2 of [50,150], 100 → 0.5, 50 → 0");
+   Check(Near(MasteryLevels.ProgressFrom(2,999,one),1f) && Near(MasteryLevels.ProgressFrom(1,5,null),1f) && Near(MasteryLevels.ProgressFrom(1,60,new[]{50,50}),1f),
+         "progress at the top level / no thresholds / a broken list: 1, never a divide by zero");
    Check(MasteryLevels.Problem(two)==null && MasteryLevels.Problem(new[]{0})!=null && MasteryLevels.Problem(new[]{50,50})!=null && MasteryLevels.Problem(new[]{50,40})!=null,
          "Problem(): fine for [50,150]; flags a 0, a repeat, a drop"); }
 }

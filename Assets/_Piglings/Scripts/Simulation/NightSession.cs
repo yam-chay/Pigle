@@ -39,6 +39,7 @@ namespace Piglings.Simulation
         private Progression _progression;
         private ProfileFile _profileFile;
         private int[] _weaponThresholds;   // night.Throwable's level thresholds, read once (like the scoring curve)
+        private int _savedHitsAtStart;     // night.Throwable's saved hits when this night started (tonight's are in State)
 
         // When the current placement round started (Time.time), for the refill pause.
         private float _roundStartedAt;
@@ -62,6 +63,24 @@ namespace Piglings.Simulation
         /// the level the next night starts at — the pile shows it then.
         /// </summary>
         public int BankedWeaponLevel => MasteryLevels.LevelFor(_progression.Profile.DirectHits(night.Throwable.Id), _weaponThresholds);
+
+        // For views (M9.3): progress is shown during the night, never applied (WeaponLevel stays fixed).
+
+        /// <summary>Saved hits when the night started + tonight's hits so far. After the night is banked, = the saved total.</summary>
+        public int WeaponHitsSoFar
+        {
+            get
+            {
+                State.WeaponHits.TryGetValue(night.Throwable.Id, out int tonight);
+                return _savedHitsAtStart + tonight;
+            }
+        }
+
+        /// <summary>0..1 from tonight's level toward the next one (1 at the top level, and once tonight reached it).</summary>
+        public float WeaponProgress => MasteryLevels.ProgressFrom(WeaponLevel, WeaponHitsSoFar, _weaponThresholds);
+
+        /// <summary>Tonight's hits have reached the next level: it applies when the night ends ("upgrade ready").</summary>
+        public bool WeaponUpgradeReady => MasteryLevels.LevelFor(WeaponHitsSoFar, _weaponThresholds) > WeaponLevel;
 
         // Peg placement. Called by PegThrower; the referee ignores them outside a round.
         public bool PlacePeg(int socket, string pegId) => _referee.PlacePeg(socket, pegId);
@@ -119,6 +138,7 @@ namespace Piglings.Simulation
             var problem = MasteryLevels.Problem(_weaponThresholds);
             if (problem != null) Debug.LogWarning($"{weapon.name}: mastery levels — {problem}.", weapon);
             int hits = _progression.Profile.DirectHits(weapon.Id);
+            _savedHitsAtStart = hits;
             WeaponLevel = MasteryLevels.LevelFor(hits, _weaponThresholds);
             int next = MasteryLevels.NextThreshold(hits, _weaponThresholds);
             Debug.Log($"Piglings save: {weapon.Id} plays at level {WeaponLevel} tonight ({hits} hits" +
@@ -151,6 +171,7 @@ namespace Piglings.Simulation
         {
             if (!Application.isPlaying || _progression == null) { Debug.LogWarning("Reset progress works in play mode only.", this); return; }
             _progression.Reset();
+            _savedHitsAtStart = 0;   // progress views count from the empty profile now (tonight's level stays as it started)
             // Tonight's hits still bank at the end of this night, on top of the empty profile.
             Save("Reset progress (the old save is in .prev until the next save)");
         }
