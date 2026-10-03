@@ -52,25 +52,23 @@ namespace Piglings.Simulation
                  "Its hop there is timed from the robot's Breach Seconds, and arcs as high as Hop Height.")]
         [SerializeField] private Vector3 stolenOffset = new Vector3(0f, 0.25f, 0f);
 
-        private readonly List<Throwable> _pile = new List<Throwable>();   // index = slot; last = top
+        // The shared pile pieces (ItemPile, HopMover, PileLayout); the peg shelf is built from the same ones.
+        private ItemPile<Throwable> _pile;
+        private HopMover _hops;
         private readonly Dictionary<GameId, RobotController> _robots = new Dictionary<GameId, RobotController>();
 
-        // Stolen stones on their way from the pile to the robot that took them.
-        private sealed class Theft
-        {
-            public Throwable Stone; public RobotController Thief; public Vector3 From; public float T; public float Seconds;
-        }
-        private readonly List<Theft> _thefts = new List<Theft>();
-
-        private Throwable _held;          // in the hand, or on its way there
-        private float _hopT = -1f;        // 0..1 while hopping; -1 when not
-        private Vector3 _hopFrom;
-
-        // Stones falling into their slots (added mid-run).
-        private readonly List<(Throwable stone, Vector3 from, Vector3 to, float t)> _drops = new List<(Throwable, Vector3, Vector3, float)>();
+        private Throwable _held;          // in the hand, or hopping there
 
         /// <summary>A stone is waiting in the hand (not still hopping). ThrowController won't aim without one.</summary>
-        public bool HasStoneInHand => _held != null && _hopT < 0f;
+        public bool HasStoneInHand => _held != null && !_hops.IsHopping(_held.transform);
+
+        private void Awake()
+        {
+            _pile = new ItemPile<Throwable>(CreateStone, s => Destroy(s.gameObject), SlotPosition);
+            // A stone whose target is gone mid-hop (a thief destroyed early) just goes.
+            _hops = new HopMover(t => Destroy(t.gameObject));
+            ApplyTuning();
+        }
 
         private void OnEnable() { if (spawner != null) spawner.Spawned += OnSpawned; }
         private void OnDisable() { if (spawner != null) spawner.Spawned -= OnSpawned; }
@@ -80,7 +78,7 @@ namespace Piglings.Simulation
         {
             session.Bus.Subscribe<StonesChanged>(OnStonesChanged);
             session.Bus.Subscribe<RobotRemoved>(OnRobotRemoved);
-            for (int i = 0; i < session.State.StonesLeft; i++) AddToPile(animate: false);
+            for (int i = 0; i < session.State.StonesLeft; i++) _pile.Add(animate: false);
         }
 
         private void OnDestroy()
@@ -110,96 +108,78 @@ namespace Piglings.Simulation
                     GiveTopStoneTo(e.Robot);
                     break;
                 case StoneChange.Added:
-                    for (int i = 0; i < e.Delta; i++) AddToPile(animate: true);
+                    for (int i = 0; i < e.Delta; i++) _pile.Add(animate: true);
                     break;
                 // Thrown: ThrowController already took the stone out of the hand (ReleaseHeld).
             }
             Reconcile(e.Count);
         }
 
-        // Whatever happened, the stones on screen must equal the count. Normally a no-op.
+        // Whatever happened, the stones on screen must equal the count. Normally a no-op. Not ItemPile.Reconcile:
+        // the stone in the hand counts too, and goes last (only once the pile itself is empty).
         private void Reconcile(int count)
         {
             while (Total > count) Destroy(TakeTop().gameObject);
-            while (Total < count) AddToPile(animate: false);
+            while (Total < count) _pile.Add(animate: false);
         }
 
         private void GiveTopStoneTo(GameId robot)
         {
             if (Total == 0) return;
             var stone = TakeTop();
-            // Parked (no collider, no physics) the whole way: it can never start a chain.
+            // Parked (no collider, no physics) the whole way: it can never start a chain. It lands at
+            // BreachTiming.StoneLands of the thief's breach, then rides on it: parented, so it follows the jump off.
+            // worldPositionStays keeps the stone's own size — the robot is scaled 0.3.
             if (_robots.TryGetValue(robot, out var thief) && thief != null)
-                _thefts.Add(new Theft
-                {
-                    Stone = stone, Thief = thief, From = stone.transform.position, T = 0f,
-                    Seconds = BreachTiming.StoneHopSeconds(thief.BreachSeconds)
-                });
+                _hops.Start(stone.transform, thief.transform, stolenOffset, BreachTiming.StoneHopSeconds(thief.BreachSeconds),
+                            landed => landed.SetParent(thief.transform, worldPositionStays: true));
             else Destroy(stone.gameObject);
         }
 
         // The top of the pile; the stone in the hand only when the pile itself is empty.
         private Throwable TakeTop()
         {
-            if (_pile.Count > 0)
-            {
-                var top = _pile[_pile.Count - 1];
-                _pile.RemoveAt(_pile.Count - 1);
-                _drops.RemoveAll(d => d.stone == top);
-                return top;
-            }
+            if (_pile.Count > 0) return _pile.TakeTop();
             var held = _held;
             _held = null;
-            _hopT = -1f;
+            _hops.Cancel(held.transform);
             return held;
         }
 
-        private void AddToPile(bool animate)
+        private Throwable CreateStone()
         {
-            var slot = SlotPosition(_pile.Count);
-            var stone = Instantiate(stonePrefab, slot, Quaternion.identity, transform);
+            var stone = Instantiate(stonePrefab, transform.position, Quaternion.identity, transform);
             stone.Park();
-            _pile.Add(stone);
-            if (animate)
-            {
-                var from = slot + Vector3.up * dropHeight;
-                stone.transform.position = from;
-                _drops.Add((stone, from, slot, 0f));
-            }
+            return stone;
         }
 
         // Pyramid: the bottom row has bottomRow stones, each row above one fewer, centred on this transform.
         private Vector3 SlotPosition(int index)
         {
-            int row = 0, inRow = Mathf.Max(1, bottomRow);
-            while (index >= inRow)
-            {
-                index -= inRow;
-                row++;
-                inRow = Mathf.Max(1, bottomRow - row);
-            }
-            float x = (index - (inRow - 1) * 0.5f) * spacing;
-            return transform.position + new Vector3(x, row * rowHeight, 0f);
+            PileLayout.Pyramid(index, bottomRow, spacing, rowHeight, out float x, out float y);
+            return transform.position + new Vector3(x, y, 0f);
+        }
+
+        // Read every frame, so the Inspector values can be tuned in play.
+        private void ApplyTuning()
+        {
+            _pile.DropHeight = dropHeight;
+            _pile.DropSeconds = dropSeconds;
+            _hops.Height = hopHeight;
         }
 
         private void Update()
         {
+            ApplyTuning();
+
             // An empty hand and the pig allowed to throw: the next stone comes up.
             if (_held == null && _pile.Count > 0 && session.State.CanThrow && hand != null)
             {
-                _held = TakeTop();
-                _hopFrom = _held.transform.position;
-                _hopT = 0f;
+                _held = _pile.TakeTop();
+                _hops.Start(_held.transform, hand, Vector3.zero, hopSeconds);
             }
 
-            for (int i = _drops.Count - 1; i >= 0; i--)
-            {
-                var d = _drops[i];
-                if (d.stone == null) { _drops.RemoveAt(i); continue; }
-                d.t = Mathf.Min(1f, d.t + Time.deltaTime / dropSeconds);
-                d.stone.transform.position = Vector3.Lerp(d.from, d.to, d.t * d.t);   // accelerate like a fall
-                if (d.t >= 1f) _drops.RemoveAt(i); else _drops[i] = d;
-            }
+            _pile.UpdateDrops(Time.deltaTime);
         }
 
         // LateUpdate: runs after the Animator has posed the pig this frame, so the hand is where it's drawn.
@@ -208,44 +188,9 @@ namespace Piglings.Simulation
         // through idle, aim and throw.
         private void LateUpdate()
         {
-            UpdateThefts();
-            if (_held == null || hand == null) return;
-
-            if (_hopT >= 0f)
-            {
-                _hopT = Mathf.Min(1f, _hopT + Time.deltaTime / hopSeconds);
-                _held.transform.position = Hop(_hopFrom, hand.position, _hopT);
-                if (_hopT >= 1f) _hopT = -1f;   // arrived: from now on it just follows the hand
-                return;
-            }
-
-            _held.transform.position = hand.position;
+            _hops.Update(Time.deltaTime);
+            if (HasStoneInHand && hand != null) _held.transform.position = hand.position;
         }
-
-        // A stolen stone flies to the (moving) robot, then rides on it: parented on landing so it follows the jump
-        // off. worldPositionStays keeps the stone's own size — the robot is scaled 0.3.
-        private void UpdateThefts()
-        {
-            for (int i = _thefts.Count - 1; i >= 0; i--)
-            {
-                var f = _thefts[i];
-                if (f.Stone == null) { _thefts.RemoveAt(i); continue; }
-                if (f.Thief == null) { Destroy(f.Stone.gameObject); _thefts.RemoveAt(i); continue; }
-
-                f.T = f.Seconds <= 0f ? 1f : Mathf.Min(1f, f.T + Time.deltaTime / f.Seconds);
-                var seat = f.Thief.transform.position + stolenOffset;
-                f.Stone.transform.position = Hop(f.From, seat, f.T);
-                if (f.T < 1f) continue;
-
-                f.Stone.transform.SetParent(f.Thief.transform, worldPositionStays: true);
-                _thefts.RemoveAt(i);
-            }
-        }
-
-        // The pile's one hop shape (to the hand, to a thief): a straight line to a target that may be moving,
-        // plus a parabola bump at the middle.
-        private Vector3 Hop(Vector3 from, Vector3 to, float t) =>
-            Vector3.Lerp(from, to, t) + Vector3.up * (hopHeight * 4f * t * (1f - t));
 
         private void OnSpawned(RobotController robot) => _robots[robot.Id] = robot;
 
@@ -253,13 +198,8 @@ namespace Piglings.Simulation
         // end of its breach sequence, taking the parented stone with it; a stone still mid-hop goes with it too.
         private void OnRobotRemoved(RobotRemoved e)
         {
+            if (_robots.TryGetValue(e.Robot, out var robot) && robot != null) _hops.LoseTarget(robot.transform);
             _robots.Remove(e.Robot);
-            for (int i = _thefts.Count - 1; i >= 0; i--)
-            {
-                if (_thefts[i].Thief != null && _thefts[i].Thief.Id != e.Robot) continue;
-                if (_thefts[i].Stone != null) Destroy(_thefts[i].Stone.gameObject);
-                _thefts.RemoveAt(i);
-            }
         }
     }
 }
