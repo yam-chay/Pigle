@@ -12,6 +12,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 018018c19d0ead549808a967d23a79de, type: 3}
   m_Name: Peg_Bomb
   m_EditorClassIdentifier: Piglings.Definitions::Piglings.Definitions.PegDefinition
-  id: peg_plain
+  id: Peg_Bomb
   maxLevel: 3
   mergeable: 1
