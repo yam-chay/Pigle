@@ -25,7 +25,8 @@ namespace Piglings.Rules
     /// - Crossing the last threshold: DawnReached. The night is won from here (no more catches); throwing stops, and
     ///   it ends once every chain has settled. No placement round at dawn, so no refill either.
     /// - Ended: Simulation sweeps the wall (every climbing robot falls). Won: each scores its own value, flat, with the
-    ///   same robot-value function chains use. Lost: visual only. Then the score is banked and NightEnded published.
+    ///   same robot-value function chains use. Lost: visual only. Then the score and tonight's mastery tallies are banked,
+    ///   and NightEnded published.
     ///
     /// Owns Phase, StonesLeft, CanThrow, the hours, the peg board and shelf, the breach count and the end-of-night
     /// tallies in NightState. Reads chain progress and the curve from ChainTracker, which must be constructed first.
@@ -316,7 +317,7 @@ namespace Piglings.Rules
             UpdateCanThrow();
         }
 
-        // After the sweep: bank (Meta subscribes to NightBanked later), then announce the result.
+        // After the sweep: bank (Meta's Progression applies NightBanked to the saved profile), then announce the result.
         private void FinishNight()
         {
             // Dawn keeps the full live score (sweep included). Caught keeps only the last threshold reached:
@@ -324,18 +325,23 @@ namespace Piglings.Rules
             _state.BankedScore = _state.Result == NightResult.Won
                 ? _state.Score
                 : _goal.ScoreAtThreshold(_state.ThresholdsReached);
-            Bank(MasteryDestination.Barn, _state.BankedScore, 1);
+            Bank(MasteryDestination.Barn, null, MasteryStat.Score, _state.BankedScore, 1);
+
+            // Mastery from use: banked in full on BOTH outcomes — unlike the score, being caught takes none of it away.
+            foreach (var hits in _state.WeaponHits) Bank(MasteryDestination.Weapon, hits.Key, MasteryStat.DirectHits, hits.Value, 1);
+            foreach (var knocks in _state.BallKnocks) Bank(MasteryDestination.Lineage, knocks.Key, MasteryStat.BallKnocks, knocks.Value, 1);
+            foreach (var knocked in _state.KnockedByBall) Bank(MasteryDestination.Lineage, knocked.Key, MasteryStat.KnockedByBall, knocked.Value, 1);
 
             _bus.Publish(new NightEnded(_state.Result, _state.EndReason, _state.Score, _state.BankedScore,
                 _state.ThresholdsReached, _state.StonesLeft, _state.RobotsReachedTop, _state.ThrowsUsed));
         }
 
-        private void Bank(MasteryDestination destination, int amount, int multiplier)
+        private void Bank(MasteryDestination destination, string id, MasteryStat stat, int amount, int multiplier)
         {
             if (amount <= 0) return;
             int gained = (int)System.Math.Min(int.MaxValue, (long)amount * multiplier);
             if (destination == MasteryDestination.Barn) _state.BarnMastery = ScoreMath.AddClamped(_state.BarnMastery, gained);
-            _bus.Publish(new NightBanked(destination, amount, multiplier));
+            _bus.Publish(new NightBanked(destination, id, stat, amount, multiplier));
         }
     }
 }

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Piglings.Definitions;
 using Piglings.Events;
+using Piglings.Meta;
 using Piglings.Rules;
 using Piglings.Runtime;
 using UnityEngine;
@@ -8,10 +9,13 @@ using UnityEngine;
 namespace Piglings.Simulation
 {
     /// <summary>
-    /// Owner of one night. Lives in the Night scene and dies with it — no persistence,
-    /// no DontDestroyOnLoad, no static access. Creates the engine-free layers
-    /// (EventBus, NightState, Rules) and exposes them to scene objects that reference it.
-    /// Scene objects get it through a serialized field, never through a lookup.
+    /// Owner of one night. Lives in the Night scene and dies with it — no DontDestroyOnLoad, no static access.
+    /// Creates the engine-free layers (EventBus, NightState, Rules, Meta's Progression) and exposes them to scene
+    /// objects that reference it. Scene objects get it through a serialized field, never through a lookup.
+    ///
+    /// Persistence: the disk is the home of everything that outlives a night. This owner loads the player's profile in
+    /// Awake and saves it once, at NightEnded (after the referee has banked the night into it). Play Again reloads the
+    /// scene, so the next night loads it again from disk. Quitting mid-night saves nothing: that night's hits are lost.
     /// </summary>
     [DefaultExecutionOrder(-1000)]
     public sealed class NightSession : MonoBehaviour
@@ -31,6 +35,9 @@ namespace Piglings.Simulation
 
         private ChainTracker _chains;
         private NightReferee _referee;
+        private MasteryTally _tally;
+        private Progression _progression;
+        private ProfileFile _profileFile;
 
         // When the current placement round started (Time.time), for the refill pause.
         private float _roundStartedAt;
@@ -66,7 +73,68 @@ namespace Piglings.Simulation
             _referee = new NightReferee(Bus, State, _chains,
                 new NightGoal(ToArray(night.Thresholds), night.ThrowsAvailable, night.StonesPerThreshold),
                 BuildPegs());
+            _tally = new MasteryTally(Bus, State);
+            _progression = new Progression(Bus, LoadProfile());
             Bus.Subscribe<NightPhaseChanged>(OnPhaseChanged);
+            Bus.Subscribe<NightEnded>(OnNightEnded);
+        }
+
+        // ---------- the save ----------
+
+        private PlayerProfile LoadProfile()
+        {
+            _profileFile = new ProfileFile(Application.persistentDataPath);
+            var load = _profileFile.Load();
+            string line = $"Piglings save: loaded ({load.Source}) — {load.Profile.Describe()}  ({_profileFile.MainPath})";
+            if (load.Problems.Count == 0 && load.SaveError == null) Debug.Log(line, this);
+            else
+            {
+                // A bad save is never silent: say what was wrong and where the copy went.
+                if (load.Problems.Count > 0) line += "\n  problems: " + string.Join("; ", load.Problems);
+                if (load.BackedUp.Count > 0) line += "\n  backed up to: " + string.Join(", ", load.BackedUp);
+                if (load.SaveError != null) line += "\n  couldn't write the save: " + load.SaveError;
+                Debug.LogWarning(line, this);
+            }
+            return load.Profile;
+        }
+
+        // NightBanked (applied by Progression) comes just before NightEnded, so the profile is complete here.
+        private void OnNightEnded(NightEnded e) => Save($"night banked ({e.Reason}, {Tonight()})");
+
+        private void Save(string why)
+        {
+            var error = _profileFile.Save(_progression.Profile);
+            if (error == null) Debug.Log($"Piglings save: saved after {why} — {_progression.Profile.Describe()}", this);
+            else Debug.LogError($"Piglings save: NOT saved after {why} — {error}. The previous save is untouched.", this);
+        }
+
+        // "+12 stone hits tonight", for the save log.
+        private string Tonight()
+        {
+            var parts = new List<string>();
+            foreach (var hits in State.WeaponHits) parts.Add($"+{hits.Value} {hits.Key} hits");
+            return parts.Count == 0 ? "no weapon hits" : string.Join(", ", parts) + " tonight";
+        }
+
+        // Playtest tools (right-click the component's header in play mode).
+
+        [ContextMenu("Mastery/Reset progress")]
+        private void DebugResetProgress()
+        {
+            if (!Application.isPlaying || _progression == null) { Debug.LogWarning("Reset progress works in play mode only.", this); return; }
+            _progression.Reset();
+            // Tonight's hits still bank at the end of this night, on top of the empty profile.
+            Save("Reset progress (the old save is in .prev until the next save)");
+        }
+
+        [ContextMenu("Mastery/Add 10 hits")]
+        private void DebugAddTenHits()
+        {
+            if (!Application.isPlaying || _tally == null) { Debug.LogWarning("Add 10 hits works in play mode only.", this); return; }
+            if (State.Ended) { Debug.LogWarning("Add 10 hits: this night is already banked — play again first.", this); return; }
+            // Into tonight's tally, like real hits: they bank and save at the end of the night.
+            _tally.AddWeaponHits(night.Throwable.Id, 10);
+            Debug.Log($"Piglings save: +10 {night.Throwable.Id} hits added to tonight ({Tonight()}); they bank at night end.", this);
         }
 
         private void OnPhaseChanged(NightPhaseChanged e)
@@ -123,6 +191,9 @@ namespace Piglings.Simulation
         private void OnDestroy()
         {
             Bus?.Unsubscribe<NightPhaseChanged>(OnPhaseChanged);
+            Bus?.Unsubscribe<NightEnded>(OnNightEnded);
+            _progression?.Dispose();
+            _tally?.Dispose();
             _referee?.Dispose();
             _chains?.Dispose();
         }

@@ -1,4 +1,4 @@
-<!-- Compiles the engine-free assemblies (Events, Runtime, Rules) outside Unity and runs quick checks.
+<!-- Compiles the engine-free assemblies (Events, Runtime, Rules, Meta) outside Unity and runs quick checks.
      Lets cloud sessions (no Unity editor) verify their own work:  dotnet run, from Tools/CoreCheck -->
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
@@ -9,12 +9,18 @@
     <ImplicitUsings>disable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="../../Assets/_Piglings/Scripts/Events/**/*.cs;../../Assets/_Piglings/Scripts/Runtime/**/*.cs;../../Assets/_Piglings/Scripts/Rules/**/*.cs" />
+    <Compile Include="../../Assets/_Piglings/Scripts/Events/**/*.cs;../../Assets/_Piglings/Scripts/Runtime/**/*.cs;../../Assets/_Piglings/Scripts/Rules/**/*.cs;../../Assets/_Piglings/Scripts/Meta/**/*.cs" />
     <!-- One engine-free file from Simulation: the throw math. Compiling it here also guards that it stays free of UnityEngine. -->
     <Compile Include="../../Assets/_Piglings/Scripts/Simulation/ThrowSolver.cs" />
     <!-- And the breach sequence's timeline (M7.3): checks that its parts always happen in order. -->
     <Compile Include="../../Assets/_Piglings/Scripts/Simulation/BreachTiming.cs" />
     <!-- And the pile layout every mirrored pile shares (stones, peg shelf). -->
     <Compile Include="../../Assets/_Piglings/Scripts/Simulation/PileLayout.cs" />
+    <!-- And the save file (temp + replace, .prev fallback, corrupt backups), run on a real temp folder. -->
+    <Compile Include="../../Assets/_Piglings/Scripts/Simulation/ProfileFile.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Meta reads the save with Newtonsoft; Unity's com.unity.nuget.newtonsoft-json 3.2 ships Newtonsoft.Json 13.0.2. -->
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.2" />
   </ItemGroup>
 </Project>

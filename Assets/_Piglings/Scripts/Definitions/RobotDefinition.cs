@@ -6,6 +6,8 @@ namespace Piglings.Definitions
     [CreateAssetMenu(menuName = "Piglings/Robot Definition", fileName = "Robot_")]
     public sealed class RobotDefinition : ScriptableObject
     {
+        [Tooltip("Save key: this robot type's ball stats are saved under this id. Never rename it once players have a " +
+                 "save — their progress would be orphaned (it'd need a migration in ProfileJson).")]
         [SerializeField] private string id = "wolfbot_basic";
         [SerializeField, Min(0f)] private float climbSpeed = 0.35f;         // units / second
         [SerializeField, Min(0f)] private float breakDuration = 0.6f;        // flail+crack+collapse clip length

@@ -41,6 +41,13 @@ namespace Piglings.Runtime
         public int BankedScore;          // what the night keeps: the live score at dawn, the last threshold reached when caught
         public int BarnMastery;          // Σ Amount × Multiplier banked to the barn
 
+        // This night's use, for mastery. Written only by MasteryTally (Rules); banked by NightReferee when the night ends
+        // (both outcomes), then forgotten with the scene — the saved totals live in Meta's PlayerProfile.
+        // Keyed by definition id; sorted, so banking (and the save log) always comes out in the same order.
+        public SortedDictionary<string, int> WeaponHits = new SortedDictionary<string, int>(System.StringComparer.Ordinal);    // weapon → robots it knocked loose itself
+        public SortedDictionary<string, int> BallKnocks = new SortedDictionary<string, int>(System.StringComparer.Ordinal);    // robot type → robots its ball knocked loose
+        public SortedDictionary<string, int> KnockedByBall = new SortedDictionary<string, int>(System.StringComparer.Ordinal); // robot type → times it was knocked loose by a ball
+
         // Derived, not stored: Phase is the source of truth.
         public bool Ended => Phase == NightPhase.Ended;
 

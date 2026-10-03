@@ -67,7 +67,7 @@ namespace Piglings.Simulation
             ballCollider.radius = def.BallRadius / Mathf.Max(0.0001f, transform.lossyScale.x);
             body.mass = def.BallMass;
             if (def.BallMaterial != null) ballCollider.sharedMaterial = def.BallMaterial;
-            session.Bus.Publish(new RobotSpawned(Id));
+            session.Bus.Publish(new RobotSpawned(Id, def.Id));
             SetState(RobotState.Climbing);
         }
 
