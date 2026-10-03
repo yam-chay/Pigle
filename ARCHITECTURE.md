@@ -157,7 +157,13 @@ Weapon mastery comes from **use**: a weapon levels up from the robots it knocks 
 
 **Applying (Meta, `Progression`)**: owns the `PlayerProfile`, applies each `NightBanked` (clamped add). By `NightEnded` the profile is complete; `NightSession` saves it then.
 
-**Levels (Meta, `MasteryLevels`)**: thresholds are cumulative totals, strictly rising (`[50, 150]` = level 2 at 50 hits, level 3 at 150). `LevelFor(hits, thresholds)`, `NextThreshold`, `Problem` (for an Inspector warning). The level a night plays with is fixed when it starts; a level earned tonight shows at night end and applies from the next night. *(M9.2 puts the thresholds and the per-level look on `ThrowableDefinition`.)*
+**Levels (Meta, `MasteryLevels`)**: thresholds are cumulative totals, strictly rising (`[50, 150]` = level 2 at 50 hits, level 3 at 150). `LevelFor(hits, thresholds)`, `NextThreshold`, `Problem` (for an Inspector warning). The level a night plays with is fixed when it starts; a level earned tonight shows at night end and applies from the next night.
+
+**The level in play (M9.2, Simulation)**:
+- `ThrowableDefinition.levels`: one entry per level `{hitsRequired, sprite, radiusScale, trailColour}`, entry 0 = level 1 (its `hitsRequired` ignored). `Thresholds()` feeds `MasteryLevels`. A level past the list uses the last entry; a level with no sprite uses the one before's; an empty list = one level that looks like the prefab.
+- `NightSession.WeaponLevel`: `night.Throwable`'s level from the saved hits, fixed in `Awake` (logged, with the next threshold; a broken threshold list is a warning). `BankedWeaponLevel`: what the saved hits give now — after `NightEnded`, the next night's level.
+- `Throwable.ApplyLevel(def, level)`: the level's sprite, and a uniform scale that makes **the sprite exactly as wide as the collider** (computed from the sprite's own bounds, so any pixels-per-unit works; the parent's scale divided out). `Launch` always applies `WeaponLevel`, so play never depends on what the pile is showing.
+- `StonePile`: creates stones at the night's level and spreads its slots by the level's size (`spacing`/`rowHeight` are for level 1). At `NightEnded`, if the night earned a level, every stone on the pile (and in the hand) switches to it and the pile relayouts (`ItemPile.Relayout`) — the look only; nothing can be thrown after the end.
 
 **The save format (Meta, `ProfileJson`)** — `piglings_profile.json` in `Application.persistentDataPath`:
 ```json

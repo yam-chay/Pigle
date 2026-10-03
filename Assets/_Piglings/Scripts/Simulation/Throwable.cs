@@ -14,9 +14,14 @@ namespace Piglings.Simulation
     {
         [SerializeField] private Rigidbody2D body;
         [SerializeField] private CircleCollider2D circle;
+        [Tooltip("The stone's sprite. Its size follows the collider (ApplyLevel). Empty = the one on this object.")]
+        [SerializeField] private SpriteRenderer look;
 
         public GameId Id { get; private set; }
         public ChainId Chain { get; private set; }
+
+        /// <summary>The mastery level this stone looks like / flies as (1 until ApplyLevel). Views read it (trail colour).</summary>
+        public int Level { get; private set; } = 1;
 
         // ThrowController reads this on the prefab to aim with the gravity the stone will really feel.
         public float GravityScale => body.gravityScale;
@@ -30,6 +35,32 @@ namespace Piglings.Simulation
         {
             body = GetComponent<Rigidbody2D>();
             circle = GetComponent<CircleCollider2D>();
+            look = GetComponent<SpriteRenderer>();
+        }
+
+        /// <summary>
+        /// Looks and sizes the stone for a mastery level: the level's sprite (if it has one), and a scale that makes the
+        /// sprite exactly as wide as the collider — so what you see is what hits. The pile calls it on each stone; Launch
+        /// calls it again with the night's level, which is the one that counts for play.
+        /// </summary>
+        public void ApplyLevel(ThrowableDefinition def, int level)
+        {
+            Level = level;
+            if (look == null) look = GetComponent<SpriteRenderer>();   // prefabs saved before this field existed
+            float worldRadius = def.RadiusAt(level);
+
+            var sprite = def.SpriteFor(level);
+            if (look != null && sprite != null) look.sprite = sprite;
+
+            // Size from the sprite itself (whatever its pixels-per-unit): its width at scale 1 → the diameter we want.
+            // Uniform scale, and the parent's scale divided out, so it's right on the pile, in the hand or in flight.
+            if (look != null && look.sprite != null && look.sprite.bounds.size.x > 0f)
+            {
+                float worldScale = 2f * worldRadius / look.sprite.bounds.size.x;
+                float parentScale = transform.parent != null ? transform.parent.lossyScale.x : 1f;
+                transform.localScale = Vector3.one * (worldScale / Mathf.Max(0.0001f, parentScale));
+            }
+            circle.radius = worldRadius / Mathf.Max(0.0001f, transform.lossyScale.x);
         }
 
         /// <summary>
@@ -54,7 +85,8 @@ namespace Piglings.Simulation
             gameObject.layer = LayerMask.NameToLayer(PhysicsLayers.Throwable);
             body.bodyType = RigidbodyType2D.Dynamic;
             body.mass = def.Mass;
-            circle.radius = def.Radius / Mathf.Max(0.0001f, transform.lossyScale.x);
+            // The level was fixed when the night started (a level earned tonight applies next night), whatever the pile shows.
+            ApplyLevel(def, session.WeaponLevel);
             if (def.Material != null) circle.sharedMaterial = def.Material;
             body.linearVelocity = velocity;
             session.Bus.Publish(new ThrowReleased(Chain, Id, def.Id));
