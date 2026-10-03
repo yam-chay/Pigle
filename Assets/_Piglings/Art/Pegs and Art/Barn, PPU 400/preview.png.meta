@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 8bf194e3e33be2048ae8dbf25f85a88f
+guid: f82b39c700dc27845b174670586a6d5f
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 5117038107268996485
-    second: barn_slice_0
+      213: -7730486409907412771
+    second: preview_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -46,12 +46,12 @@ TextureImporter:
   nPOTScale: 0
   lightmap: 0
   compressionQuality: 50
-  spriteMode: 1
+  spriteMode: 2
   spriteExtrude: 1
   spriteMeshType: 1
-  alignment: 7
-  spritePivot: {x: 0.5, y: 0}
-  spritePixelsToUnits: 400
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spriteGenerateFallbackPhysicsShape: 1
   alphaUsage: 1
@@ -72,10 +72,10 @@ TextureImporter:
   platformSettings:
   - serializedVersion: 4
     buildTarget: DefaultTexturePlatform
-    maxTextureSize: 4096
+    maxTextureSize: 2048
     resizeAlgorithm: 0
     textureFormat: -1
-    textureCompression: 2
+    textureCompression: 1
     compressionQuality: 50
     crunchedCompression: 0
     allowsAlphaSplitting: 0
@@ -100,23 +100,23 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: barn_slice_0
+      name: preview_0
       rect:
         serializedVersion: 2
-        x: 319
+        x: 0
         y: 0
-        width: 1762
-        height: 640
+        width: 1200
+        height: 1280
       alignment: 0
-      pivot: {x: 0.5, y: 0.5}
+      pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 58dd7ed1c0f530740800000000000000
-      internalID: 5117038107268996485
+      spriteID: dd0eb7c619bc7b490800000000000000
+      internalID: -7730486409907412771
       vertices: []
       indices: 
       edges: []
@@ -125,8 +125,8 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 5e97eb03825dee720800000000000000
-    internalID: 1537655665
+    spriteID: 
+    internalID: 0
     vertices: []
     indices: 
     edges: []
@@ -135,7 +135,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      barn_slice_0: 5117038107268996485
+      preview_0: -7730486409907412771
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
