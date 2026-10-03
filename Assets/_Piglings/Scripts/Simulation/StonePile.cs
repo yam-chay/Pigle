@@ -21,6 +21,9 @@ namespace Piglings.Simulation
     ///   always visibly holds it before it jumps off. Then it's parented to the robot, stays parked (never a
     ///   weapon) and leaves with it.
     /// - Added stones drop onto the next free slots.
+    /// - Mastery level: every stone looks and is sized for the night's level (NightSession.WeaponLevel), and the slots
+    ///   spread by that level's Radius Scale so bigger stones don't overlap. When the night ends (banked), the pile
+    ///   switches to the level the next night will play at — a level earned tonight shows here, never mid-night.
     ///
     /// Lives in Simulation because it hands out the real throwables. Put it on the perch piece; its position
     /// is the centre of the bottom row.
@@ -58,6 +61,7 @@ namespace Piglings.Simulation
         private readonly Dictionary<GameId, RobotController> _robots = new Dictionary<GameId, RobotController>();
 
         private Throwable _held;          // in the hand, or hopping there
+        private int _shownLevel = 1;      // the mastery level the stones look like (the night's; the next night's once banked)
 
         /// <summary>A stone is waiting in the hand (not still hopping). ThrowController won't aim without one.</summary>
         public bool HasStoneInHand => _held != null && !_hops.IsHopping(_held.transform);
@@ -78,6 +82,8 @@ namespace Piglings.Simulation
         {
             session.Bus.Subscribe<StonesChanged>(OnStonesChanged);
             session.Bus.Subscribe<RobotRemoved>(OnRobotRemoved);
+            session.Bus.Subscribe<NightEnded>(OnNightEnded);
+            _shownLevel = session.WeaponLevel;
             for (int i = 0; i < session.State.StonesLeft; i++) _pile.Add(animate: false);
         }
 
@@ -86,6 +92,7 @@ namespace Piglings.Simulation
             if (session == null || session.Bus == null) return;
             session.Bus.Unsubscribe<StonesChanged>(OnStonesChanged);
             session.Bus.Unsubscribe<RobotRemoved>(OnRobotRemoved);
+            session.Bus.Unsubscribe<NightEnded>(OnNightEnded);
         }
 
         /// <summary>Hands the stone in the hand to ThrowController, which launches it. Null if none is ready.</summary>
@@ -150,13 +157,30 @@ namespace Piglings.Simulation
         {
             var stone = Instantiate(stonePrefab, transform.position, Quaternion.identity, transform);
             stone.Park();
+            stone.ApplyLevel(session.Night.Throwable, _shownLevel);
             return stone;
         }
 
+        // The night is banked: if it earned a level, the stones take on the next night's look now (the reward moment).
+        // Only the look — no stone can be thrown after the night ends; the next night's NightSession fixes its own level.
+        private void OnNightEnded(NightEnded e)
+        {
+            int level = session.BankedWeaponLevel;
+            if (level == _shownLevel) return;
+            _shownLevel = level;
+            var def = session.Night.Throwable;
+            foreach (var stone in _pile.Items) if (stone != null) stone.ApplyLevel(def, level);
+            if (_held != null) _held.ApplyLevel(def, level);
+            _pile.Relayout();   // the slots spread with the new size
+        }
+
         // Pyramid: the bottom row has bottomRow stones, each row above one fewer, centred on this transform.
+        // Spacing and row height are for level-1 stones; they grow with the shown level's size so stones never overlap.
         private Vector3 SlotPosition(int index)
         {
-            PileLayout.Pyramid(index, bottomRow, spacing, rowHeight, out float x, out float y);
+            var def = session.Night.Throwable;
+            float grow = def.RadiusAt(_shownLevel) / def.Radius;
+            PileLayout.Pyramid(index, bottomRow, spacing * grow, rowHeight * grow, out float x, out float y);
             return transform.position + new Vector3(x, y, 0f);
         }
 

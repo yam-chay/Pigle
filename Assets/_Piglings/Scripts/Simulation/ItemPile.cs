@@ -79,6 +79,17 @@ namespace Piglings.Simulation
             while (_items.Count + outside < count) Add(animate: false);
         }
 
+        /// <summary>
+        /// Puts every object straight onto its slot again — after the slots moved (e.g. the stones grew a level, so the
+        /// spacing did too). Falls in progress land at once.
+        /// </summary>
+        public void Relayout()
+        {
+            _drops.Clear();
+            for (int i = 0; i < _items.Count; i++)
+                if (_items[i] != null) _items[i].transform.position = _slotPosition(i);
+        }
+
         /// <summary>Moves the falling objects; call every frame.</summary>
         public void UpdateDrops(float deltaTime)
         {

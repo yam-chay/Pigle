@@ -38,6 +38,7 @@ namespace Piglings.Simulation
         private MasteryTally _tally;
         private Progression _progression;
         private ProfileFile _profileFile;
+        private int[] _weaponThresholds;   // night.Throwable's level thresholds, read once (like the scoring curve)
 
         // When the current placement round started (Time.time), for the refill pause.
         private float _roundStartedAt;
@@ -49,6 +50,18 @@ namespace Piglings.Simulation
         public int NextThreshold => _referee.NextThreshold;
         public int ThresholdCount => _referee.Goal.ThresholdCount;
         public float HourMultiplier => _referee.HourMultiplier;
+
+        /// <summary>
+        /// The mastery level tonight's stones (night.Throwable) play at: derived from the saved hits when the night started.
+        /// Fixed for the whole night — a level earned tonight applies from the next night.
+        /// </summary>
+        public int WeaponLevel { get; private set; } = 1;
+
+        /// <summary>
+        /// The level the saved hits give right now. Before the night ends it's WeaponLevel; after NightEnded (banked) it's
+        /// the level the next night starts at — the pile shows it then.
+        /// </summary>
+        public int BankedWeaponLevel => MasteryLevels.LevelFor(_progression.Profile.DirectHits(night.Throwable.Id), _weaponThresholds);
 
         // Peg placement. Called by PegThrower; the referee ignores them outside a round.
         public bool PlacePeg(int socket, string pegId) => _referee.PlacePeg(socket, pegId);
@@ -75,6 +88,7 @@ namespace Piglings.Simulation
                 BuildPegs());
             _tally = new MasteryTally(Bus, State);
             _progression = new Progression(Bus, LoadProfile());
+            FixWeaponLevel();
             Bus.Subscribe<NightPhaseChanged>(OnPhaseChanged);
             Bus.Subscribe<NightEnded>(OnNightEnded);
         }
@@ -98,13 +112,27 @@ namespace Piglings.Simulation
             return load.Profile;
         }
 
+        private void FixWeaponLevel()
+        {
+            var weapon = night.Throwable;
+            _weaponThresholds = weapon.Thresholds();
+            var problem = MasteryLevels.Problem(_weaponThresholds);
+            if (problem != null) Debug.LogWarning($"{weapon.name}: mastery levels — {problem}.", weapon);
+            int hits = _progression.Profile.DirectHits(weapon.Id);
+            WeaponLevel = MasteryLevels.LevelFor(hits, _weaponThresholds);
+            int next = MasteryLevels.NextThreshold(hits, _weaponThresholds);
+            Debug.Log($"Piglings save: {weapon.Id} plays at level {WeaponLevel} tonight ({hits} hits" +
+                      (next < 0 ? ", top level)" : $", level {WeaponLevel + 1} at {next})"), this);
+        }
+
         // NightBanked (applied by Progression) comes just before NightEnded, so the profile is complete here.
         private void OnNightEnded(NightEnded e) => Save($"night banked ({e.Reason}, {Tonight()})");
 
         private void Save(string why)
         {
             var error = _profileFile.Save(_progression.Profile);
-            if (error == null) Debug.Log($"Piglings save: saved after {why} — {_progression.Profile.Describe()}", this);
+            if (error == null) Debug.Log($"Piglings save: saved after {why} — {_progression.Profile.Describe()}; " +
+                                         $"{night.Throwable.Id} level {BankedWeaponLevel} next night", this);
             else Debug.LogError($"Piglings save: NOT saved after {why} — {error}. The previous save is untouched.", this);
         }
 
