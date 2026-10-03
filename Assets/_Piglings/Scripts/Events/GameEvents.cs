@@ -32,7 +32,20 @@ namespace Piglings.Events
         public RobotEnteredDangerZone(GameId robot) { Robot = robot; }
     }
 
+    /// <summary>
+    /// A climbing robot reached the roof and started its breach (Climbing → Breaching). THIS is the breach:
+    /// NightReferee counts it here — the stone theft, or the catch on an empty pile, happens at this moment.
+    /// Published by the robot after it has entered Breaching, so the end-of-night sweep (if this breach ends
+    /// the night) already sees it as not climbing and leaves it alone.
+    /// </summary>
+    public readonly struct RobotBreached
+    {
+        public readonly GameId Robot;
+        public RobotBreached(GameId robot) { Robot = robot; }
+    }
+
     // TimedOut: a falling ball that never reached the ground (e.g. resting on a hold) — removed so its chain can close.
+    // EnteredBarn: a breaching robot's sequence is over. Cleanup only — the breach was counted at RobotBreached.
     public enum RemovalReason { HitGround, EnteredBarn, TimedOut }
 
     public readonly struct RobotRemoved

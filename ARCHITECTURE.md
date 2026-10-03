@@ -25,9 +25,12 @@ Presentation  Unity. Views, rigs, animation, HUD. Reads state and reacts to even
 | Piglings.Definitions | — | yes |
 | Piglings.Simulation | Events, Runtime, Rules, Definitions | yes |
 | Piglings.Presentation | Events, Runtime, Definitions, Simulation | yes |
+| Piglings.Editor | — (editor-only tooling) | yes, Editor platform only |
+
+- No game assembly may reference `Piglings.Editor`.
 
 - Engine-free layers compile outside Unity (`Tools/CoreCheck`). That is what makes cloud sessions useful: they can build and verify everything below Simulation without an editor.
-- Runtime state refers to things by `EntityId` / string id — never to a ScriptableObject or GameObject. (This is also what lets saves store causes and derive results later.)
+- Runtime state refers to things by `GameId` / string id — never to a ScriptableObject or GameObject. (This is also what lets saves store causes and derive results later.)
 - Presentation never calls a method that changes gameplay state. If a view needs something to happen, that's a Simulation feature.
 
 ## Composition — no bootstrap
@@ -50,7 +53,7 @@ Each playable scene has exactly one **scene-scoped owner**. For the prototype th
 
 Outside chains, the wall publishes night-level facts:
 - A climbing robot crosses the danger line → `RobotEnteredDangerZone(robot)`, once per robot (published by `DangerZone`). In Running a warning only; in Overtime it ends the night (see below). No robot state changes.
-- A climbing robot reaches the roof → `RobotRemoved(EnteredBarn)`: a breach, counted by `NightReferee`. With stones left it takes the top stone (`StonesChanged(Stolen, robot)`); with none left the pigs are caught — the only way to lose.
+- A climbing robot reaches the roof → it enters `Breaching` and publishes `RobotBreached(robot)`: **that is the breach**, counted by `NightReferee` at that moment. With stones left it takes the top stone (`StonesChanged(Stolen, robot)`); with none left the pigs are caught — the only way to lose. When the breach sequence ends, `RobotRemoved(EnteredBarn)` is cleanup only and never counts again.
 - Every change to the stone count → `StonesChanged(count, delta, cause, robot)`, published only by `NightReferee` (Thrown / Stolen / Added / Forfeited).
 - A falling ball that never lands (resting on a hold) is removed after `RobotDefinition.MaxFallSeconds` → `RobotRemoved(TimedOut)`, so its chain can close.
 
@@ -74,12 +77,17 @@ Events are facts, never commands. Nobody "asks" through the bus.
 
 ```
 Spawned -> Climbing -> LosingGrip -> Falling -> Removed(HitGround | TimedOut)
-              \-> ReachedTop -> Breaching -> Removed(EnteredBarn)        ← Breaching is PLANNED (M7.3), not in code yet
+              \-> Breaching -> Removed(EnteredBarn)
+                   (ReachTop: the breach counts HERE)   (cleanup only)
 ```
 - `RobotController.EnterState` is the ONLY place a state becomes physics (body type, layer).
 - `LosingGrip` = the break clip (flail → crack → limbs collapse). Still kinematic. Duration from `RobotDefinition.BreakDuration`.
 - `Falling` = dynamic ball on layer `RobotBall`, bounces through the Holds. Only a Falling robot passes a chain on. A ball still falling after `RobotDefinition.MaxFallSeconds` is removed (`TimedOut`) so it can't hold a chain open.
-- `Breaching` *(planned, M7.3)* = the breach sequence after `ReachedTop`: collider off, the robot stays alive for its animation, then jumps off the porch and falls. It **never starts or joins a chain** (it isn't `Falling` and has no collider) and **never holds a chain or the night open**: a hard time limit ends it in `Removed(EnteredBarn)` whatever the animation does — same class of bug as the stuck ball. Today `ReachTop` removes the robot at once (it vanishes). The breach (and the stone theft) is counted when it's removed, as now; the stolen stone rides on the robot (see the pile below).
+- `Breaching` (M7.3) = the breach sequence. `ReachTop` (a climbing robot touching `BarnTopZone`) enters it, then publishes `RobotBreached`. **The breach counts on entering `Breaching`**: `StonesChanged(Stolen)` or `Caught` happen at that moment, and the stolen stone moves onto the robot then. Why at the start: the outcome is fixed when the player sees the robot arrive; a chain that reaches the target during the sequence can't undo a theft, and a pile that's empty by the time the robot leaves must not count as a second breach. State before event: if the breach ends the night, the sweep (inside the publish) already sees the robot as not climbing.
+  - `EnterState(Breaching)`: collider off, kinematic, still. It **never starts or joins a chain** (not `Falling`, no collider, touches no zone).
+  - Hard time limit `RobotDefinition.BreachSeconds` (tune in the asset) → `Removed(EnteredBarn)`, whatever the animation does — same class of bug as the stuck ball. That removal is **cleanup only**: `NightReferee` doesn't listen to it.
+  - Not paused by ChoicePending (it isn't climbing — it finishes its sequence; `RobotView` doesn't freeze its Animator). Skipped by the Ended sweep (`Sweep` only takes climbing robots); its time limit removes it.
+  - The jump off the porch and the fall are animation (🖥), not physics, for now.
 
 ## Physics layers & matrix
 
@@ -99,7 +107,7 @@ Only `RobotClimbing` touches `Zones`, so zones only ever see climbing (or just-h
 
 | Zone | Where | What it does |
 |---|---|---|
-| `BarnTopZone` | the breach line, just under the pig's hole (y ≈ 7.2) | Marker. A climbing robot touching it calls `ReachTop` → `RobotRemoved(EnteredBarn)` = breach. Its children are art only (perch pieces + the hanging "no wolves" sign): no colliders. |
+| `BarnTopZone` | the breach line, just under the pig's hole (y ≈ 7.2) | Marker. A climbing robot touching it calls `ReachTop` → `Breaching` + `RobotBreached` = the breach, counted at that moment. `RobotRemoved(EnteredBarn)` follows after `BreachSeconds` as cleanup (not counted). Its children are art only (perch pieces + the hanging "no wolves" sign): no colliders. |
 | `DangerZone` | just above the wall's top beam (y ≈ 6.275) | Has `NightSession` (serialized). A climbing robot entering it → `RobotEnteredDangerZone`, once per robot, all night. `RobotView` sets the Animator bool `InDanger`. No robot state. In Overtime it's the line that ends the night; `DangerZoneView` shows it differently then. |
 | `GroundZone` | below the barn | Marker. Falling balls and throwables touching it are removed. |
 
@@ -112,9 +120,9 @@ Only `RobotClimbing` touches `Zones`, so zones only ever see climbing (or just-h
 - **Simulation** `StonePile` (on the right perch piece) **mirrors** the count with real stone GameObjects; it never decides it. It hands out the real throwables, which is why it's Simulation, not Presentation.
   - Stones sit in fixed pyramid slots, no physics, no collider (`Throwable.Park`). Top stone = last slot filled.
   - When the hand is empty and the pig may throw, the top stone hops to the hand (ThrowOrigin) and waits. `ThrowController` only aims with a stone in the hand, and launches *that* stone (`StonePile.ReleaseHeld` → `Throwable.Launch`). Hop < throw cooldown, so there's no input lag.
-  - `Stolen`: the top stone is parented to the thief, stays parked (never a weapon, can't start a chain) and leaves with it. `Added`: new stones drop onto the next free slots. `Forfeited`: overtime ended at the danger line, the unthrown stones go.
+  - `Stolen` (at `RobotBreached`, when the breach starts): the top stone is parented to the thief, stays parked (never a weapon, can't start a chain), rides on it through the breach sequence and is destroyed with it. `Added`: new stones drop onto the next free slots. `Forfeited`: overtime ended at the danger line, the unthrown stones go.
   - After every change the pile reconciles to the count, so it can never disagree with the HUD.
-- **No pool yet**: stones are created from the Stone prefab and destroyed as before. A pool can slot in behind `StonePile` later.
+- **No object pool yet**: stones are instantiated from the Stone prefab and destroyed (`StonePile.AddToPile` / `Destroy`). The "Weapons pool" commit (f810c2e) wired the pile into the scene and set the Stone prefab's sorting — it added no pooling code. A pool can slot in behind `StonePile` later.
 
 **Coming:** mixed weapon types per night → the perch is the loadout, one container per weapon (needs a per-weapon count in Runtime; today there's one). The rag under the stones is the first container tier (rag → bindle → sack → dedicated tool); weapon mastery will show on it. Meta is still empty — don't build it.
 
@@ -130,5 +138,3 @@ Only `RobotClimbing` touches `Zones`, so zones only ever see climbing (or just-h
 | Pig parts | 2× | 200 | 0.26 |
 | Wolf-bot parts | 3× | 300 | 0.3 |
 Barn = 6 units wide. Wolf-bot ball radius = 58 px × 0.3 × 0.01 = 0.174.
-
-Piglings.Editor | (none) | editor-only tooling; no game assembly may reference it

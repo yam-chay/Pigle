@@ -89,7 +89,7 @@ namespace Piglings.Rules
 
         private void OnRobotRemoved(RobotRemoved e)
         {
-            // Breaches (EnteredBarn) are counted by NightReferee, which decides the night.
+            // Breaches are counted by NightReferee on RobotBreached; a removal only releases its chain here.
             Release(e.Chain, e.Robot);
         }
 

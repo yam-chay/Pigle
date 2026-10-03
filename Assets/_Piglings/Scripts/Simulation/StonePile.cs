@@ -218,8 +218,8 @@ namespace Piglings.Simulation
 
         private void OnSpawned(RobotController robot) => _robots[robot.Id] = robot.transform;
 
-        // After the referee has handled the breach (it subscribed first), so a thief is still in the map
-        // when its StonesChanged arrives.
+        // The theft happens at RobotBreached, while the thief is still alive (and in the map); it's removed at the
+        // end of its breach sequence, taking the parented stone with it.
         private void OnRobotRemoved(RobotRemoved e) => _robots.Remove(e.Robot);
     }
 }
