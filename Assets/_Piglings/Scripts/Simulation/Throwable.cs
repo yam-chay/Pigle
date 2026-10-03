@@ -23,6 +23,15 @@ namespace Piglings.Simulation
         /// <summary>The mastery level this stone looks like / flies as (1 until ApplyLevel). Views read it (trail colour).</summary>
         public int Level { get; private set; } = 1;
 
+        /// <summary>The definition its level came from (null until ApplyLevel). Views read the trail colour from it.</summary>
+        public ThrowableDefinition Definition { get; private set; }
+
+        /// <summary>Thrown and flying (not on the pile, in the hand, or riding a thief). Views start the trail on it.</summary>
+        public bool InFlight => _launched && !_removed;
+
+        /// <summary>The stone's sprite, for views that tint it (the pile's gold pulse). Never resized by a view.</summary>
+        public SpriteRenderer Look => look != null ? look : (look = GetComponent<SpriteRenderer>());
+
         // ThrowController reads this on the prefab to aim with the gravity the stone will really feel.
         public float GravityScale => body.gravityScale;
 
@@ -46,6 +55,7 @@ namespace Piglings.Simulation
         public void ApplyLevel(ThrowableDefinition def, int level)
         {
             Level = level;
+            Definition = def;
             if (look == null) look = GetComponent<SpriteRenderer>();   // prefabs saved before this field existed
             float worldRadius = def.RadiusAt(level);
 
