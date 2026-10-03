@@ -1,0 +1,59 @@
+using System;
+using System.Collections.Generic;
+using System.Text;
+
+namespace Piglings.Meta
+{
+    /// <summary>
+    /// The player's progress across nights and app restarts — the save. Stores CAUSES only (what was done), never results
+    /// (levels, unlocks): those are derived from the causes by rules, so a rule can change without breaking a save.
+    /// Keyed by definition id ("stone", "wolfbot_basic"), which is why those ids must never be renamed.
+    /// Written only by Progression (banking) and ProfileJson (loading).
+    /// </summary>
+    public sealed class PlayerProfile
+    {
+        /// <summary>The save format this build writes and reads. Bump it (and add a migration) when the format changes meaning.</summary>
+        public const int CurrentVersion = 1;
+
+        public readonly SortedDictionary<string, WeaponRecord> Weapons = new SortedDictionary<string, WeaponRecord>(StringComparer.Ordinal);
+        public readonly SortedDictionary<string, RobotRecord> Robots = new SortedDictionary<string, RobotRecord>(StringComparer.Ordinal);
+
+        /// <summary>Total robots this weapon knocked loose itself, over every banked night. 0 for a weapon never used.</summary>
+        public int DirectHits(string weaponId) =>
+            weaponId != null && Weapons.TryGetValue(weaponId, out var w) ? w.DirectHits : 0;
+
+        public WeaponRecord Weapon(string weaponId)
+        {
+            if (!Weapons.TryGetValue(weaponId, out var w)) Weapons[weaponId] = w = new WeaponRecord();
+            return w;
+        }
+
+        public RobotRecord Robot(string robotType)
+        {
+            if (!Robots.TryGetValue(robotType, out var r)) Robots[robotType] = r = new RobotRecord();
+            return r;
+        }
+
+        /// <summary>One line for the save/load log: "stone 137 hits · wolfbot_basic 412 ball knocks / 300 knocked by a ball".</summary>
+        public string Describe()
+        {
+            var parts = new List<string>();
+            foreach (var w in Weapons) parts.Add($"{w.Key} {w.Value.DirectHits} hits");
+            foreach (var r in Robots) parts.Add($"{r.Key} {r.Value.BallKnocks} ball knocks / {r.Value.KnockedByBall} knocked by a ball");
+            return parts.Count == 0 ? "empty (no banked nights)" : string.Join(" · ", parts);
+        }
+    }
+
+    /// <summary>One weapon's saved use.</summary>
+    public sealed class WeaponRecord
+    {
+        public int DirectHits;   // robots this weapon knocked loose itself (not through a ball)
+    }
+
+    /// <summary>One robot type's saved ball stats. Recorded for future wolf-lineage mastery; nothing reads them yet.</summary>
+    public sealed class RobotRecord
+    {
+        public int BallKnocks;      // robots this type's ball knocked loose
+        public int KnockedByBall;   // times this type was knocked loose by a ball
+    }
+}

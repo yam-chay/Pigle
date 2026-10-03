@@ -23,7 +23,7 @@ namespace Piglings.Tests
         public void ThrowThatHitsNothing_ClosesEmptyChain()
         {
             var chain = new ChainId(_ids.Next()); var stone = _ids.Next();
-            _bus.Publish(new ThrowReleased(chain, stone));
+            _bus.Publish(new ThrowReleased(chain, stone, "stone"));
             _bus.Publish(new ThrowableRemoved(stone, chain));
             Assert.That(_closed.HasValue);
             Assert.That(_closed.Value.RobotsDropped, Is.EqualTo(0));
@@ -34,7 +34,7 @@ namespace Piglings.Tests
         {
             var chain = new ChainId(_ids.Next()); var stone = _ids.Next();
             var a = _ids.Next(); var b = _ids.Next();
-            _bus.Publish(new ThrowReleased(chain, stone));
+            _bus.Publish(new ThrowReleased(chain, stone, "stone"));
             _bus.Publish(new RobotLostGrip(a, chain, Attribution.FromThrowable(stone)));
             _bus.Publish(new RobotLostGrip(b, chain, Attribution.FromRobotBall(a, 0)));
 

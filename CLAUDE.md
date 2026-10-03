@@ -22,7 +22,7 @@ Read first: `ARCHITECTURE.md` (structure, wins over this file), then `TASKS.md` 
 - ONLY touch: `*.cs`, `*.asmdef`, `*.md`, `Tools/**`.
 - NEVER create or edit: `*.unity`, `*.prefab`, `*.asset`, `*.meta`, `*.anim`, `*.controller`, ProjectSettings/. Those need the editor.
 - New `.cs` files are fine without `.meta` — Unity generates them when Yam pulls; he commits them afterward.
-- Before opening a PR: `dotnet run --project Tools/CoreCheck` must pass. Add checks there for any Rules/Runtime/Events change.
+- Before opening a PR: `dotnet run --project Tools/CoreCheck` must pass. Add checks there for any Rules/Runtime/Events/Meta change (and the save file, `ProfileFile`). It restores Newtonsoft.Json from NuGet on first run.
 - You can't compile Unity-side code (Simulation/Presentation/Definitions). Say so in the PR and list what Yam should verify in the editor.
 - PR description: what changed, why, and what to test in play mode — in plain language.
 - Tick the task in TASKS.md in the same PR.

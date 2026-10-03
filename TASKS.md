@@ -1,6 +1,6 @@
 # TASKS — Piglings prototype
 
-> **Next up (2026-10-03):** Hours until dawn — M8.1 ✔ → M8.2 pile refactor (☁ done, 🖥 check) → M8.3 peg placement → M8.4 hour palettes → M8.5 Bouncy. Then M6.3 stone readability → decide the empty-pile "dead time" → M5.2.
+> **Next up (2026-10-03):** M9 weapon mastery + the first real save, for the vertical slice with playtesters — M9.1 counting + save (☁ done, 🖥 play a few nights with the logs) → M9.2 the level in play → M9.3 juice + trail (closes M6.3). Then the M8 leftovers (M8.4 hour palettes, M8.5 Bouncy) → decide the empty-pile "dead time" → M5.2.
 > Why: the hours change what a night is (no more Stay/Leave), so M5.2 tunes the new loop, not the old one. M5.2 still needs the theft (M7.3) and the stone (M6.3) readable.
 
 ☁ = cloud session OK (code/docs only) · 🖥 = local, needs the Unity editor (use Claude Code + unity-mcp)
@@ -38,7 +38,7 @@
 
 ## M6 — Night loop (a night that starts, ends and restarts)
 - [ ] ☁+🖥 M6.2 Real (uGUI) end panel, replacing the OnGUI placeholder: result (dawn / caught), hours reached, score, banked, score per stone, mastery gained, best chain. (Restarting is M6.6.)
-- [ ] 🖥 M6.3 Stone readability (playtest TODO): colour/outline/trail so the stone is easy to follow.
+- [ ] 🖥 M6.3 Stone readability (playtest TODO): colour/outline/trail so the stone is easy to follow. → done by M9.3's per-level trail.
 - [x] ☁ M6.4 Danger zone: `DangerZone` trigger (layer Zones) a little below the roof publishes `RobotEnteredDangerZone` once per robot; `RobotView` sets Animator bool `InDanger`. No robot state. Breach warning now; later the line that ends overtime.
 - [x] 🖥 M6.4b Wire the danger zone: place the trigger, add `InDanger`, bake `WolfBot_ClimbDanger` (Piglings ▸ Animation ▸ Bake WolfBot Clips — Climb + red eyes + antenna wiggle, generated), Climb → ClimbDanger on `InDanger`, Break reachable from both. Steps in PR #7 and the play-again PR.
 - [x] ~~M6.5 End-of-night choice + overtime~~ — **replaced by Hours until dawn (M8)**; kept for history. Was: GDD section "סוף הלילה: להמשיך או ללכת". Phases `Running → ChoicePending → Overtime → Ended`, `ChoicePending → Ended` (Leave). Reaching the target ends the danger, not the night.
@@ -72,6 +72,13 @@ Replaces M6.5's Stay/Leave + overtime. A night = N score thresholds ("hours"); e
   - [ ] 🖥 M8.3b Editor: fill the loadout, peg sprites, wire the components, the dim overlay. Steps in the PR.
 - [ ] ☁+🖥 M8.4 Hour palettes: one asset per hour (popup colours + background tint, night → dawn); day background on `DawnReached`.
 - [ ] ☁+🖥 M8.5 Bouncy peg: a ball that hits it gets +bonus (× level) on its depth multiplier for everything it scores after; once per peg per ball.
+
+## M9 — Weapon mastery v1 + the save (vertical slice)
+Mastery from use: the stone levels up from the robots it knocks loose itself (50 → level 2). The save stores causes (hits, ball knocks), levels are derived. Structure: ARCHITECTURE.md → "Mastery and the save"; persistence decided ("Composition").
+- [x] ☁ M9.1 Counting + save, no visuals: `ThrowReleased.Weapon`, `RobotSpawned.RobotType`; `MasteryTally` (Rules: weapon hits = FromThrowable, each robot of a multi-hit throw; ball knocks + knocked-by-ball per robot type, never for the weapon); `NightBanked(destination, id, stat, …)` + `MasteryDestination.Lineage`, banked on both outcomes; Meta: `PlayerProfile`, `Progression`, `MasteryLevels` (derived level, cumulative thresholds), `ProfileJson` (v1, strict, Newtonsoft JObject); `ProfileFile` (temp + replace, `.prev` fallback, corrupt backups, never throws); `NightSession` loads in Awake, saves at NightEnded, logs both, context menu Reset progress / Add 10 hits. Meta referenced by Simulation + Presentation. CoreCheck for all of it.
+  - [ ] 🖥 M9.1b Editor: let Unity import (new .meta files), check the console is clean, play to dawn and to caught and read the save log lines; Play Again keeps the hits; Reset / Add 10 hits; break the file by hand and see the backup + `.prev` recovery. Steps in the PR.
+- [ ] ☁+🖥 M9.2 The level in play: `ThrowableDefinition` levels list `{hitsRequired, sprite, radiusScale, trailColour}` (entry 0 = level 1; missing entry falls back to the one before); stone size from its sprite (sprite and collider scale together); pile spacing × radiusScale; the level is fixed at night start, the pile shows the new level at night end. Art: `Art/Stone/stone_lv1.png`, `stone_lv2.png`.
+- [ ] ☁+🖥 M9.3 Juice + readability (closes M6.3): hit star + rising sparkle on each direct hit (at the robot); pile glints more as progress rises (saved + tonight), pulses gold once tonight crosses the threshold; burst ring + sprite swap at night end; `TrailRenderer` (fx_trail) coloured per level. No progress bars. Art: `Art/FX/fx_sparkle`, `fx_hit_star`, `fx_burst_ring`, `fx_trail`. Every sprite optional.
 
 ## Open design questions (from the GDD — don't implement until decided)
 - One robot line per run vs. mixed swarm.
