@@ -30,6 +30,8 @@ namespace Piglings.Rules
         private readonly Dictionary<GameId, Open> _open = new Dictionary<GameId, Open>();
 
         public int OpenChainCount => _open.Count;
+        /// <summary>The chains still in play right now (ids).</summary>
+        public IEnumerable<GameId> OpenChains => _open.Keys;
         public ScoreCurve Curve => _curve;
 
         public ChainTracker(EventBus bus, NightState state, ScoreCurve curve = null)
@@ -53,10 +55,10 @@ namespace Piglings.Rules
         {
             var c = new Open();
             c.InPlay.Add(e.Throwable);
-            // Fixed at the throw. Throwing stops the moment a threshold is crossed and only resumes in the next
-            // hour, so a chain never straddles two hours — but recording it here makes that a fact, not a hope.
+            // Fixed at the throw: a chain scores at the hour it was thrown in, even if the next hour starts (in a
+            // placement round) while it's still falling.
             c.Hour = _state.Hour;
-            c.HourMultiplier = _curve.HourMultiplier(_state.ThresholdsReached);
+            c.HourMultiplier = _curve.HourMultiplier(_state.Hour - 1);
             c.Carried[e.Throwable] = _curve.StoneValue;
             _open[e.Chain.Id] = c;
             _state.ThrowsUsed++;

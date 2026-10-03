@@ -181,25 +181,52 @@ static void NightChecks(){
  { var n=new Night(Hours(50,500,1000));
    Check(n.St.Phase==NightPhase.Running && n.St.Hour==1 && n.St.CanThrow && n.Ref.NextThreshold==50,"night starts Running, hour 1, can throw, next threshold 50");
    var t=n.Throw(3);   // 10+20+30 = 60 >= 50
-   Check(n.Hours.Count==1 && n.Hours[0].Hour==2 && n.Hours[0].Multiplier==1.5f && n.Hours[0].Threshold==50 && n.St.Hour==2,"crossing 50: HourReached(hour 2, x1.5, threshold 50)");
-   Check(n.St.Phase==NightPhase.Running && !n.St.CanThrow && n.St.PendingPegRounds==1,"throwing stops at the crossing; still Running while the chain falls");
+   Check(n.Hours.Count==0 && n.St.Hour==1 && n.St.ThresholdsReached==1 && n.Ref.NextThreshold==500,
+     "crossing 50: still hour 1 (no HourReached yet), next threshold already 500");
+   Check(n.St.Phase==NightPhase.Running && n.St.CanThrow && n.St.WallMoving && n.St.PendingPegRounds==1,
+     "after the crossing play goes on: still Running, can throw, the wall moves, a round is waiting");
    n.Settle(t);
    Check(n.St.Phase==NightPhase.PegPlacement && n.Phases[0].From==NightPhase.Running && n.Phases[0].To==NightPhase.PegPlacement && !n.St.CanThrow,
      "chain settles -> PegPlacement (no throwing)");
+   Check(n.Hours.Count==1 && n.Hours[0].Hour==2 && n.Hours[0].Multiplier==1.5f && n.Hours[0].Threshold==50 && n.St.Hour==2,
+     "the new hour starts in the freeze: HourReached(hour 2, x1.5, threshold 50) when the round starts");
    n.Ref.EndPlacement();
    Check(n.St.Phase==NightPhase.Running && n.St.CanThrow && n.Ref.NextThreshold==500,"round over -> Running in hour 2, can throw, next threshold 500"); }
- { // The wall freezes at the crossing, not at the round: no stretch where you can't throw but wolves climb.
-   var n=new Night(Hours(50,200));
+ { // Play goes on after a crossing; the only freeze is the round. Chains thrown after the crossing don't hold it off.
+   var n=new Night(Hours(50,1000));
    Check(n.St.WallMoving,"hour 1: the wall moves");
-   var t=n.Throw(3);
-   Check(!n.St.WallMoving && n.St.Phase==NightPhase.Running && !n.St.CanThrow,"threshold crossed, chain still falling: the wall is already frozen (and no throwing)");
+   var t=n.Throw(3);                  // crosses 50
+   var late=n.Throw(2);               // thrown after the crossing: hour 2 already
+   Check(n.Scored[3].Hour==1 && n.Scored[3].HourMultiplier==1f && n.Scored[3].Total==10,"a throw between the crossing and the freeze still scores at the old hour (10 x1)");
    n.Settle(t);
-   Check(!n.St.WallMoving && n.St.Phase==NightPhase.PegPlacement,"placement round: still frozen");
+   Check(n.St.Phase==NightPhase.PegPlacement && !n.St.WallMoving && !n.St.CanThrow,
+     "the crossing's chain lands -> the round starts, though a later chain is still falling (it doesn't hold the round off)");
+   int before=n.St.Score; n.Bus.Publish(new RobotLostGrip(n.Ids.Next(),late.chain,Attribution.FromRobotBall(late.robots[0],0)));
+   Check(n.St.Score>before && n.St.Phase==NightPhase.PegPlacement,"the late chain keeps scoring during the round");
+   n.Settle(late);
+   Check(n.St.Phase==NightPhase.PegPlacement,"...and its landing doesn't end the round");
    n.Ref.EndPlacement();
-   Check(n.St.WallMoving,"round over: the wall moves again");
-   var u=n.Throw(4);   // hour 2: 100 x1.5 = 150 -> 210, dawn
-   Check(n.St.Dawn && !n.St.WallMoving,"dawn crossed: the wall freezes while the last chain lands");
-   n.Settle(u); }
+   Check(n.St.Phase==NightPhase.Running && n.St.WallMoving && n.St.CanThrow,"round over: Running, the wall moves"); }
+ { // A late chain that crosses the NEXT threshold: its round waits for it, even across the current round.
+   var n=new Night(Hours(50,90,1000));
+   var t=n.Throw(3);                  // 60: crosses 50
+   var late=n.Throw(2);               // +45 = 105: crosses 90 too (two rounds pending)
+   Check(n.St.PendingPegRounds==2,"two rounds pending");
+   n.Settle(t);
+   Check(n.St.Phase==NightPhase.PegPlacement && n.St.PendingPegRounds==1,"first round starts (only the 50-crossing chain had to land)");
+   n.Ref.EndPlacement();
+   Check(n.St.Phase==NightPhase.Running,"second round waits: the chain that crossed 90 is still falling");
+   n.Settle(late);
+   Check(n.St.Phase==NightPhase.PegPlacement && n.St.PendingPegRounds==0,"it lands -> second round");
+   n.Ref.EndPlacement(); Check(n.St.Phase==NightPhase.Running,"then Running"); }
+ { // Dawn: throwing stops (the night is won), the night ends once everything has landed.
+   var n=new Night(Hours(50));
+   var t=n.Throw(3); var u=n.Throw(0);
+   Check(n.St.Dawn && !n.St.CanThrow && n.Ends.Count==0,"dawn: no more throwing, waits for the chains");
+   n.Settle(t);
+   Check(n.Ends.Count==0,"...all of them (another is still in flight)");
+   n.Settle(u);
+   Check(n.Ends.Count==1 && n.Ends[0].Reason==NightEndReason.Dawn,"last one lands -> won at dawn"); }
  { // Two chains in flight: the round waits for both.
    var n=new Night(Hours(50,500)); var a=n.Throw(1); var b=n.Throw(3);
    n.Settle(b);
@@ -224,12 +251,13 @@ static void NightChecks(){
  // --- One chain crossing several thresholds: one round each, back to back ---
  { var n=new Night(Hours(20,40,1000));
    var t=n.Throw(3);   // 10, 30, 60: crosses 20 and 40
-   Check(n.Hours.Count==2 && n.Hours[0].Hour==2 && n.Hours[1].Hour==3 && n.St.PendingPegRounds==2,"one chain crosses 20 and 40: two HourReached, two rounds waiting");
+   Check(n.Hours.Count==0 && n.St.PendingPegRounds==2 && n.St.Hour==1,"one chain crosses 20 and 40: two rounds waiting, still hour 1");
    n.Settle(t);
-   Check(n.St.Phase==NightPhase.PegPlacement && n.St.PendingPegRounds==1,"first round");
+   Check(n.St.Phase==NightPhase.PegPlacement && n.St.PendingPegRounds==1 && n.St.Hour==2 && n.Hours.Count==1,"first round: hour 2 starts");
    n.Ref.EndPlacement();
-   Check(n.St.Phase==NightPhase.PegPlacement && n.St.PendingPegRounds==0 && n.Phases[n.Phases.Count-1].From==NightPhase.PegPlacement,
-     "second round right after (PegPlacement -> PegPlacement)");
+   Check(n.St.Phase==NightPhase.PegPlacement && n.St.PendingPegRounds==0 && n.Phases[n.Phases.Count-1].From==NightPhase.PegPlacement
+     && n.St.Hour==3 && n.Hours[1].Hour==3 && n.Hours[1].Multiplier==2f && n.Hours[1].Threshold==40,
+     "second round right after (PegPlacement -> PegPlacement): hour 3, x2, threshold 40");
    n.Ref.EndPlacement();
    Check(n.St.Phase==NightPhase.Running && n.St.CanThrow && n.St.Hour==3,"then Running, hour 3"); }
  // --- Stone refill per threshold (not at dawn) ---

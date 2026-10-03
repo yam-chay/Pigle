@@ -49,8 +49,8 @@ namespace Piglings.Rules
 
         public float Multiplier(int depth) => 1f + MultiplierPerDepth * depth;
 
-        /// <summary>The score multiplier of the hour after this many thresholds: hour 1 ×1, hour 2 ×1.5, hour 3 ×2…</summary>
-        public float HourMultiplier(int thresholdsReached) => 1f + HourMultiplierStep * Math.Max(0, thresholdsReached);
+        /// <summary>The score multiplier after this many hours have passed: hour 1 (0 passed) ×1, hour 2 ×1.5, hour 3 ×2…</summary>
+        public float HourMultiplier(int hoursPassed) => 1f + HourMultiplierStep * Math.Max(0, hoursPassed);
 
         /// <summary>
         /// What a robot knocked loose scores: received × depth multiplier × hour multiplier, rounded once.
