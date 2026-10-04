@@ -64,5 +64,17 @@ static void FlowChecks(){
    Check(Math.Abs(narrow.Size-7f)<1e-5f,$"tower: a narrow screen widens the frame until the barn fits across ((3 + 0.5) / 0.5 = 7; got {narrow.Size})");
    var flipped=CameraFraming.Tower(10f,0f,3f,0.5f,16f/9f);
    Check(flipped.Y==t.Y && flipped.Size==t.Size,"tower: top and bottom swapped → the same frame"); }
+
+ // --- CameraFraming: the Night frame, fitted to the tower (M10.D), with the night's override ---
+ // TestNight: slices from 3.0 every 1.6, roof 3.3 above the tower's top, bottom 2.5 → Yam's hand-tuned frames.
+ { Func<int,CameraPose> night=n=>CameraFraming.Night(2.5f,3f+n*1.6f+3.3f);
+   var n1=night(2); var n2=night(3); var n3=night(4);
+   Check(Math.Abs(n1.Y-6f)<1e-4f && Math.Abs(n1.Size-3.5f)<1e-4f,$"night frame: 2 slices = Night 1's tuned frame (y 6, size 3.5; got {n1})");
+   Check(Math.Abs(n2.Y-6.8f)<1e-4f && Math.Abs(n2.Size-4.3f)<1e-4f && Math.Abs(n3.Y-7.6f)<1e-4f && Math.Abs(n3.Size-5.1f)<1e-4f,
+         $"night frame: 3 and 4 slices = the hand-tuned 6.8/4.3 and 7.6/5.1 (got {n2}; {n3})");
+   Check(Math.Abs((n3.Y-n3.Size)-2.5f)<1e-4f && Math.Abs((n1.Y-n1.Size)-2.5f)<1e-4f,"night frame: the bottom never moves; a taller tower zooms out upward");
+   var auto=CameraFraming.Override(n2,0f,0f); var both=CameraFraming.Override(n2,9f,4f); var sizeOnly=CameraFraming.Override(n2,0f,5f);
+   Check(auto.Y==n2.Y && auto.Size==n2.Size,"override 0 / 0 = auto (the fitted frame)");
+   Check(both.Y==9f && both.Size==4f && sizeOnly.Y==n2.Y && sizeOnly.Size==5f,"override: a value above 0 wins, each on its own"); }
 }
 }

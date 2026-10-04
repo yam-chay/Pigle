@@ -44,6 +44,10 @@ namespace Piglings.Simulation
         [Tooltip("One colour per hour (scoreboard, hour dots). Optional; a night with more hours than colours logs a warning.")]
         [SerializeField] private HourPaletteDefinition hourPalette;
 
+        [Header("Look (both scenes)")]
+        [Tooltip("Score colours: popups by depth, throws by quality. Shared by every view. Empty = the built-in defaults.")]
+        [SerializeField] private ScoreColoursDefinition scoreColours;
+
         [Header("Save and start")]
         [Tooltip("Which save this scene uses: piglings_<name>.json. \"dev\" for Night.unity, \"campaign\" for the v2 scene — " +
                  "separate files, so testing here never advances the campaign. Letters, digits, - and _ only.")]
@@ -69,6 +73,16 @@ namespace Piglings.Simulation
 
         /// <summary>Hour n's colour from the palette (white without one).</summary>
         public Color HourColour(int hour) => hourPalette != null ? hourPalette.ColourFor(hour) : Color.white;
+
+        /// <summary>The score colours (depth, throw quality) every view shares; the defaults when none is assigned.</summary>
+        public ScoreColoursDefinition ScoreColours
+        {
+            get
+            {
+                if (scoreColours == null) scoreColours = ScriptableObject.CreateInstance<ScoreColoursDefinition>();
+                return scoreColours;
+            }
+        }
 
         public EventBus Bus { get; private set; }
         public NightState State { get; private set; }
@@ -97,6 +111,17 @@ namespace Piglings.Simulation
         public int NextThreshold => _referee.NextThreshold;
         public int ThresholdCount => _referee.Goal.ThresholdCount;
         public float HourMultiplier => _referee.HourMultiplier;
+
+        /// <summary>The score of threshold n (1-based); 0 for n ≤ 0 — where hour 1 starts. Past the last → the last.</summary>
+        public int ThresholdAt(int n) => _referee.Goal.ScoreAtThreshold(n);
+        /// <summary>The points hour n takes to get through (T(n) − T(n−1)).</summary>
+        public int HourGap(int hour) => _referee.Goal.HourGap(hour);
+        /// <summary>How good a throw was: points ÷ the gap of the hour it was thrown in (1 = a whole hour's worth).</summary>
+        public float ThrowQuality(int points, int hour) => _referee.Goal.ThrowQuality(points, hour);
+        /// <summary>A robot's multiplier at this depth (×1, ×1.5, ×2…): the tutorial card shows the real numbers.</summary>
+        public float DepthMultiplier(int depth) => _chains.Curve.Multiplier(depth);
+        /// <summary>What chains thrown in hour n are multiplied by (×1, ×1.5…).</summary>
+        public float HourMultiplierAt(int hour) => _chains.Curve.HourMultiplier(hour - 1);
 
         /// <summary>
         /// Where the stone stood when the night started (StoneProgression from the saved hits): its stones, level and refill.

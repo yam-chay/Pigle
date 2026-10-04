@@ -28,7 +28,7 @@ namespace Piglings.Simulation
         [SerializeField] private NightSession session;
         [Tooltip("The camera this moves. Empty = the Camera on this object.")]
         [SerializeField] private Camera cam;
-        [Tooltip("The built tower: the Tower frame fits it. Empty (or nothing built) = the Tower frame is the night's frame.")]
+        [Tooltip("The built tower: the Night and Tower frames fit it. Empty (or nothing built) = the night's own Camera Y / Size.")]
         [SerializeField] private TowerBuilder tower;
 
         [Header("Fixed frames (centre y, orthographic size)")]
@@ -37,10 +37,15 @@ namespace Piglings.Simulation
         [SerializeField] private float barnRoomY = 1.16f;
         [SerializeField, Min(0.1f)] private float barnRoomSize = 1.15f;
 
+        [Header("Night frame (fitted to the built tower)")]
+        [Tooltip("The bottom of the Night frame (world y), the same on every night: a taller tower zooms out upward. " +
+                 "Night 1's tuned frame (y 6, size 3.5) has its bottom at 2.5. A night's Camera Y / Size above 0 overrides.")]
+        [SerializeField] private float nightBottomY = 2.5f;
+
         [Header("Tower frame (fitted to the built tower)")]
         [Tooltip("The lowest thing to show: the ground under the barn (world y).")]
         [SerializeField] private float towerBottomY = 0f;
-        [Tooltip("How far Barn_Top and the pig reach above the tower's top (TowerBuilder.TopY).")]
+        [Tooltip("The roof: how far Barn_Top and the pig reach above the tower's top (TowerBuilder.TopY). The Night frame's top too.")]
         [SerializeField] private float towerAboveTop = 1.5f;
         [Tooltip("Half the barn's width (the barn is 6 units wide): the frame is never narrower than this + the margin.")]
         [SerializeField, Min(0f)] private float towerHalfWidth = 3f;
@@ -73,7 +78,7 @@ namespace Piglings.Simulation
             if (!_placed) SnapTo(CameraFrame.Night);
         }
 
-        /// <summary>The pose of a frame right now (Night from tonight's definition, Tower from the built tower).</summary>
+        /// <summary>The pose of a frame right now (Night and Tower from the built tower; a night's Camera Y / Size override).</summary>
         public CameraPose PoseOf(CameraFrame frame)
         {
             switch (frame)
@@ -81,8 +86,19 @@ namespace Piglings.Simulation
                 case CameraFrame.Doors: return new CameraPose(doorsY, doorsSize);
                 case CameraFrame.BarnRoom: return new CameraPose(barnRoomY, barnRoomSize);
                 case CameraFrame.Tower: return TowerPose();
-                default: return new CameraPose(session.Night.CameraY, session.Night.CameraSize);
+                default: return NightPose();
             }
+        }
+
+        // Fixed bottom, top at the roof of tonight's tower; the night's own Camera Y / Size (when above 0) win.
+        // Without a built tower there's nothing to fit: the night's values, or where the camera already is.
+        private CameraPose NightPose()
+        {
+            var night = session.Night;
+            var computed = tower != null && tower.SliceCount > 0
+                ? CameraFraming.Night(nightBottomY, tower.TopY + towerAboveTop)
+                : cam != null ? Current() : new CameraPose(transform.position.y, 5f);
+            return CameraFraming.Override(computed, night.CameraY, night.CameraSize);
         }
 
         /// <summary>Jump to a frame, no move (the boot after a reload: the same view as before it, so the cut is invisible).</summary>

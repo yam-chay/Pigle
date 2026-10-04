@@ -47,6 +47,24 @@ namespace Piglings.Simulation
             return new CameraPose((topY + bottomY) / 2f, Math.Max(0.01f, size));
         }
 
+        /// <summary>
+        /// The Night frame from the built tower: a fixed bottom (<paramref name="bottomY"/>, where the wall's play area
+        /// starts — the same on every night) up to <paramref name="topY"/> (the roof: Barn_Top and the pig). A taller
+        /// tower zooms out upward; the bottom never moves.
+        /// </summary>
+        public static CameraPose Night(float bottomY, float topY)
+        {
+            if (topY < bottomY) { float swap = topY; topY = bottomY; bottomY = swap; }
+            return new CameraPose((topY + bottomY) / 2f, Math.Max(0.01f, (topY - bottomY) / 2f));
+        }
+
+        /// <summary>
+        /// A hand-tuned override on top of a computed frame: a value above 0 replaces the computed one, 0 (or less) keeps
+        /// it. Each on its own (NightDefinition Camera Y / Size; 0 = auto).
+        /// </summary>
+        public static CameraPose Override(CameraPose computed, float y, float size) =>
+            new CameraPose(y > 0f ? y : computed.Y, size > 0f ? size : computed.Size);
+
         private static float Clamp01(float v) => v < 0f ? 0f : (v > 1f ? 1f : v);
     }
 }

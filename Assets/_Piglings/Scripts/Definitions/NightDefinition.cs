@@ -35,10 +35,11 @@ namespace Piglings.Definitions
         [Tooltip("The tower, bottom → top: one slice per 1.6 units above the bottom piece. The player can swap them in the day phase; " +
                  "the count is the night's (more slices = a taller tower, a longer climb).")]
         [SerializeField] private List<WallSliceDefinition> slices = new List<WallSliceDefinition>();
-        [Tooltip("The camera during this night (tuned by hand per tower): centre height…")]
-        [SerializeField] private float cameraY = 6f;
-        [Tooltip("…and orthographic size.")]
-        [SerializeField, Min(0.5f)] private float cameraSize = 3.5f;
+        [Tooltip("Override for the camera during this night: centre height. 0 = auto — CameraDirector fits the Night frame to " +
+                 "the built tower (fixed bottom, top at the roof).")]
+        [SerializeField] private float cameraY = 0f;
+        [Tooltip("Override: orthographic size. 0 = auto (fitted to the tower, see Camera Y).")]
+        [SerializeField, Min(0f)] private float cameraSize = 0f;
 
         [Header("Pegs")]
         [Tooltip("The peg shelf for this night (until the day phase chooses it): up to 5 types, one pile each. " +
