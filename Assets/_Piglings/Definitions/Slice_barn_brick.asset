@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Slice_barn_brick
   m_EditorClassIdentifier: Piglings.Definitions::Piglings.Definitions.WallSliceDefinition
   id: barn_brick
-  sprite: {fileID: 21300000, guid: 4589435be9789ca43a736cfdd88f4db5, type: 3}
+  sprite: {fileID: 21300000, guid: 03ad35d3b3dd79c4a814c549266f78d3, type: 3}
   holds:
   - {x: -1.1, y: 1.12}
   - {x: 0, y: 1.12}
@@ -22,5 +22,5 @@ MonoBehaviour:
   - {x: -0.55, y: 0.54}
   - {x: 0.55, y: 0.54}
   - {x: 1.7, y: 0.54}
-  holdMaterial: {fileID: 0}
+  holdMaterial: {fileID: 6200000, guid: 0fc3d7f6112b7e141a2c7f7179479ca3, type: 2}
   effect: 0
