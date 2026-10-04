@@ -1,6 +1,6 @@
 # TASKS — Piglings prototype
 
-> **Next up (2026-10-04):** M9 weapon mastery + save ✔ (M9.1–M9.3, wired and tuned). Next: M8.5 peg effects (a Bouncy ☁ done → b Splitter → c Bomb) → M8.4 hour palettes → decide the empty-pile "dead time" → M5.2 — then the vertical slice goes to playtesters.
+> **Next up (2026-10-04):** M9 weapon mastery + save ✔ (M9.1–M9.3, wired and tuned). Next: M8.5 peg effects (a Bouncy ✔ → b Splitter ☁ done → c Bomb) → M8.4 hour palettes → decide the empty-pile "dead time" → M5.2 — then the vertical slice goes to playtesters.
 > Why: the hours change what a night is (no more Stay/Leave), so M5.2 tunes the new loop, not the old one. M5.2 still needs the theft (M7.3) and the stone (M6.3) readable.
 
 ☁ = cloud session OK (code/docs only) · 🖥 = local, needs the Unity editor (use Claude Code + unity-mcp)
@@ -74,7 +74,8 @@ Replaces M6.5's Stay/Leave + overtime. A night = N score thresholds ("hours"); e
 - M8.5 Peg effects — they must work and read clearly; every number is an Inspector placeholder (balance later). Strength by level via `PegDefinition.levels`. Structure: ARCHITECTURE.md → "Peg effects".
   - [x] ☁ M8.5a Plumbing + Bouncy: `PegEffect` (Events; Definitions now references Events), `PegDefinition.effect` + `levels`; Hold → `NightSession.HitPeg` → `PegEffects` (Rules) → `PegHit` / `PegBounced` + a result for the physics; `PegBoard.Bind` (sockets) + bouncy material by level; Bouncy = score multiplier on the ball's victims (×2 / ×3 by level), once per peg per ball, stacking on the extra part, never carried (`ChainTracker.AddPegExtra`, `RobotScored.PegMultiplier`); `PegBoardView` pegs on a child renderer + squash-stretch + gold ring; popup `B×2`. CoreCheck.
     - [ ] 🖥 M8.5a-b Editor: rename peg ids to `peg_bouncy` / `peg_splitter` / `peg_bomb`; `Peg_Bouncy`: Effect = Bouncy, Levels (L1 ×2 / bounciness ~0.8, L2 ×3 / ~0.95 — check the first entry isn't all zeros); `PegBoardView` → Bonus Ring = fx_burst_ring. Steps in the PR.
-  - [ ] ☁+🖥 M8.5b Splitter: a thrown stone that hits the needle splits into N (by level: 2, 3…), fanned, same speed, same chain; pieces carry value × share; once per needle; cap per throw; pieces' hits count for mastery (toggle).
+  - [x] ☁ M8.5b Splitter: a thrown stone (or piece) that hits the needle splits into N (by level: 2, 3…), fanned, same speed, same chain; every stone carries value × share; once per needle; cap per throw (default 4); pieces' direct hits count for mastery (toggle, default on); pieces from the throw, not the pile. `StoneSplit` / `StonePieceLaunched`, `Throwable.Split`, needle flash + sparkle burst. CoreCheck.
+    - [ ] 🖥 M8.5b-b Editor: `Peg_Splitter`: Effect = Splitter, Levels (L1 pieces 2 / fan ~30 / share 1, L2 pieces 3 / fan ~40 / share 1 — not all zeros), Max Stones Per Throw 4, Piece Scale ~0.8; `PegBoardView` → Split Sparkle = fx_sparkle. Steps in the PR.
   - [ ] ☁+🖥 M8.5c Bomb: stone or ball triggers it; climbing robots in radius (by level) knocked loose, scored through the explosion as its own hitter (depth 1 from a stone, ball depth + 1); stone-triggered knocks count as stone hits (pieces under the toggle); per-peg knocks saved; spent → recharges (paused unless Running); does nothing in PegPlacement.
 
 ## M9 — Weapon mastery v1 + the save (vertical slice)

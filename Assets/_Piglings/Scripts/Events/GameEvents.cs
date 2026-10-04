@@ -231,6 +231,38 @@ namespace Piglings.Events
     }
 
     /// <summary>
+    /// A thrown stone (or a piece of one) hit a Splitter needle and splits: it keeps flying, and NewPieces more stones
+    /// launch from it, fanned out, in the same chain. Every one of them (the original too) now carries the stone's value
+    /// × ValueShare. Published by the Rules (they decided it: once per needle per stone, within the per-throw cap);
+    /// each piece then announces itself with StonePieceLaunched once it really exists.
+    /// PiecesCountForMastery: the pieces' direct hits count as stone hits (the Splitter's toggle).
+    /// </summary>
+    public readonly struct StoneSplit
+    {
+        public readonly int Socket; public readonly ChainId Chain; public readonly GameId Stone;
+        public readonly int NewPieces; public readonly float ValueShare; public readonly bool PiecesCountForMastery;
+        public StoneSplit(int socket, ChainId chain, GameId stone, int newPieces, float valueShare, bool piecesCountForMastery)
+        {
+            Socket = socket; Chain = chain; Stone = stone; NewPieces = newPieces; ValueShare = valueShare;
+            PiecesCountForMastery = piecesCountForMastery;
+        }
+    }
+
+    /// <summary>
+    /// A piece of a split stone is flying (published by the piece itself, in Simulation). It joins Parent's chain — the
+    /// chain closes only once every piece is gone — carrying Parent's value. It came from the throw, not the pile: no
+    /// ThrowReleased, the stone count doesn't change. Socket = the needle it split at (it can't split there again).
+    /// </summary>
+    public readonly struct StonePieceLaunched
+    {
+        public readonly ChainId Chain; public readonly GameId Piece; public readonly GameId Parent; public readonly int Socket;
+        public StonePieceLaunched(ChainId chain, GameId piece, GameId parent, int socket)
+        {
+            Chain = chain; Piece = piece; Parent = parent; Socket = socket;
+        }
+    }
+
+    /// <summary>
     /// A robot still on the wall was knocked off by the end-of-night sweep (published by Simulation while it
     /// sweeps). Not part of any chain. Won: NightReferee scores it flat with the robot-value function. Lost: visual
     /// only — the robots fall either way, but the bank stays at the last threshold reached.

@@ -78,4 +78,85 @@ static void PegEffectChecks(){
  Check(n2.St.Ended && fx2.Hit(0,PegHitter.Ball,n2.Ids.Next(),ChainId.None).Outcome==PegOutcome.None && hits2==0,"once the night has ended: nothing");
  fx.Dispose(); fx2.Dispose();
 }
+
+static void SplitterChecks(){
+ // Sockets: 0 = Splitter L1 (2 stones), 1 and 2 = Splitter L2 (3 stones), 3 = a half-share Splitter L1,
+ // 4 = a Splitter whose pieces don't count for mastery. Cap: 4 stones of one throw in flight.
+ var splitter=new PegType("peg_splitter",3,true,PegEffect.Splitter,null,new[]{2,3},new[]{1f,1f},4,true);
+ var halves=new PegType("peg_halves",3,true,PegEffect.Splitter,null,new[]{2},new[]{0.5f},4,true);
+ var uncounted=new PegType("peg_uncounted",3,true,PegEffect.Splitter,null,new[]{2},new[]{1f},4,false);
+ var pegs=new PegSetup(new[]{(splitter,5),(halves,1),(uncounted,1)},1,5);
+ var n=new Night(Hours(100000),null,pegs); var fx=new PegEffects(n.Bus,n.St,n.Tr,pegs); var tally=new MasteryTally(n.Bus,n.St);
+ void Put(int socket,string id,int level){ n.St.Sockets[socket].PegId=id; n.St.Sockets[socket].Level=level; }
+ Put(0,"peg_splitter",1); Put(1,"peg_splitter",2); Put(2,"peg_splitter",2); Put(3,"peg_halves",1); Put(4,"peg_uncounted",1);
+ var splits=new System.Collections.Generic.List<StoneSplit>(); n.Bus.Subscribe<StoneSplit>(e=>splits.Add(e));
+ var hits=new System.Collections.Generic.List<PegHit>(); n.Bus.Subscribe<PegHit>(e=>hits.Add(e));
+ // What the Simulation does with a Split result: launch that many pieces from the stone, each announcing itself.
+ GameId[] Launch(ChainId chain,GameId parent,int socket,PegHitResult r){
+  var made=new GameId[r.NewPieces];
+  for(int i=0;i<made.Length;i++){ made[i]=n.Ids.Next(); n.Bus.Publish(new StonePieceLaunched(chain,made[i],parent,socket)); }
+  return made;
+ }
+
+ // The stone knocks a robot first (its value grows 10 → 20), then splits at a level-1 needle: 1 new piece.
+ var c=new ChainId(n.Ids.Next()); var s=n.Ids.Next(); var r0=n.Ids.Next();
+ n.Bus.Publish(new ThrowReleased(c,s,"stone"));
+ n.Bus.Publish(new RobotLostGrip(r0,c,Attribution.FromThrowable(s)));
+ int stonesLeft=n.St.StonesLeft, throwsUsed=n.St.ThrowsUsed;
+ var res=fx.Hit(0,PegHitter.Stone,s,c);
+ Check(res.Outcome==PegOutcome.Split && res.NewPieces==1 && splits.Count==1 && splits[0].NewPieces==1,"a level-1 needle splits the stone in 2 (1 new piece)");
+ var p1=Launch(c,s,0,res)[0];
+ Check(n.Tr.StonesInFlight(c)==2,"the piece joins the throw: 2 stones of this chain in flight");
+ Check(n.St.StonesLeft==stonesLeft && n.St.ThrowsUsed==throwsUsed,"pieces come from the throw, not the pile: stones left and throws used unchanged");
+ // The piece carries the stone's CURRENT value (20, after its hit), share 1
+ var r1=n.Ids.Next(); n.Bus.Publish(new RobotLostGrip(r1,c,Attribution.FromThrowable(p1)));
+ Check(n.Scored.Find(e=>e.Robot==r1).Received==20,"a piece carries the stone's current value × 1 (20, after the stone's first hit)");
+ // Once per needle: the stone again, and the piece born there
+ Check(fx.Hit(0,PegHitter.Stone,s,c).Outcome==PegOutcome.None && fx.Hit(0,PegHitter.Stone,p1,c).Outcome==PegOutcome.None && splits.Count==1,
+       "once per needle: the stone can't split there again, nor can a piece born there");
+ // A piece can split at another needle: level 2 = 3 stones (2 new). 2 + 2 = 4 = the cap.
+ var res2=fx.Hit(1,PegHitter.Stone,p1,c);
+ Check(res2.Outcome==PegOutcome.Split && res2.NewPieces==2,"a piece splits at a different, level-2 needle: 3 stones (2 new)");
+ var more=Launch(c,p1,1,res2);
+ Check(n.Tr.StonesInFlight(c)==4,"4 stones of this throw in flight");
+ // The cap: nothing more can split
+ Check(fx.Hit(2,PegHitter.Stone,s,c).Outcome==PegOutcome.None && splits.Count==2,"at the cap (4 in flight), a needle doesn't split");
+ // Robot balls never split
+ int hitsBefore=hits.Count;
+ Check(fx.Hit(2,PegHitter.Ball,r0,c).Outcome==PegOutcome.None && hits.Count==hitsBefore+1 && hits[hits.Count-1].Hitter==PegHitter.Ball,
+       "a robot ball on a needle: a hit, no split");
+ // Mastery: direct hits by pieces count as stone hits (toggle on): r0 (stone) + r1 (piece) = 2; one more by a piece-of-a-piece
+ var r2=n.Ids.Next(); n.Bus.Publish(new RobotLostGrip(r2,c,Attribution.FromThrowable(more[0])));
+ Check(Hits(n.St,"stone")==3,$"pieces' direct hits count for the stone with the toggle on (3, got {Hits(n.St,"stone")})");
+ // The chain closes only once every piece is gone
+ ChainScored? closed=null; n.Bus.Subscribe<ChainScored>(e=>{ if(e.Chain.Id==c.Id) closed=e; });
+ n.Bus.Publish(new ThrowableRemoved(s,c)); n.Bus.Publish(new ThrowableRemoved(p1,c)); n.Bus.Publish(new ThrowableRemoved(more[0],c));
+ foreach(var r in new[]{r0,r1,r2}) n.Bus.Publish(new RobotRemoved(r,c,RemovalReason.HitGround));
+ Check(!closed.HasValue && n.Tr.StonesInFlight(c)==1,"one piece still flying: the chain stays open");
+ n.Bus.Publish(new ThrowableRemoved(more[1],c));
+ Check(closed.HasValue && closed.Value.RobotsDropped==3,"the last piece removed: the chain closes (3 robots)");
+
+ // Value share 0.5: the stone AND its piece carry half
+ var c2=new ChainId(n.Ids.Next()); var s2=n.Ids.Next(); n.Bus.Publish(new ThrowReleased(c2,s2,"stone"));
+ var half=fx.Hit(3,PegHitter.Stone,s2,c2); var hp=Launch(c2,s2,3,half)[0];
+ var ra=n.Ids.Next(); var rb=n.Ids.Next();
+ n.Bus.Publish(new RobotLostGrip(ra,c2,Attribution.FromThrowable(s2))); n.Bus.Publish(new RobotLostGrip(rb,c2,Attribution.FromThrowable(hp)));
+ Check(n.Scored.Find(e=>e.Robot==ra).Received==5 && n.Scored.Find(e=>e.Robot==rb).Received==5,"value share 0.5: the stone and its piece each carry 10 × 0.5 = 5");
+
+ // Toggle off: the piece's hits don't count; the stone's own still do
+ int before=Hits(n.St,"stone");
+ var c3=new ChainId(n.Ids.Next()); var s3=n.Ids.Next(); n.Bus.Publish(new ThrowReleased(c3,s3,"stone"));
+ var up=Launch(c3,s3,4,fx.Hit(4,PegHitter.Stone,s3,c3))[0];
+ n.Bus.Publish(new RobotLostGrip(n.Ids.Next(),c3,Attribution.FromThrowable(up)));
+ n.Bus.Publish(new RobotLostGrip(n.Ids.Next(),c3,Attribution.FromThrowable(s3)));
+ Check(Hits(n.St,"stone")==before+1,"toggle off: a piece's hit doesn't count for the stone; the stone's own does");
+
+ // Levels: past the list uses the last entry; an unfilled 0 = never splits
+ Check(splitter.PiecesAt(3)==3 && splitter.PiecesAt(0)==2,"pieces by level: past the list uses the last, below 1 the first");
+ var never=new PegType("x",3,true,PegEffect.Splitter,null,new[]{0},null,4,true);
+ Check(never.PiecesAt(1)==1,"an unfilled (0) pieces entry = 1 stone = no split");
+ // A stone outside an open chain can't split
+ Check(fx.Hit(2,PegHitter.Stone,n.Ids.Next(),ChainId.None).Outcome==PegOutcome.None,"a stone with no open chain: no split");
+ fx.Dispose(); tally.Dispose();
+}
 }

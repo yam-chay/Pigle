@@ -23,6 +23,9 @@ namespace Piglings.Simulation
         /// <summary>The mastery level this stone looks like / flies as (1 until ApplyLevel). Views read it (trail colour).</summary>
         public int Level { get; private set; } = 1;
 
+        /// <summary>× its level's size: 1 for a thrown stone, smaller for a Splitter piece (PegDefinition.PieceScale).</summary>
+        public float SizeScale { get; private set; } = 1f;
+
         /// <summary>The definition its level came from (null until ApplyLevel). Views read the trail colour from it.</summary>
         public ThrowableDefinition Definition { get; private set; }
 
@@ -52,12 +55,13 @@ namespace Piglings.Simulation
         /// sprite exactly as wide as the collider — so what you see is what hits. The pile calls it on each stone; Launch
         /// calls it again with the night's level, which is the one that counts for play.
         /// </summary>
-        public void ApplyLevel(ThrowableDefinition def, int level)
+        public void ApplyLevel(ThrowableDefinition def, int level, float sizeScale = 1f)
         {
             Level = level;
             Definition = def;
+            SizeScale = sizeScale;
             if (look == null) look = GetComponent<SpriteRenderer>();   // prefabs saved before this field existed
-            float worldRadius = def.RadiusAt(level);
+            float worldRadius = def.RadiusAt(level) * sizeScale;
 
             var sprite = def.SpriteFor(level);
             if (look != null && sprite != null) look.sprite = sprite;
@@ -100,6 +104,48 @@ namespace Piglings.Simulation
             if (def.Material != null) circle.sharedMaterial = def.Material;
             body.linearVelocity = velocity;
             session.Bus.Publish(new ThrowReleased(Chain, Id, def.Id));
+        }
+
+        /// <summary>
+        /// Splitter: launches newPieces more stones from this one, fanned around its velocity (just after the bounce off
+        /// the needle) at the same speed, in its chain. This stone keeps flying as the middle one of the fan. Called by
+        /// the Hold once the Rules decided the split (StoneSplit); each piece then announces itself (StonePieceLaunched).
+        /// Pieces don't touch the pile: they come from the throw.
+        /// </summary>
+        public void Split(int newPieces, float fanDegrees, float pieceScale, int socket)
+        {
+            if (!InFlight || newPieces <= 0) return;
+            Vector2 velocity = body.linearVelocity;
+            int total = newPieces + 1;
+            int keep = total / 2;   // this stone takes a middle direction, so its own course changes least
+            for (int i = 0; i < total; i++)
+            {
+                float angle = -fanDegrees / 2f + fanDegrees * i / (total - 1);
+                Vector2 direction = Quaternion.Euler(0f, 0f, angle) * velocity;
+                if (i == keep) { body.linearVelocity = direction; continue; }
+                var piece = Instantiate(this, transform.position, transform.rotation, transform.parent);
+                piece.LaunchPiece(this, direction, pieceScale, socket);
+            }
+        }
+
+        // A piece: a copy of its parent (same level look, trail), a bit smaller, flying in the parent's chain with the
+        // parent's remaining lifetime. No ThrowReleased — it isn't a throw, and the stone count doesn't change.
+        private void LaunchPiece(Throwable parent, Vector2 velocity, float pieceScale, int socket)
+        {
+            _session = parent._session;
+            _launched = true;
+            body.simulated = true;
+            circle.enabled = true;
+            Id = _session.Ids.Next();
+            Chain = parent.Chain;
+            _life = parent._life;
+            gameObject.layer = parent.gameObject.layer;
+            body.bodyType = RigidbodyType2D.Dynamic;
+            body.mass = parent.body.mass;
+            ApplyLevel(parent.Definition, parent.Level, parent.SizeScale * pieceScale);
+            circle.sharedMaterial = parent.circle.sharedMaterial;
+            body.linearVelocity = velocity;
+            _session.Bus.Publish(new StonePieceLaunched(Chain, Id, parent.Id, socket));
         }
 
         private void Update()

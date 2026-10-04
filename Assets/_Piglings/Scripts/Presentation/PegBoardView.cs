@@ -10,6 +10,7 @@ namespace Piglings.Presentation
     ///    levels 2 and 3 add an overlay on top. A child, so the peg can squash and stretch without touching the Hold's
     ///    collider, which lives on the Hold's own object;
     ///  - Bouncy: every hit makes the peg pop (squash-stretch); a ball that gets the bonus also gets a small gold ring;
+    ///  - Splitter: when it splits a stone, the needle flashes and sparkles burst out of it;
     ///  - during a placement round, the sockets the held peg can go into (empty, or a same-type peg it can merge with)
     ///    get the highlight overlay, pulsing; placed pegs it can't go on fade out — the throw ignores them.
     /// Reads the board from NightState and redraws on PegPlaced / PegMerged. Never writes state.
@@ -43,6 +44,18 @@ namespace Piglings.Presentation
         [SerializeField] private Color bonusRingColour = new Color(1f, 0.8f, 0.25f, 1f);
         [SerializeField] private FxMotion bonusRingMotion = new FxMotion { seconds = 0.35f, startScale = 0.2f, endScale = 0.9f };
 
+        [Header("Splitter")]
+        [Tooltip("The needle's colour at the moment it splits a stone, fading back.")]
+        [SerializeField] private Color splitFlashColour = new Color(1f, 1f, 0.6f, 1f);
+        [SerializeField, Min(0.01f)] private float splitFlashSeconds = 0.25f;
+        [Tooltip("fx_sparkle: the burst out of the needle when it splits. Empty = no burst.")]
+        [SerializeField] private Sprite splitSparkle;
+        [SerializeField, Min(0)] private int splitSparkles = 6;
+        [Tooltip("How far (world units) the burst's sparkles fly out.")]
+        [SerializeField, Min(0f)] private float splitSpread = 0.35f;
+        [SerializeField] private Color splitSparkleColour = new Color(1f, 0.95f, 0.7f, 1f);
+        [SerializeField] private FxMotion splitSparkleMotion = new FxMotion { seconds = 0.4f, startScale = 0.35f, endScale = 0.1f, spin = 200f };
+
         private sealed class Socket
         {
             public SpriteRenderer Body;     // the Hold's own renderer
@@ -53,6 +66,7 @@ namespace Piglings.Presentation
             public SpriteRenderer Level;    // child of Peg: pops with it
             public SpriteRenderer Highlight;
             public float PopAge = -1f;      // seconds since the last Bouncy hit; < 0 = not popping
+            public float FlashAge = -1f;    // seconds since the last split; < 0 = not flashing
         }
 
         private Socket[] _sockets = new Socket[0];
@@ -85,6 +99,7 @@ namespace Piglings.Presentation
             session.Bus.Subscribe<PegMerged>(OnPegMerged);
             session.Bus.Subscribe<PegHit>(OnPegHit);
             session.Bus.Subscribe<PegBounced>(OnPegBounced);
+            session.Bus.Subscribe<StoneSplit>(OnStoneSplit);
         }
 
         private void OnDestroy()
@@ -94,6 +109,7 @@ namespace Piglings.Presentation
             session.Bus.Unsubscribe<PegMerged>(OnPegMerged);
             session.Bus.Unsubscribe<PegHit>(OnPegHit);
             session.Bus.Unsubscribe<PegBounced>(OnPegBounced);
+            session.Bus.Unsubscribe<StoneSplit>(OnStoneSplit);
         }
 
         private void OnPegPlaced(PegPlaced e) => Refresh(e.Socket);
@@ -110,6 +126,22 @@ namespace Piglings.Presentation
             if (e.Socket >= _sockets.Length || _sockets[e.Socket].Peg == null) return;
             var peg = _sockets[e.Socket].Peg;
             _fx.Spawn(bonusRing, peg.transform.position, bonusRingColour, bonusRingMotion, peg.sortingLayerID, peg.sortingOrder + 3);
+        }
+
+        private void OnStoneSplit(StoneSplit e)
+        {
+            if (e.Socket >= _sockets.Length || _sockets[e.Socket].Peg == null) return;
+            var s = _sockets[e.Socket];
+            s.FlashAge = 0f;
+            // Evenly round the needle, with a little jitter so two bursts never look the same.
+            float start = Random.Range(0f, 360f);
+            for (int i = 0; i < splitSparkles; i++)
+            {
+                float angle = (start + 360f * i / splitSparkles) * Mathf.Deg2Rad;
+                var drift = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * (splitSpread * Random.Range(0.7f, 1.1f));
+                _fx.Spawn(splitSparkle, s.Peg.transform.position, splitSparkleColour, splitSparkleMotion,
+                          s.Peg.sortingLayerID, s.Peg.sortingOrder + 3, drift);
+            }
         }
 
         private void Refresh(int i)
@@ -154,12 +186,22 @@ namespace Piglings.Presentation
                 float alpha = blocked ? blockedOpacity : 1f;
                 var faded = new Color(s.BaseColor.r, s.BaseColor.g, s.BaseColor.b, s.BaseColor.a * alpha);
                 s.Body.color = faded;
-                s.Peg.color = faded;
+                s.Peg.color = Flash(s, faded);
                 s.Level.color = new Color(1f, 1f, 1f, alpha);
 
                 Pop(s);
             }
             _fx.Update(Time.deltaTime);
+        }
+
+        // The split flash: the needle jumps to the flash colour and fades back to what it was.
+        private Color Flash(Socket s, Color normal)
+        {
+            if (s.FlashAge < 0f) return normal;
+            s.FlashAge += Time.deltaTime;
+            float t = Mathf.Clamp01(s.FlashAge / splitFlashSeconds);
+            if (t >= 1f) s.FlashAge = -1f;
+            return Color.Lerp(splitFlashColour, normal, t);
         }
 
         // Squash, then stretch, settling: wide-and-short first (the impact), then tall-and-thin, fading out.

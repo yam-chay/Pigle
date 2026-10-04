@@ -1,4 +1,5 @@
 using Piglings.Events;
+using Piglings.Rules;
 using UnityEngine;
 
 namespace Piglings.Simulation
@@ -33,10 +34,21 @@ namespace Piglings.Simulation
 
             if (c.collider.TryGetComponent(out Throwable stone))
             {
-                if (stone.InFlight) _session.HitPeg(_socket, PegHitter.Stone, stone.Id, stone.Chain);
+                if (!stone.InFlight) return;
+                var result = _session.HitPeg(_socket, PegHitter.Stone, stone.Id, stone.Chain);
+                if (result.Outcome == PegOutcome.Split) SplitStone(stone, result.NewPieces);
             }
             else if (c.collider.TryGetComponent(out RobotController robot) && robot.State == RobotState.Falling)
                 _session.HitPeg(_socket, PegHitter.Ball, robot.Id, robot.Chain);
+        }
+
+        // The physics half of a split the Rules decided: the fan and the pieces' size come from the peg's definition.
+        private void SplitStone(Throwable stone, int newPieces)
+        {
+            var placed = _session.State.Sockets[_socket];
+            var peg = _session.FindPeg(placed.PegId);
+            if (peg == null) return;
+            stone.Split(newPieces, peg.FanAngleAt(placed.Level), peg.PieceScale, _socket);
         }
     }
 }

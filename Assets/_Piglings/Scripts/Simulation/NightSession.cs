@@ -231,11 +231,22 @@ namespace Piglings.Simulation
         private PegType ToPegType(PegDefinition peg)
         {
             var multipliers = new float[peg.LevelCount];
-            for (int i = 0; i < multipliers.Length; i++) multipliers[i] = peg.ScoreMultiplierAt(i + 1);
+            var pieces = new int[peg.LevelCount];
+            var shares = new float[peg.LevelCount];
+            for (int i = 0; i < multipliers.Length; i++)
+            {
+                multipliers[i] = peg.ScoreMultiplierAt(i + 1);
+                pieces[i] = peg.PiecesAt(i + 1);
+                shares[i] = peg.ValueShareAt(i + 1);
+            }
             if (peg.Effect == PegEffect.Bouncy && peg.ScoreMultiplierAt(1) <= 1f)
                 Debug.LogWarning($"{peg.name}: Bouncy with a score multiplier of {peg.ScoreMultiplierAt(1)} at level 1 gives no " +
                                  "bonus — fill its Levels list (a new entry starts at 0).", peg);
-            return new PegType(peg.Id, peg.MaxLevel, peg.Mergeable, peg.Effect, multipliers);
+            if (peg.Effect == PegEffect.Splitter && peg.PiecesAt(1) < 2)
+                Debug.LogWarning($"{peg.name}: Splitter with {peg.PiecesAt(1)} piece(s) at level 1 never splits — fill its Levels " +
+                                 "list (a new entry starts at 0).", peg);
+            return new PegType(peg.Id, peg.MaxLevel, peg.Mergeable, peg.Effect, multipliers, pieces, shares,
+                               peg.MaxStonesPerThrow, peg.CountSplitHitsForMastery);
         }
 
         private static int[] ToArray(IReadOnlyList<int> list)

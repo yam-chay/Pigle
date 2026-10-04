@@ -14,6 +14,9 @@ namespace Piglings.Rules
     ///   the knocker's BallKnocks and the knocked robot's KnockedByBall.
     /// - The end-of-night sweep isn't a RobotLostGrip (it's RobotSwept), so it never counts.
     ///
+    /// - A Splitter piece's direct hits count as its stone's hits when the split said so (StoneSplit.PiecesCountForMastery,
+    ///   the Splitter's toggle); otherwise only the original stone's own hits count.
+    ///
     /// Events carry GameIds; the definition ids come from ThrowReleased.Weapon and RobotSpawned.RobotType, kept here
     /// until the thing leaves play.
     /// </summary>
@@ -23,6 +26,7 @@ namespace Piglings.Rules
         private readonly NightState _state;
         private readonly Dictionary<GameId, string> _weapons = new Dictionary<GameId, string>();
         private readonly Dictionary<GameId, string> _robotTypes = new Dictionary<GameId, string>();
+        private readonly Dictionary<GameId, bool> _piecesCount = new Dictionary<GameId, bool>();   // stone → do its pieces count?
 
         public MasteryTally(EventBus bus, NightState state)
         {
@@ -32,6 +36,8 @@ namespace Piglings.Rules
             _bus.Subscribe<RobotLostGrip>(OnLostGrip);
             _bus.Subscribe<ThrowableRemoved>(OnThrowableRemoved);
             _bus.Subscribe<RobotRemoved>(OnRobotRemoved);
+            _bus.Subscribe<StoneSplit>(OnSplit);
+            _bus.Subscribe<StonePieceLaunched>(OnPieceLaunched);
         }
 
         public void Dispose()
@@ -41,6 +47,8 @@ namespace Piglings.Rules
             _bus.Unsubscribe<RobotLostGrip>(OnLostGrip);
             _bus.Unsubscribe<ThrowableRemoved>(OnThrowableRemoved);
             _bus.Unsubscribe<RobotRemoved>(OnRobotRemoved);
+            _bus.Unsubscribe<StoneSplit>(OnSplit);
+            _bus.Unsubscribe<StonePieceLaunched>(OnPieceLaunched);
         }
 
         /// <summary>
@@ -55,7 +63,21 @@ namespace Piglings.Rules
 
         private void OnThrow(ThrowReleased e) => _weapons[e.Throwable] = e.Weapon;
         private void OnSpawned(RobotSpawned e) => _robotTypes[e.Robot] = e.RobotType;
-        private void OnThrowableRemoved(ThrowableRemoved e) => _weapons.Remove(e.Throwable);
+        private void OnThrowableRemoved(ThrowableRemoved e)
+        {
+            _weapons.Remove(e.Throwable);
+            _piecesCount.Remove(e.Throwable);
+        }
+
+        // A piece is credited to its parent's weapon only if this split counts — and only if the parent itself counts
+        // (a piece of an uncounted piece stays uncounted).
+        private void OnSplit(StoneSplit e) => _piecesCount[e.Stone] = e.PiecesCountForMastery;
+
+        private void OnPieceLaunched(StonePieceLaunched e)
+        {
+            if (_piecesCount.TryGetValue(e.Parent, out bool counts) && counts && _weapons.TryGetValue(e.Parent, out var weapon))
+                _weapons[e.Piece] = weapon;
+        }
 
         // A robot's own removal comes after anything its ball could knock, so its type isn't needed past this point.
         private void OnRobotRemoved(RobotRemoved e) => _robotTypes.Remove(e.Robot);

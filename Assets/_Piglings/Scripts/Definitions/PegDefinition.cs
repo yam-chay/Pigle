@@ -30,6 +30,14 @@ namespace Piglings.Definitions
                  "Each effect reads only its own fields. A new first entry starts all zeros in the Inspector — fill every field.")]
         [SerializeField] private List<PegLevel> levels = new List<PegLevel>();
 
+        [Header("Splitter (whatever the level)")]
+        [Tooltip("Most stones one throw can have flying at once, the original included. Splits beyond it are cut short.")]
+        [SerializeField, Min(1)] private int maxStonesPerThrow = 4;
+        [Tooltip("A piece's size (collider and sprite) × the stone's. Gameplay: smaller pieces are harder to hit with.")]
+        [SerializeField, Range(0.3f, 1f)] private float pieceScale = 0.8f;
+        [Tooltip("On: robots a piece knocks loose itself count as stone hits for mastery, like the stone's own.")]
+        [SerializeField] private bool countSplitHitsForMastery = true;
+
         public string Id => id;
         public int MaxLevel => maxLevel;
         public bool Mergeable => mergeable;
@@ -46,6 +54,19 @@ namespace Piglings.Definitions
 
         /// <summary>Bouncy: the peg's physical bounciness at this level (0 = the hold's own material).</summary>
         public float BouncinessAt(int level) => Level(level)?.bounciness ?? 0f;
+
+        /// <summary>Splitter: how many stones a stone becomes at this level, itself included (2 = one new piece).</summary>
+        public int PiecesAt(int level) => Level(level)?.pieces ?? 1;
+
+        /// <summary>Splitter: degrees between the outermost pieces' directions.</summary>
+        public float FanAngleAt(int level) => Level(level)?.fanAngle ?? 0f;
+
+        /// <summary>Splitter: × the stone's value each stone carries after the split (1 = each carries it in full).</summary>
+        public float ValueShareAt(int level) => Level(level)?.valueShare ?? 1f;
+
+        public int MaxStonesPerThrow => maxStonesPerThrow;
+        public float PieceScale => pieceScale;
+        public bool CountSplitHitsForMastery => countSplitHitsForMastery;
     }
 
     /// <summary>
@@ -61,5 +82,13 @@ namespace Piglings.Definitions
         [Min(1f)] public float scoreMultiplier = 2f;
         [Tooltip("Physical bounciness of the peg (0..1+). Balls and stones visibly pop off it. 0 = the hold's own material.")]
         [Min(0f)] public float bounciness = 0.8f;
+
+        [Header("Splitter")]
+        [Tooltip("A thrown stone that hits the needle becomes this many stones, itself included (2, 3…). Robot balls never split.")]
+        [Min(1)] public int pieces = 2;
+        [Tooltip("Degrees between the outermost pieces, fanned around the stone's direction after the bounce. Same speed.")]
+        [Range(0f, 180f)] public float fanAngle = 30f;
+        [Tooltip("Each stone (the original too) carries the stone's value × this. 1 = every piece carries it in full.")]
+        [Min(0f)] public float valueShare = 1f;
     }
 }

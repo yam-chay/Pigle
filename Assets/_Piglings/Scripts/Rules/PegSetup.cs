@@ -11,26 +11,50 @@ namespace Piglings.Rules
         public bool Mergeable { get; }   // throwing one onto a placed peg of the same type levels it up
         public PegEffect Effect { get; }
 
-        // Bouncy: × per level (index 0 = level 1). A level past the list uses the last entry.
-        private readonly float[] _scoreMultipliers;
+        // Splitter, whatever the level.
+        public int MaxStonesPerThrow { get; }         // stones of one throw flying at once, the original included
+        public bool SplitHitsCountForMastery { get; } // pieces' direct hits count as stone hits
+
+        // Per level (index 0 = level 1). A level past the list uses the last entry.
+        private readonly float[] _scoreMultipliers;   // Bouncy
+        private readonly int[] _pieces;               // Splitter: stones after a split, the original included
+        private readonly float[] _valueShares;        // Splitter: × the stone's value each stone carries after it
 
         public PegType(string id, int maxLevel = 3, bool mergeable = true, PegEffect effect = PegEffect.Plain,
-                       IReadOnlyList<float> scoreMultipliers = null)
+                       IReadOnlyList<float> scoreMultipliers = null, IReadOnlyList<int> pieces = null,
+                       IReadOnlyList<float> valueShares = null, int maxStonesPerThrow = 4, bool splitHitsCountForMastery = true)
         {
             Id = id;
             MaxLevel = maxLevel < 1 ? 1 : maxLevel;
             Mergeable = mergeable;
             Effect = effect;
-            _scoreMultipliers = new float[scoreMultipliers?.Count ?? 0];
-            for (int i = 0; i < _scoreMultipliers.Length; i++) _scoreMultipliers[i] = scoreMultipliers[i];
+            _scoreMultipliers = Copy(scoreMultipliers);
+            _pieces = Copy(pieces);
+            _valueShares = Copy(valueShares);
+            MaxStonesPerThrow = maxStonesPerThrow < 1 ? 1 : maxStonesPerThrow;
+            SplitHitsCountForMastery = splitHitsCountForMastery;
         }
 
         /// <summary>Bouncy: the score multiplier at this level. Never below 1 (a 0 from an unfilled Inspector entry = no bonus).</summary>
-        public float ScoreMultiplierAt(int level)
+        public float ScoreMultiplierAt(int level) => System.Math.Max(1f, At(_scoreMultipliers, level, 1f));
+
+        /// <summary>Splitter: stones after a split at this level, the original included. At least 1 (1 = no split).</summary>
+        public int PiecesAt(int level) => System.Math.Max(1, At(_pieces, level, 1));
+
+        /// <summary>Splitter: × the stone's value each stone carries after a split at this level. Never negative.</summary>
+        public float ValueShareAt(int level) => System.Math.Max(0f, At(_valueShares, level, 1f));
+
+        private static T At<T>(T[] perLevel, int level, T none)
         {
-            if (_scoreMultipliers.Length == 0) return 1f;
-            int i = level < 1 ? 0 : level > _scoreMultipliers.Length ? _scoreMultipliers.Length - 1 : level - 1;
-            return _scoreMultipliers[i] < 1f ? 1f : _scoreMultipliers[i];
+            if (perLevel.Length == 0) return none;
+            return perLevel[level < 1 ? 0 : level > perLevel.Length ? perLevel.Length - 1 : level - 1];
+        }
+
+        private static T[] Copy<T>(IReadOnlyList<T> list)
+        {
+            var a = new T[list?.Count ?? 0];
+            for (int i = 0; i < a.Length; i++) a[i] = list[i];
+            return a;
         }
     }
 
