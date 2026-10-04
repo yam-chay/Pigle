@@ -49,10 +49,27 @@ namespace Piglings.Simulation
         [SerializeField] private NightDefinition previewNight;
 
         private readonly List<GameObject> _built = new List<GameObject>();
+        private readonly List<SpriteRenderer> _looks = new List<SpriteRenderer>();   // slice i's look (null for a missing slice)
 
         /// <summary>The top of the built tower (Tower Top's y): the Tower camera frame and the views use it.</summary>
         public float TopY { get; private set; }
         public int SliceCount { get; private set; }
+
+        /// <summary>Slice i's look (its holds are children). Null if out of range. The day phase jiggles and drags it.</summary>
+        public SpriteRenderer SliceLook(int index) => index >= 0 && index < _looks.Count ? _looks[index] : null;
+
+        /// <summary>Where slice i's look belongs (world): the day phase brings a jiggled or dragged slice back here.</summary>
+        public Vector3 SliceHome(int index) =>
+            new Vector3(CentreX, firstSliceY + index * sliceHeight, container != null ? container.position.z : 0f);
+
+        /// <summary>Puts slice i's look back exactly where the build put it (position and rotation).</summary>
+        public void ResetSlice(int index)
+        {
+            var look = SliceLook(index);
+            if (look == null) return;
+            look.transform.position = SliceHome(index);
+            look.transform.localRotation = slicePrefab != null ? slicePrefab.transform.localRotation : Quaternion.identity;
+        }
 
         // The layout, for the day phase's slice picker and its view (TowerLayout does the maths).
         public float SliceHeight => sliceHeight;
@@ -78,8 +95,9 @@ namespace Piglings.Simulation
             for (int i = 0; i < slices.Count; i++)
             {
                 var slice = slices[i];
-                if (slice == null) continue;
+                if (slice == null) { _looks.Add(null); continue; }
                 var look = Instantiate(slicePrefab, container);
+                _looks.Add(look);
                 look.name = $"Slice_{i + 1:00} ({slice.Id})";
                 look.transform.position = new Vector3(container.position.x, firstSliceY + i * sliceHeight, container.position.z);
                 if (slice.Sprite != null) look.sprite = slice.Sprite;
@@ -132,6 +150,7 @@ namespace Piglings.Simulation
                 else DestroyImmediate(go);
             }
             _built.Clear();
+            _looks.Clear();
 
             // A preview left over from before a script reload (this list doesn't survive one): never-saved slices.
             if (container == null) return;

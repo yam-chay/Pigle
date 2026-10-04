@@ -22,6 +22,8 @@ camera rises to the **Night** frame as the moon rises.
 - **New look everywhere:** depth-coloured, points-only popups and the debug-HUD toggle apply to Night.unity too.
 - **UI:** Yam lays out each panel's frame once (Canvas, panel images, anchors, one template row/dot) in a local session;
   the components fill and repeat them from data.
+- **The UI kit (Art/UI) is the look of every button and panel.** Its 9-slice borders are set by the editor menu
+  Piglings ▸ UI ▸ 1 (import settings); selected Images are styled with Piglings ▸ UI ▸ 2 (primary / secondary / panel).
 - **Separate profiles:** `NightSession.profileName` → `piglings_<name>.json`: "dev" in Night.unity, "campaign" in TestNight.
 - **Save stores causes only:** dawns per night id (unlocks are derived), the current night index (navigation), peg triggers
   per merged level (copies are derived), tower choices per night. Save stays v1 (additive sections).
@@ -83,8 +85,10 @@ Camera moves **only between phases**; input locked while moving; ease in-out. Ca
 - **Materials pile** (`room_materials.png`, pivot Bottom, `room_materials_glow.png` white glow behind it) in the right
   corner. Interactables idle with a faint outline; hover on the pile: lift, glow, solid outline, sparkles, a small camera
   nudge (~5% pan/zoom), a material sound (hook only). Click → Tower frame.
-- **Slice placement (MVP):** click a slot to cycle through the available slices; the tower rebuilds live (`TowerBuilder.Build`
-  + `PegBoard.Rebuild`, before the night begins only); the choice is saved (`Progression.SetTower`).
+- **Slice placement:** the hovered slice jiggles; drag a slice out of the tower onto another slot to swap them, or drag one
+  from the tray beside the tower onto a slot to replace it; anywhere else it slides back (the tower is always whole). The
+  tower rebuilds live (`TowerBuilder.Build` + `PegBoard.Rebuild`, before the night begins only); the choice is saved
+  (`Progression.SetTower`). *(Was "click a slot to cycle"; changed after the first playtest of it.)*
 - Hover/click input lives in Simulation (`BarnInteraction`); views only read it.
 - **Screen UI:** night sign top-left ("NIGHT n · H HOURS"), Start night ☾ top-right.
 

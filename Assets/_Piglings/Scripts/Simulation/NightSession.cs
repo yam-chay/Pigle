@@ -311,28 +311,49 @@ namespace Piglings.Simulation
                                     && State.Phase == NightPhase.Dusk;
 
         /// <summary>
-        /// The day phase: slice <paramref name="index"/> becomes the next (+1) or previous (−1) of the campaign's slices with
-        /// the same hold count — the night's sockets were counted at load and can't change. The tower rebuilds now
-        /// (TowerBuilder → PegBoard re-binds its holds) and the choice is saved for this night. False = nothing changed.
+        /// The slices the player can build with tonight: the campaign's, with the same hold count as tonight's tower (a
+        /// night's sockets were counted at load and can't change). The day phase's tray shows these.
         /// </summary>
-        public bool CycleSlice(int index, int step)
+        public List<WallSliceDefinition> SlicesToChoose()
         {
-            if (!CanEditTower || index < 0 || index >= _tower.Count) return false;
-            var current = _tower[index];
-            var available = new List<string>();
+            var list = new List<WallSliceDefinition>();
+            if (!IsCampaign || _tower.Count == 0) return list;
+            int holds = _tower[0].Holds.Length;
             foreach (var slice in campaign.Slices)
-                if (slice != null && slice.Holds.Length == current.Holds.Length) available.Add(slice.Id);
-            string next = CampaignPlan.CycleSlice(available, current.Id, step);
-            var picked = next != null ? campaign.FindSlice(next) : null;
-            if (picked == null || picked == current) return false;
+                if (slice != null && slice.Holds.Length == holds && !list.Contains(slice)) list.Add(slice);
+            return list;
+        }
 
-            _tower[index] = picked;
+        /// <summary>The day phase: slice <paramref name="index"/> becomes <paramref name="slice"/> (dragged in from the tray). False = nothing changed.</summary>
+        public bool SetSlice(int index, WallSliceDefinition slice)
+        {
+            if (!CanEditTower || index < 0 || index >= _tower.Count || slice == null || slice == _tower[index]) return false;
+            if (!SlicesToChoose().Contains(slice)) return false;
+            _tower[index] = slice;
+            ApplyTower($"slice {index + 1} → {slice.Id}");
+            return true;
+        }
+
+        /// <summary>The day phase: two slices of the tower trade places (one dragged onto the other). False = nothing changed.</summary>
+        public bool SwapSlices(int a, int b)
+        {
+            if (!CanEditTower || a == b || a < 0 || b < 0 || a >= _tower.Count || b >= _tower.Count) return false;
+            if (_tower[a] == _tower[b]) return false;
+            var held = _tower[a];
+            _tower[a] = _tower[b];
+            _tower[b] = held;
+            ApplyTower($"slices {a + 1} ⇄ {b + 1}");
+            return true;
+        }
+
+        // The tower changed: rebuild it now (TowerBuilder → PegBoard re-binds its holds) and save the night's choice.
+        private void ApplyTower(string why)
+        {
             tower.Build(_tower);
             var ids = new List<string>();
             foreach (var slice in _tower) ids.Add(slice.Id);
             _progression.SetTower(_night.Id, ids);
-            Save($"slice {index + 1} → {picked.Id} ({_night.Id}: {string.Join(", ", ids)})");
-            return true;
+            Save($"{why} ({_night.Id}: {string.Join(", ", ids)})");
         }
 
         /// <summary>
