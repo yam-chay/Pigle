@@ -2808,6 +2808,8 @@ MonoBehaviour:
   night: {fileID: 11400000, guid: 3f672aa5176394a47ab6bce1dd0f859c, type: 2}
   scoring: {fileID: 11400000, guid: fa51ede7d84858d4b928e1018f74218c, type: 2}
   board: {fileID: 1064185511}
+  profileName: 'campaign '
+  startImmediately: 1
 --- !u!4 &1068153026
 Transform:
   m_ObjectHideFlags: 0
