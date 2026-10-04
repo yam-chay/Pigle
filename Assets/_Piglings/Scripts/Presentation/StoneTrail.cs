@@ -53,7 +53,7 @@ namespace Piglings.Presentation
                 trail.startColor = head;
                 trail.endColor = tail;
                 // No definition (a stone never given a level): keep the Inspector width.
-                if (stone.Definition != null) trail.widthMultiplier = 2f * stone.Definition.RadiusAt(stone.Level) * widthOfStone;
+                if (stone.Definition != null) trail.widthMultiplier = 2f * stone.Definition.RadiusAt(stone.Level) * stone.SizeScale * widthOfStone;
             }
             trail.emitting = flying;
         }

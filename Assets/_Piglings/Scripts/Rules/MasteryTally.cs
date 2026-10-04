@@ -14,6 +14,12 @@ namespace Piglings.Rules
     ///   the knocker's BallKnocks and the knocked robot's KnockedByBall.
     /// - The end-of-night sweep isn't a RobotLostGrip (it's RobotSwept), so it never counts.
     ///
+    /// - A Bomb's victims (CauseKind.Peg) count for the peg type that exploded (PegKnocks), whatever set it off — and as
+    ///   stone hits only when the stone itself (or a piece that counts) set it off by hitting it. A ball-triggered
+    ///   explosion gives the stone nothing.
+    /// - A Splitter piece's direct hits count as its stone's hits when the split said so (StoneSplit.PiecesCountForMastery,
+    ///   the Splitter's toggle); otherwise only the original stone's own hits count.
+    ///
     /// Events carry GameIds; the definition ids come from ThrowReleased.Weapon and RobotSpawned.RobotType, kept here
     /// until the thing leaves play.
     /// </summary>
@@ -23,6 +29,9 @@ namespace Piglings.Rules
         private readonly NightState _state;
         private readonly Dictionary<GameId, string> _weapons = new Dictionary<GameId, string>();
         private readonly Dictionary<GameId, string> _robotTypes = new Dictionary<GameId, string>();
+        private readonly Dictionary<GameId, bool> _piecesCount = new Dictionary<GameId, bool>();   // stone → do its pieces count?
+        private readonly Dictionary<GameId, string> _explosionPegs = new Dictionary<GameId, string>();    // explosion → peg id
+        private readonly Dictionary<GameId, string> _explosionWeapons = new Dictionary<GameId, string>(); // explosion → stone's weapon
 
         public MasteryTally(EventBus bus, NightState state)
         {
@@ -32,6 +41,9 @@ namespace Piglings.Rules
             _bus.Subscribe<RobotLostGrip>(OnLostGrip);
             _bus.Subscribe<ThrowableRemoved>(OnThrowableRemoved);
             _bus.Subscribe<RobotRemoved>(OnRobotRemoved);
+            _bus.Subscribe<StoneSplit>(OnSplit);
+            _bus.Subscribe<StonePieceLaunched>(OnPieceLaunched);
+            _bus.Subscribe<BombExploded>(OnBombExploded);
         }
 
         public void Dispose()
@@ -41,6 +53,9 @@ namespace Piglings.Rules
             _bus.Unsubscribe<RobotLostGrip>(OnLostGrip);
             _bus.Unsubscribe<ThrowableRemoved>(OnThrowableRemoved);
             _bus.Unsubscribe<RobotRemoved>(OnRobotRemoved);
+            _bus.Unsubscribe<StoneSplit>(OnSplit);
+            _bus.Unsubscribe<StonePieceLaunched>(OnPieceLaunched);
+            _bus.Unsubscribe<BombExploded>(OnBombExploded);
         }
 
         /// <summary>
@@ -55,7 +70,31 @@ namespace Piglings.Rules
 
         private void OnThrow(ThrowReleased e) => _weapons[e.Throwable] = e.Weapon;
         private void OnSpawned(RobotSpawned e) => _robotTypes[e.Robot] = e.RobotType;
-        private void OnThrowableRemoved(ThrowableRemoved e) => _weapons.Remove(e.Throwable);
+        private void OnThrowableRemoved(ThrowableRemoved e)
+        {
+            _weapons.Remove(e.Throwable);
+            _piecesCount.Remove(e.Throwable);
+        }
+
+        // A piece is credited to its parent's weapon only if this split counts — and only if the parent itself counts
+        // (a piece of an uncounted piece stays uncounted).
+        private void OnSplit(StoneSplit e) => _piecesCount[e.Stone] = e.PiecesCountForMastery;
+
+        // Explosions live only as long as their knocks (synchronous, inside the Simulation's handling of the hit), but
+        // nights are short and an explosion is rare: these maps aren't worth pruning.
+        private void OnBombExploded(BombExploded e)
+        {
+            _explosionPegs[e.Explosion] = e.PegId;
+            // _weapons only holds stones that count (a piece whose split didn't count isn't in it), so this one lookup
+            // is the whole rule: the stone or a counted piece → the stone's hits; a ball → nothing.
+            if (e.Trigger == PegHitter.Stone && _weapons.TryGetValue(e.TriggerId, out var weapon)) _explosionWeapons[e.Explosion] = weapon;
+        }
+
+        private void OnPieceLaunched(StonePieceLaunched e)
+        {
+            if (_piecesCount.TryGetValue(e.Parent, out bool counts) && counts && _weapons.TryGetValue(e.Parent, out var weapon))
+                _weapons[e.Piece] = weapon;
+        }
 
         // A robot's own removal comes after anything its ball could knock, so its type isn't needed past this point.
         private void OnRobotRemoved(RobotRemoved e) => _robotTypes.Remove(e.Robot);
@@ -74,6 +113,11 @@ namespace Piglings.Rules
             {
                 if (_robotTypes.TryGetValue(e.Cause.Source, out var knocker)) Add(_state.BallKnocks, knocker, 1);
                 if (_robotTypes.TryGetValue(e.Robot, out var knocked)) Add(_state.KnockedByBall, knocked, 1);
+            }
+            else if (e.Cause.Kind == CauseKind.Peg)
+            {
+                if (_explosionPegs.TryGetValue(e.Cause.Source, out var peg)) Add(_state.PegKnocks, peg, 1);
+                if (_explosionWeapons.TryGetValue(e.Cause.Source, out var weapon)) Add(_state.WeaponHits, weapon, 1);
             }
         }
 

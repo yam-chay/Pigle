@@ -25,6 +25,12 @@ namespace Piglings.Rules
 
             // A hitter's extra peg multiplier (the part above ×1) from the Bouncy pegs it bounced off. Same lifetime.
             public readonly Dictionary<GameId, float> PegExtra = new Dictionary<GameId, float>();
+
+            // The thrown stones of this chain still flying: the original and any Splitter pieces (InPlay holds robots too).
+            public readonly HashSet<GameId> Stones = new HashSet<GameId>();
+
+            // How deep each robot of this chain is (a Bomb set off by its ball knocks robots one deeper).
+            public readonly Dictionary<GameId, int> Depths = new Dictionary<GameId, int>();
         }
 
         private readonly EventBus _bus;
@@ -44,6 +50,7 @@ namespace Piglings.Rules
             _bus.Subscribe<RobotLostGrip>(OnLostGrip);
             _bus.Subscribe<RobotRemoved>(OnRobotRemoved);
             _bus.Subscribe<ThrowableRemoved>(OnThrowableRemoved);
+            _bus.Subscribe<StonePieceLaunched>(OnPieceLaunched);
         }
 
         public void Dispose()
@@ -52,6 +59,7 @@ namespace Piglings.Rules
             _bus.Unsubscribe<RobotLostGrip>(OnLostGrip);
             _bus.Unsubscribe<RobotRemoved>(OnRobotRemoved);
             _bus.Unsubscribe<ThrowableRemoved>(OnThrowableRemoved);
+            _bus.Unsubscribe<StonePieceLaunched>(OnPieceLaunched);
         }
 
         /// <summary>Is this chain still in play? (A swept robot falls with ChainId.None, which never is.)</summary>
@@ -70,10 +78,52 @@ namespace Piglings.Rules
             return 1f + now;
         }
 
+        /// <summary>How many stones of this chain are flying right now (the original and any pieces). 0 if it isn't open.</summary>
+        public int StonesInFlight(ChainId chain) =>
+            !chain.IsNone && _open.TryGetValue(chain.Id, out var c) ? c.Stones.Count : 0;
+
+        /// <summary>
+        /// Splitter: a stone's value is shared out — it now carries its current value × share (its pieces copy that when
+        /// they launch). Rounded once; share 1 changes nothing.
+        /// </summary>
+        public void ShareStoneValue(ChainId chain, GameId stone, float share)
+        {
+            if (chain.IsNone || !_open.TryGetValue(chain.Id, out var c)) return;
+            if (!c.Carried.TryGetValue(stone, out int value)) value = _curve.StoneValue;
+            double shared = System.Math.Round(value * (double)System.Math.Max(0f, share), System.MidpointRounding.AwayFromZero);
+            c.Carried[stone] = shared >= int.MaxValue ? int.MaxValue : (int)shared;
+        }
+
+        /// <summary>A robot's depth in this chain (from its RobotLostGrip), or -1 if it isn't one of the chain's robots.</summary>
+        public int DepthOf(ChainId chain, GameId robot) =>
+            !chain.IsNone && _open.TryGetValue(chain.Id, out var c) && c.Depths.TryGetValue(robot, out int d) ? d : -1;
+
+        /// <summary>
+        /// Bomb: the explosion becomes a hitter of this chain, starting with what its trigger carries now. It grows with
+        /// each robot it knocks loose, like a stone that hits several; the trigger itself doesn't grow from those.
+        /// </summary>
+        public void StartExplosion(ChainId chain, GameId explosion, GameId trigger)
+        {
+            if (chain.IsNone || !_open.TryGetValue(chain.Id, out var c)) return;
+            if (!c.Carried.TryGetValue(trigger, out int value)) value = _curve.StoneValue;
+            c.Carried[explosion] = value;
+        }
+
+        // A piece joins its parent's chain: the chain now waits for it too, and it carries what its parent carries.
+        private void OnPieceLaunched(StonePieceLaunched e)
+        {
+            if (!_open.TryGetValue(e.Chain.Id, out var c)) return;
+            c.InPlay.Add(e.Piece);
+            c.Stones.Add(e.Piece);
+            if (!c.Carried.TryGetValue(e.Parent, out int value)) value = _curve.StoneValue;
+            c.Carried[e.Piece] = value;
+        }
+
         private void OnThrow(ThrowReleased e)
         {
             var c = new Open();
             c.InPlay.Add(e.Throwable);
+            c.Stones.Add(e.Throwable);
             // Fixed at the throw: a chain scores at the hour it was thrown in, even if the next hour starts (in a
             // placement round) while it's still falling.
             c.Hour = _state.Hour;
@@ -87,6 +137,7 @@ namespace Piglings.Rules
         {
             if (!_open.TryGetValue(e.Chain.Id, out var c)) return;
             c.InPlay.Add(e.Robot);
+            c.Depths[e.Robot] = e.Cause.Depth;
             c.Dropped++;
             if (e.Cause.Depth > c.MaxDepth) c.MaxDepth = e.Cause.Depth;
             _state.RobotsDropped++;
@@ -118,7 +169,11 @@ namespace Piglings.Rules
             Release(e.Chain, e.Robot);
         }
 
-        private void OnThrowableRemoved(ThrowableRemoved e) => Release(e.Chain, e.Throwable);
+        private void OnThrowableRemoved(ThrowableRemoved e)
+        {
+            if (!e.Chain.IsNone && _open.TryGetValue(e.Chain.Id, out var c)) c.Stones.Remove(e.Throwable);
+            Release(e.Chain, e.Throwable);
+        }
 
         private void Release(ChainId chain, GameId member)
         {

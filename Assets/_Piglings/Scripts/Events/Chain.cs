@@ -17,7 +17,8 @@ namespace Piglings.Events
     {
         Throwable,   // the pig's thrown object hit it
         RobotBall,   // another robot's falling ball hit it
-        Hazard       // traps, boiling pot, etc. (later)
+        Hazard,      // traps, boiling pot, etc. (later)
+        Peg          // a peg's effect knocked it loose: a Bomb's explosion (Source = the explosion's own GameId)
     }
 
     /// <summary>
@@ -39,5 +40,12 @@ namespace Piglings.Events
 
         /// <summary>A falling robot passes its own depth + 1 to the robot it knocks off.</summary>
         public static Attribution FromRobotBall(GameId robot, int robotDepth) => new Attribution(CauseKind.RobotBall, robot, robotDepth + 1);
+
+        /// <summary>
+        /// A Bomb's explosion knocked it loose. The explosion is a hitter of its own (it starts with its trigger's value and
+        /// grows per victim), so Source is the explosion's id. Depth is fixed by the Rules: 1 when a stone set the bomb
+        /// off, the ball's depth + 1 when a ball did.
+        /// </summary>
+        public static Attribution FromPeg(GameId explosion, int depth) => new Attribution(CauseKind.Peg, explosion, depth);
     }
 }

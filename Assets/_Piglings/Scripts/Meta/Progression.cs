@@ -47,6 +47,10 @@ namespace Piglings.Meta
                     var knocked = Profile.Robot(e.Id);
                     knocked.KnockedByBall = AddClamped(knocked.KnockedByBall, gained);
                     break;
+                case MasteryStat.PegKnocks:
+                    var peg = Profile.Peg(e.Id);
+                    peg.Knocks = AddClamped(peg.Knocks, gained);
+                    break;
                 // Score (Barn): not kept, see above.
             }
         }

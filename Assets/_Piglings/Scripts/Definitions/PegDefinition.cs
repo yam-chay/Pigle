@@ -23,6 +23,8 @@ namespace Piglings.Definitions
         [SerializeField] private Sprite sprite;
         [Tooltip("Used only when Sprite is empty, so a peg without art still reads as different from a plain hold.")]
         [SerializeField] private Color fallbackTint = new Color(0.6f, 0.9f, 1f);
+        [Tooltip("Bomb: how it looks while spent (after going off, until it recharges). Empty = its sprite, greyed.")]
+        [SerializeField] private Sprite spentSprite;
 
         [Tooltip("What it does when something hits it. Plain = nothing (a hold with a look).")]
         [SerializeField] private PegEffect effect = PegEffect.Plain;
@@ -30,11 +32,20 @@ namespace Piglings.Definitions
                  "Each effect reads only its own fields. A new first entry starts all zeros in the Inspector — fill every field.")]
         [SerializeField] private List<PegLevel> levels = new List<PegLevel>();
 
+        [Header("Splitter (whatever the level)")]
+        [Tooltip("Most stones one throw can have flying at once, the original included. Splits beyond it are cut short.")]
+        [SerializeField, Min(1)] private int maxStonesPerThrow = 4;
+        [Tooltip("A piece's size (collider and sprite) × the stone's. Gameplay: smaller pieces are harder to hit with.")]
+        [SerializeField, Range(0.3f, 1f)] private float pieceScale = 0.8f;
+        [Tooltip("On: robots a piece knocks loose itself count as stone hits for mastery, like the stone's own.")]
+        [SerializeField] private bool countSplitHitsForMastery = true;
+
         public string Id => id;
         public int MaxLevel => maxLevel;
         public bool Mergeable => mergeable;
         public Sprite Sprite => sprite;
         public Color FallbackTint => fallbackTint;
+        public Sprite SpentSprite => spentSprite;
         public PegEffect Effect => effect;
         public int LevelCount => levels.Count;
 
@@ -46,6 +57,28 @@ namespace Piglings.Definitions
 
         /// <summary>Bouncy: the peg's physical bounciness at this level (0 = the hold's own material).</summary>
         public float BouncinessAt(int level) => Level(level)?.bounciness ?? 0f;
+
+        /// <summary>Splitter: how many stones a stone becomes at this level, itself included (2 = one new piece).</summary>
+        public int PiecesAt(int level) => Level(level)?.pieces ?? 1;
+
+        /// <summary>Splitter: degrees between the outermost pieces' directions.</summary>
+        public float FanAngleAt(int level) => Level(level)?.fanAngle ?? 0f;
+
+        /// <summary>Splitter: × the stone's value each stone carries after the split (1 = each carries it in full).</summary>
+        public float ValueShareAt(int level) => Level(level)?.valueShare ?? 1f;
+
+        /// <summary>Bomb: climbing robots within this many world units of it are knocked loose.</summary>
+        public float BombRadiusAt(int level) => Level(level)?.bombRadius ?? 0f;
+
+        /// <summary>Bomb: seconds it stays spent after going off (counted only while the wall moves).</summary>
+        public float CooldownAt(int level) => Level(level)?.cooldownSeconds ?? 0f;
+
+        /// <summary>Bomb: the push given to falling balls and flying stones in its radius (0 = none).</summary>
+        public float ImpulseAt(int level) => Level(level)?.impulse ?? 0f;
+
+        public int MaxStonesPerThrow => maxStonesPerThrow;
+        public float PieceScale => pieceScale;
+        public bool CountSplitHitsForMastery => countSplitHitsForMastery;
     }
 
     /// <summary>
@@ -61,5 +94,21 @@ namespace Piglings.Definitions
         [Min(1f)] public float scoreMultiplier = 2f;
         [Tooltip("Physical bounciness of the peg (0..1+). Balls and stones visibly pop off it. 0 = the hold's own material.")]
         [Min(0f)] public float bounciness = 0.8f;
+
+        [Header("Splitter")]
+        [Tooltip("A thrown stone that hits the needle becomes this many stones, itself included (2, 3…). Robot balls never split.")]
+        [Min(1)] public int pieces = 2;
+        [Tooltip("Degrees between the outermost pieces, fanned around the stone's direction after the bounce. Same speed.")]
+        [Range(0f, 180f)] public float fanAngle = 30f;
+        [Tooltip("Each stone (the original too) carries the stone's value × this. 1 = every piece carries it in full.")]
+        [Min(0f)] public float valueShare = 1f;
+
+        [Header("Bomb")]
+        [Tooltip("A stone or falling ball that hits it knocks every CLIMBING robot within this radius (world units) loose.")]
+        [Min(0f)] public float bombRadius = 1f;
+        [Tooltip("Seconds it stays spent (a plain hold) after going off. Counts only while the wall moves.")]
+        [Min(0f)] public float cooldownSeconds = 8f;
+        [Tooltip("Push given to falling balls and flying stones in the radius, away from the bomb (0 = none).")]
+        [Min(0f)] public float impulse = 0.5f;
     }
 }
