@@ -79,6 +79,8 @@ namespace Piglings.Events
     /// Total = Received × Multiplier × HourMultiplier, rounded once; Carries = what this robot's own ball now carries.
     /// Hour / HourMultiplier: the hour the chain's stone was thrown in, and its multiplier (×1 in hour 1) — fixed at
     /// the throw, the same as ChainScored.Hour, so robot and chain popups always agree.
+    /// PegMultiplier: the Bouncy pegs its hitter bounced off before this hit (×1 = none; two ×2 pegs = ×3). Like the hour,
+    /// it multiplies what this robot scores, never what it carries on.
     /// Order is its place in the chain (1 = first to lose grip).
     /// Presentation shows "Received ×Multiplier", then "+Total".
     /// </summary>
@@ -87,12 +89,14 @@ namespace Piglings.Events
         public readonly GameId Robot; public readonly ChainId Chain;
         public readonly int Order; public readonly int Depth;
         public readonly int Received; public readonly float Multiplier; public readonly int Hour; public readonly float HourMultiplier;
+        public readonly float PegMultiplier;
         public readonly int Total; public readonly int Carries;
         public RobotScored(GameId robot, ChainId chain, int order, int depth, int received, float multiplier, int hour, float hourMultiplier,
-                           int total, int carries)
+                           float pegMultiplier, int total, int carries)
         {
             Robot = robot; Chain = chain; Order = order; Depth = depth;
-            Received = received; Multiplier = multiplier; Hour = hour; HourMultiplier = hourMultiplier; Total = total; Carries = carries;
+            Received = received; Multiplier = multiplier; Hour = hour; HourMultiplier = hourMultiplier; PegMultiplier = pegMultiplier;
+            Total = total; Carries = carries;
         }
     }
 
@@ -189,6 +193,41 @@ namespace Piglings.Events
     {
         public readonly int Socket; public readonly string PegId; public readonly int Level;
         public PegMerged(int socket, string pegId, int level) { Socket = socket; PegId = pegId; Level = level; }
+    }
+
+    /// <summary>What a placed peg does when something hits it. Plain = nothing (a hold with a look).</summary>
+    public enum PegEffect { Plain, Bouncy, Splitter, Bomb }
+
+    /// <summary>What hit a peg: a thrown stone (or a piece of one), or a falling robot ball.</summary>
+    public enum PegHitter { Stone, Ball }
+
+    /// <summary>
+    /// Something hit a placed peg (published by the Rules from NightSession.HitPeg; empty sockets publish nothing, so
+    /// balls bouncing through plain holds don't flood the bus). A fact for views; the effect, if any, has its own event.
+    /// </summary>
+    public readonly struct PegHit
+    {
+        public readonly int Socket; public readonly string PegId; public readonly int Level; public readonly PegEffect Effect;
+        public readonly PegHitter Hitter; public readonly GameId HitterId; public readonly ChainId Chain;
+        public PegHit(int socket, string pegId, int level, PegEffect effect, PegHitter hitter, GameId hitterId, ChainId chain)
+        {
+            Socket = socket; PegId = pegId; Level = level; Effect = effect; Hitter = hitter; HitterId = hitterId; Chain = chain;
+        }
+    }
+
+    /// <summary>
+    /// A falling ball bounced off a Bouncy peg and got its bonus (once per peg per ball). Multiplier = this peg's (×2 at
+    /// level 1); BallMultiplier = the ball's total now (pegs stack on the extra part: two ×2 pegs = ×3). It multiplies what
+    /// the robots this ball knocks loose from now on score.
+    /// </summary>
+    public readonly struct PegBounced
+    {
+        public readonly int Socket; public readonly GameId Ball; public readonly ChainId Chain;
+        public readonly float Multiplier; public readonly float BallMultiplier;
+        public PegBounced(int socket, GameId ball, ChainId chain, float multiplier, float ballMultiplier)
+        {
+            Socket = socket; Ball = ball; Chain = chain; Multiplier = multiplier; BallMultiplier = ballMultiplier;
+        }
     }
 
     /// <summary>

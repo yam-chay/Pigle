@@ -86,10 +86,12 @@ namespace Piglings.Presentation
             // The hour's multiplier gets its own tag ("H2×1.5"), so the player sees which part the hour added.
             // (Each hour's own colours come with the hour palettes.)
             bool hourBonus = e.HourMultiplier > 1f;
+            bool pegBonus = e.PegMultiplier > 1f;   // its hitter bounced off Bouncy pegs
             string why = e.Multiplier > 1f ? $"{e.Received} ×{e.Multiplier:0.##}" : $"{e.Received}";
             if (hourBonus) why += $"  H{e.Hour}×{e.HourMultiplier:0.##}";
+            if (pegBonus) why += $"  B×{e.PegMultiplier:0.##}";
 
-            if (e.Multiplier > 1f || hourBonus) Spawn(t.position + robotOffset, why, robotColor, depthT, scale, depthT, total);
+            if (e.Multiplier > 1f || hourBonus || pegBonus) Spawn(t.position + robotOffset, why, robotColor, depthT, scale, depthT, total);
             else Spawn(t.position + robotOffset, total, robotColor, depthT, scale, depthT);
         }
 

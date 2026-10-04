@@ -53,13 +53,14 @@ namespace Piglings.Rules
         public float HourMultiplier(int hoursPassed) => 1f + HourMultiplierStep * Math.Max(0, hoursPassed);
 
         /// <summary>
-        /// What a robot knocked loose scores: received × depth multiplier × hour multiplier, rounded once.
+        /// What a robot knocked loose scores: received × depth multiplier × hour multiplier × peg multiplier, rounded once.
         /// The one place chain points are multiplied. ChainTracker passes the hour multiplier its chain was thrown
-        /// with. Rounded once at the end (not per factor), so ×1.5 hours don't stack rounding errors.
+        /// with, and the Bouncy pegs its hitter bounced off. Rounded once at the end (not per factor), so ×1.5 hours
+        /// don't stack rounding errors.
         /// </summary>
-        public int RobotTotal(int received, int depth, float hourMultiplier = 1f)
+        public int RobotTotal(int received, int depth, float hourMultiplier = 1f, float pegMultiplier = 1f)
         {
-            double total = received * (double)Multiplier(depth) * Math.Max(1f, hourMultiplier);
+            double total = received * (double)Multiplier(depth) * Math.Max(1f, hourMultiplier) * Math.Max(1f, pegMultiplier);
             return ClampToInt(Math.Round(total, MidpointRounding.AwayFromZero));
         }
 

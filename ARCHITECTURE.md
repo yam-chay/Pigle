@@ -22,7 +22,7 @@ Presentation  Unity. Views, rigs, animation, HUD. Reads state and reacts to even
 | Piglings.Runtime | Events | no |
 | Piglings.Rules | Events, Runtime | no |
 | Piglings.Meta | Events, Runtime (+ Newtonsoft.Json.dll, precompiled) | no |
-| Piglings.Definitions | — | yes |
+| Piglings.Definitions | Events (shared enums only, e.g. `PegEffect`) | yes |
 | Piglings.Simulation | Events, Runtime, Rules, Meta, Definitions | yes |
 | Piglings.Presentation | Events, Runtime, Meta, Definitions, Simulation | yes |
 | Piglings.Editor | — (editor-only tooling) | yes, Editor platform only |
@@ -38,7 +38,7 @@ Presentation  Unity. Views, rigs, animation, HUD. Reads state and reacts to even
 There is no bootstrap scene, no bootstrap assembly, no service locator, no singletons, no `DontDestroyOnLoad`.
 
 Each playable scene has exactly one **scene-scoped owner**. For the prototype that's `NightSession` (Simulation):
-- `Awake` (execution order -1000) creates `EventBus`, `NightState`, `IdAllocator`, the Rules (`ChainTracker`, then `NightReferee`, then `MasteryTally`), loads the player's profile from disk and creates Meta's `Progression` around it.
+- `Awake` (execution order -1000) creates `EventBus`, `NightState`, `IdAllocator`, the Rules (`ChainTracker`, then `NightReferee`, then `PegEffects` and `MasteryTally`), binds the `PegBoard` (every Hold learns its socket), loads the player's profile from disk and creates Meta's `Progression` around it.
 - Every scene object that needs them gets the `NightSession` through a **serialized field** in the Inspector. No `FindObjectOfType`, no statics.
 - When the scene unloads, everything goes with it.
 
@@ -80,6 +80,12 @@ Running(hour 1) ──threshold──▶ PegPlacement ──▶ Running(hour 2) 
 - `PegShelf` (on peg_shelf): one pile per shelf type, mirroring `NightState.Shelf` with real peg objects — the shared pile pieces (`ItemPile`, `HopMover`, `PileLayout`). In a round with throws left the next peg hops to the hand (ThrowOrigin) by itself; `SwapNext` / `Pick` hop it back to its slot and bring another; after the round it hops back. The stone pile puts its held stone back during a round (the hand is the peg's).
 - `PegThrower`: press-to-aim / release like the stone, same `ThrowSolver` arc, but the aim **snaps to the nearest valid socket** within `snapRadius` of the pointer and is solved to it; none = red line, release refused, nothing used. The peg is moved along the solved arc (no physics: can't hit robots, never a chain), then `NightSession.PlacePeg` — refused = it hops back. Right mouse = `SwapNext`; a press that starts on a shelf peg is a pick, never an aim.
 - Presentation: `PegBoardView` (placed sprites on the Holds, level 2/3 overlays; in a round, pulsing highlight on valid sockets and fading of pegs the held one can't go on), `PegShelfView` (pulse + glow in a round, hover scale/glow + optional cursor; hover comes from `PegThrower.HoveredShelfPeg`, so Presentation needs no input), `PlacementFade` (sprites under an object fade in a round — the stone pile), `PlacementDim` (a dark overlay fades in), `RobotView.placementOpacity` (robots fade, Animator-safe). `TrajectoryView` / `PigView` take the peg thrower too. All sprites are Inspector fields; a missing one falls back (plain hold sprite tinted).
+
+**Peg effects (M8.5)** — what a placed peg does when something hits it. Behaviour keys off `PegDefinition.effect` (`PegEffect`, in Events: Plain / Bouncy / Splitter / Bomb), never the id string. Strength comes from the peg's level through `PegDefinition.levels` (entry 0 = level 1; a level past the list uses the last entry), like the stone's levels.
+- **The hit**: `Hold.OnCollisionEnter2D` (only for an occupied socket; a flying stone or a falling ball) → `NightSession.HitPeg(socket, hitter, id, chain)` → `Rules.PegEffects.Hit`, which reads the peg from `NightState.Sockets`, publishes `PegHit` (a fact, plain pegs too) and the effect's own event, and returns a `PegHitResult` for the physics part. A method call, not an event, because the Simulation needs the answer on the spot (the `PlacePeg` precedent). Empty sockets report nothing. Nothing after the night ends.
+- **Bouncy**: a falling ball that hits it gets the peg's score multiplier (×2 at level 1, ×3 at level 2…) on what its victims **score** from then on — never on what they carry (like the hour multiplier, so it never compounds). Once per peg per ball. Several Bouncy pegs add on the extra part: each adds (multiplier − 1), so two ×2 pegs = ×3. Lives in `ChainTracker` with the chain (`AddPegExtra`, `RobotScored.PegMultiplier`) and goes when the chain closes. Stones bounce off physically but get no bonus. Physics: `PegBoard` gives the socket's collider a runtime `PhysicsMaterial2D` with the level's bounciness (same friction as the hold) on `PegPlaced` / `PegMerged`.
+- **Views**: `PegBoardView` draws a placed peg on a child renderer (the Hold's own one hides under it), so the peg can squash-stretch on every Bouncy hit without scaling the Hold's collider; a ball that gets the bonus also gets a small gold ring (fx_burst_ring). The score popup tags it `B×2`.
+- *Coming:* Splitter (M8.5b) and Bomb (M8.5c). Bombs do nothing during PegPlacement (a plain hold, no charge used) — chains thrown after a threshold's crossing can still be falling then (see "Night phases").
 
 Events are facts, never commands. Nobody "asks" through the bus.
 

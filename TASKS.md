@@ -1,6 +1,6 @@
 # TASKS — Piglings prototype
 
-> **Next up (2026-10-03):** M9 weapon mastery + the first real save, for the vertical slice with playtesters — M9.1 counting + save ✔ → M9.2 the level in play ✔ → M9.3 juice + trail (☁ done, 🖥 wire + tune; closes M6.3). Then the M8 leftovers (M8.4 hour palettes, M8.5 Bouncy) → decide the empty-pile "dead time" → M5.2.
+> **Next up (2026-10-04):** M9 weapon mastery + save ✔ (M9.1–M9.3, wired and tuned). Next: M8.5 peg effects (a Bouncy ☁ done → b Splitter → c Bomb) → M8.4 hour palettes → decide the empty-pile "dead time" → M5.2 — then the vertical slice goes to playtesters.
 > Why: the hours change what a night is (no more Stay/Leave), so M5.2 tunes the new loop, not the old one. M5.2 still needs the theft (M7.3) and the stone (M6.3) readable.
 
 ☁ = cloud session OK (code/docs only) · 🖥 = local, needs the Unity editor (use Claude Code + unity-mcp)
@@ -71,7 +71,11 @@ Replaces M6.5's Stay/Leave + overtime. A night = N score thresholds ("hours"); e
 - [x] ☁ M8.3 Peg placement (code): `PegBoard` (Holds = sockets), `PegShelf` (one pile per type, auto-hop to the hand, right-click swaps / left-click picks), `PegThrower` (normal arc, snap to the nearest valid socket to the aimed point within a radius; none = red line, refused), `PegBoardView` (sprites, level overlays, highlights, blocked fade), `PegShelfView` (pulse / hover / cursor), `PlacementFade`, `PlacementDim`, robot fade. Sprites on `PegDefinition` (missing = still runs).
   - [ ] 🖥 M8.3b Editor: fill the loadout, peg sprites, wire the components, the dim overlay. Steps in the PR.
 - [ ] ☁+🖥 M8.4 Hour palettes: one asset per hour (popup colours + background tint, night → dawn); day background on `DawnReached`.
-- [ ] ☁+🖥 M8.5 Bouncy peg: a ball that hits it gets +bonus (× level) on its depth multiplier for everything it scores after; once per peg per ball.
+- M8.5 Peg effects — they must work and read clearly; every number is an Inspector placeholder (balance later). Strength by level via `PegDefinition.levels`. Structure: ARCHITECTURE.md → "Peg effects".
+  - [x] ☁ M8.5a Plumbing + Bouncy: `PegEffect` (Events; Definitions now references Events), `PegDefinition.effect` + `levels`; Hold → `NightSession.HitPeg` → `PegEffects` (Rules) → `PegHit` / `PegBounced` + a result for the physics; `PegBoard.Bind` (sockets) + bouncy material by level; Bouncy = score multiplier on the ball's victims (×2 / ×3 by level), once per peg per ball, stacking on the extra part, never carried (`ChainTracker.AddPegExtra`, `RobotScored.PegMultiplier`); `PegBoardView` pegs on a child renderer + squash-stretch + gold ring; popup `B×2`. CoreCheck.
+    - [ ] 🖥 M8.5a-b Editor: rename peg ids to `peg_bouncy` / `peg_splitter` / `peg_bomb`; `Peg_Bouncy`: Effect = Bouncy, Levels (L1 ×2 / bounciness ~0.8, L2 ×3 / ~0.95 — check the first entry isn't all zeros); `PegBoardView` → Bonus Ring = fx_burst_ring. Steps in the PR.
+  - [ ] ☁+🖥 M8.5b Splitter: a thrown stone that hits the needle splits into N (by level: 2, 3…), fanned, same speed, same chain; pieces carry value × share; once per needle; cap per throw; pieces' hits count for mastery (toggle).
+  - [ ] ☁+🖥 M8.5c Bomb: stone or ball triggers it; climbing robots in radius (by level) knocked loose, scored through the explosion as its own hitter (depth 1 from a stone, ball depth + 1); stone-triggered knocks count as stone hits (pieces under the toggle); per-peg knocks saved; spent → recharges (paused unless Running); does nothing in PegPlacement.
 
 ## M9 — Weapon mastery v1 + the save (vertical slice)
 Mastery from use: the stone levels up from the robots it knocks loose itself (50 → level 2). The save stores causes (hits, ball knocks), levels are derived. Structure: ARCHITECTURE.md → "Mastery and the save"; persistence decided ("Composition").
@@ -80,7 +84,7 @@ Mastery from use: the stone levels up from the robots it knocks loose itself (50
 - [x] ☁ M9.2 The level in play: `ThrowableDefinition` levels list `{hitsRequired, sprite, radiusScale, trailColour}` (entry 0 = level 1; missing entry falls back to the one before); `Throwable.ApplyLevel` sizes the stone from its sprite (sprite and collider scale together); pile spacing × radiusScale; `NightSession.WeaponLevel` fixed at night start (`Launch` uses it), the pile switches to `BankedWeaponLevel` at night end. Art: `Art/Props/Weapons/Stone/stone_lv1.png`, `stone_lv2.png`.
   - [x] 🖥 M9.2b Editor: fill `Throwable_Stone` levels (lv1: stone_lv1, ×1; lv2: 50 hits, stone_lv2, ×~1.1, a trail colour); Stone prefab SpriteRenderer colour → white (the old grey tint darkens the art) and assign `Look`; play: the stone's size and collider match; Add 10 hits ×5 → night end swaps the pile; next night throws the bigger stone. Steps in the PR.
 - [x] ☁ M9.3 Juice + readability (closes M6.3): `StoneHitFx` (hit star + rising sparkle on each direct hit, at the robot); `StonePileMasteryView` (glints more often as progress rises — saved + tonight; gold pulse once tonight reaches the next level; burst ring at night end with a level earned, as `StonePile` swaps the stones); `StoneTrail` (TrailRenderer with fx_trail, flight only, colour per level, stone-wide). `FxSprites` shared effect runner. `NightSession.WeaponProgress` / `WeaponUpgradeReady` (`MasteryLevels.ProgressFrom`, CoreCheck). No progress bars. Every sprite optional.
-  - [ ] 🖥 M9.3b Editor: `StoneHitFx` in the scene (session, spawner, fx_hit_star, fx_sparkle); `StonePileMasteryView` on the pile (session, pile, fx_sparkle, fx_burst_ring); Stone prefab: `TrailRenderer` (material with fx_trail, width curve 1 → 0, time ~0.25 s) + `StoneTrail`. Tune glint rates / pulse in play. Steps in the PR.
+  - [x] 🖥 M9.3b Editor: `StoneHitFx` in the scene (session, spawner, fx_hit_star, fx_sparkle); `StonePileMasteryView` on the pile (session, pile, fx_sparkle, fx_burst_ring); Stone prefab: `TrailRenderer` (material with fx_trail, width curve 1 → 0, time ~0.25 s) + `StoneTrail`. Tune glint rates / pulse in play. Steps in the PR.
 
 ## Open design questions (from the GDD — don't implement until decided)
 - One robot line per run vs. mixed swarm.
@@ -97,6 +101,10 @@ Mastery from use: the stone levels up from the robots it knocks loose itself (50
 - **OPEN** — Empty-pile dead time: with 0 stones, nothing falling and dawn not reached, the player can only watch robots climb until one breaches (~10–15 s). Fast-forward the wall once the player can't act, or make the wait the start of the loss scene (the wolf begins his climb)?
   - **PROPOSAL C — "the wolf cranks the remote"**: when the player has **no possible action** (no stones, nothing in flight, below dawn), the robots climb at a high multiplier, so the breach lands in ~2 s and the loss scene starts. The condition is "no possible action", not `StonesLeft == 0`: `AddStones` can refill the pile, and a falling chain can still win. Don't build it yet.
 - **WATCH in M5.2** — Death spiral: every breach takes a stone, fewer stones → fewer throws → more breaches. Fine if it's readable (the pile shows it); if a bad first minute always decides the night, tune spawn rate before stone count.
+
+## Editor gotchas (learned the hard way)
+- **A new list entry in the Inspector is all zeros**, not the defaults written in code: pressing **+** on an empty list gives colours with alpha 0, scales of 0, etc. After adding the first entry, check its colours' **A** and every number. (M9.3: the stone trail was invisible because both levels' Trail Colour had alpha 0.)
+- **TrailRenderer width graph**: left = at the object, right = the tail. A taper is 1 → 0.
 
 ## Playtest log
 <!-- date · what you tried · what you felt · what to change -->

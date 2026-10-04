@@ -36,6 +36,7 @@ namespace Piglings.Simulation
         private ChainTracker _chains;
         private NightReferee _referee;
         private MasteryTally _tally;
+        private PegEffects _pegEffects;
         private Progression _progression;
         private ProfileFile _profileFile;
         private int[] _weaponThresholds;   // night.Throwable's level thresholds, read once (like the scoring curve)
@@ -87,6 +88,13 @@ namespace Piglings.Simulation
         public bool IsValidPegTarget(int socket, string pegId) => _referee.IsValidTarget(socket, pegId);
         public bool CanPlaceAnyPeg => _referee.CanPlaceAnyPeg;
 
+        /// <summary>
+        /// A flying stone or a falling ball hit the peg in this socket (called by Hold). The Rules decide the effect and
+        /// publish the facts; the result says what to do physically.
+        /// </summary>
+        public PegHitResult HitPeg(int socket, PegHitter hitter, GameId hitterId, ChainId chain) =>
+            _pegEffects.Hit(socket, hitter, hitterId, chain);
+
         /// <summary>The night's PegDefinition for a peg id (sprites for the shelf and the board). Null if unknown.</summary>
         public PegDefinition FindPeg(string id)
         {
@@ -105,6 +113,8 @@ namespace Piglings.Simulation
             _referee = new NightReferee(Bus, State, _chains,
                 new NightGoal(ToArray(night.Thresholds), night.ThrowsAvailable, night.StonesPerThreshold),
                 BuildPegs());
+            _pegEffects = new PegEffects(Bus, State, _chains, _referee.Pegs);
+            if (board != null) board.Bind(this);
             _tally = new MasteryTally(Bus, State);
             _progression = new Progression(Bus, LoadProfile());
             FixWeaponLevel();
@@ -208,13 +218,24 @@ namespace Piglings.Simulation
             foreach (var entry in night.PegLoadout)
             {
                 if (entry == null || entry.peg == null) continue;
-                loadout.Add((new PegType(entry.peg.Id, entry.peg.MaxLevel, entry.peg.Mergeable), entry.count));
+                loadout.Add((ToPegType(entry.peg), entry.count));
             }
             var pegs = new PegSetup(loadout, night.PegThrowsPerThreshold, board != null ? board.SocketCount : 0);
             if (pegs.DroppedTypes > 0)
                 Debug.LogWarning($"NightSession: {night.name} brings more than {PegSetup.ShelfCapacity} peg types; " +
                                  $"{pegs.DroppedTypes} ignored (the shelf holds {PegSetup.ShelfCapacity}).", night);
             return pegs;
+        }
+
+        // The Rules' view of a peg: id, levels, effect and the per-level numbers the Rules use (physics stays here).
+        private PegType ToPegType(PegDefinition peg)
+        {
+            var multipliers = new float[peg.LevelCount];
+            for (int i = 0; i < multipliers.Length; i++) multipliers[i] = peg.ScoreMultiplierAt(i + 1);
+            if (peg.Effect == PegEffect.Bouncy && peg.ScoreMultiplierAt(1) <= 1f)
+                Debug.LogWarning($"{peg.name}: Bouncy with a score multiplier of {peg.ScoreMultiplierAt(1)} at level 1 gives no " +
+                                 "bonus — fill its Levels list (a new entry starts at 0).", peg);
+            return new PegType(peg.Id, peg.MaxLevel, peg.Mergeable, peg.Effect, multipliers);
         }
 
         private static int[] ToArray(IReadOnlyList<int> list)
@@ -242,6 +263,7 @@ namespace Piglings.Simulation
             Bus?.Unsubscribe<NightPhaseChanged>(OnPhaseChanged);
             Bus?.Unsubscribe<NightEnded>(OnNightEnded);
             _progression?.Dispose();
+            _pegEffects?.Dispose();
             _tally?.Dispose();
             _referee?.Dispose();
             _chains?.Dispose();
