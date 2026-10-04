@@ -32,6 +32,11 @@ namespace Piglings.Definitions
                  "Each effect reads only its own fields. A new first entry starts all zeros in the Inspector — fill every field.")]
         [SerializeField] private List<PegLevel> levels = new List<PegLevel>();
 
+        [Header("Progression (campaign)")]
+        [Tooltip("Peg mastery for each extra copy, cumulative and rising: an unlocked type owns 1 copy, +1 per threshold, max 4. " +
+                 "Mastery = its effect's triggers × the level's Mastery Weight (Levels list).")]
+        [SerializeField] private int[] copyThresholds = { 10, 30, 60 };
+
         [Header("Splitter (whatever the level)")]
         [Tooltip("Most stones one throw can have flying at once, the original included. Splits beyond it are cut short.")]
         [SerializeField, Min(1)] private int maxStonesPerThrow = 4;
@@ -76,6 +81,15 @@ namespace Piglings.Definitions
         /// <summary>Bomb: the push given to falling balls and flying stones in its radius (0 = none).</summary>
         public float ImpulseAt(int level) => Level(level)?.impulse ?? 0f;
 
+        public System.Collections.Generic.IReadOnlyList<int> CopyThresholds => copyThresholds;
+
+        /// <summary>Peg mastery weight of one trigger at this level: the entry's Mastery Weight, or the level itself when it's 0.</summary>
+        public float MasteryWeightAt(int level)
+        {
+            var entry = level >= 1 && level <= levels.Count ? levels[level - 1] : null;
+            return entry != null && entry.masteryWeight > 0f ? entry.masteryWeight : level;
+        }
+
         public int MaxStonesPerThrow => maxStonesPerThrow;
         public float PieceScale => pieceScale;
         public bool CountSplitHitsForMastery => countSplitHitsForMastery;
@@ -88,6 +102,10 @@ namespace Piglings.Definitions
     [System.Serializable]
     public sealed class PegLevel
     {
+        [Tooltip("Peg mastery per trigger at this level (a Bouncy bonus granted, a split, an explosion). 0 = the level itself " +
+                 "(level 2 counts double).")]
+        [Min(0f)] public float masteryWeight = 0f;
+
         [Header("Bouncy")]
         [Tooltip("× what a falling ball's victims score after it bounces off this peg (2 = double). Not what they carry on. " +
                  "Several Bouncy pegs add their extra part: two ×2 pegs = ×3.")]

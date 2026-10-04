@@ -15,10 +15,23 @@ namespace Piglings.Definitions
         [SerializeField, Min(0f)] private float lifetime = 6f;             // safety cleanup
         [SerializeField] private PhysicsMaterial2D material;
 
-        [Tooltip("Mastery levels, from use. Entry 0 = level 1 (its Hits Required is ignored). Hits Required are cumulative " +
-                 "totals and must rise strictly (e.g. 50, 150). The level is derived from the saved hits, never stored, so " +
-                 "these can be retuned any time. Empty = the weapon has one level and looks like its prefab.")]
+        [Tooltip("How each level looks: entry 0 = level 1, entry 1 = level 2 (the evolved stone). The level comes from the stone " +
+                 "progression below. Empty = one level that looks like its prefab.")]
         [SerializeField] private List<ThrowableLevel> levels = new List<ThrowableLevel>();
+
+        [Header("Stone progression (mastery from use)")]
+        [Tooltip("Total direct hits (saved, across nights) for each +1 stone, cumulative and strictly rising. With Start 10 and " +
+                 "Max 20, ten entries take the stone all the way. Derived from the saved hits, never stored: retune any time.")]
+        [SerializeField] private int[] stoneThresholds = { 10, 25, 45, 70, 100, 140, 190, 250, 320, 400 };
+        [Tooltip("Stones on the pile at the start of a campaign night, before any threshold.")]
+        [SerializeField, Min(0)] private int startStones = 10;
+        [Tooltip("At this many stones the stone evolves: level 2 (its look and radius), and the hourly refill goes up.")]
+        [SerializeField, Min(1)] private int evolveAtStones = 15;
+        [Tooltip("No more stones past this, whatever the hits.")]
+        [SerializeField, Min(1)] private int maxStones = 20;
+        [Tooltip("Stones added at each hour's placement round, before / after evolving (campaign).")]
+        [SerializeField, Min(0)] private int refill = 1;
+        [SerializeField, Min(0)] private int evolvedRefill = 2;
 
         public string Id => id;
         public float Radius => radius;
@@ -28,13 +41,12 @@ namespace Piglings.Definitions
 
         public int LevelCount => Mathf.Max(1, levels.Count);
 
-        /// <summary>The hits each level after the first needs (cumulative), for Meta's MasteryLevels. Empty = one level.</summary>
-        public int[] Thresholds()
-        {
-            var t = new int[Mathf.Max(0, levels.Count - 1)];
-            for (int i = 0; i < t.Length; i++) t[i] = levels[i + 1] != null ? levels[i + 1].hitsRequired : 0;
-            return t;
-        }
+        public IReadOnlyList<int> StoneThresholds => stoneThresholds;
+        public int StartStones => startStones;
+        public int EvolveAtStones => evolveAtStones;
+        public int MaxStones => maxStones;
+        public int Refill => refill;
+        public int EvolvedRefill => evolvedRefill;
 
         /// <summary>This level's sprite; a level without one uses the one before. Null = keep the prefab's sprite.</summary>
         public Sprite SpriteFor(int level)
@@ -67,12 +79,10 @@ namespace Piglings.Definitions
         private int Index(int level) => levels.Count == 0 ? -1 : Mathf.Clamp(level - 1, 0, levels.Count - 1);
     }
 
-    /// <summary>One mastery level of a weapon: how many total hits it needs, and how it looks and how big it is.</summary>
+    /// <summary>One level of a weapon: how it looks and how big it is (the level itself comes from the stone progression).</summary>
     [System.Serializable]
     public sealed class ThrowableLevel
     {
-        [Tooltip("Total direct hits (saved, across nights) to reach this level. Ignored for the first entry (level 1).")]
-        [Min(0)] public int hitsRequired;
         [Tooltip("The weapon's sprite at this level (the stone should fill the canvas). Empty = the level before's.")]
         public Sprite sprite;
         [Tooltip("× Radius. Collider and sprite scale together. The pile's spacing grows with it too.")]

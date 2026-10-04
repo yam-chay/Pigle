@@ -1,6 +1,6 @@
 # TASKS — Piglings prototype
 
-> **Next up (2026-10-04):** M10 Prototype v2 — A (Rules + Meta core ☁ done) → B authored nights + campaign + built tower → C flow + camera → D scoreboard / E post-run / F barn day phase. Then decide the empty-pile "dead time" → M5.2 — then the vertical slice goes to playtesters.
+> **Next up (2026-10-04):** M10 Prototype v2 — A ✔ → B authored nights + campaign + built tower (☁ done, 🖥 wire) → C flow + camera → D scoreboard / E post-run / F barn day phase. Then decide the empty-pile "dead time" → M5.2 — then the vertical slice goes to playtesters.
 > Why: the hours change what a night is (no more Stay/Leave), so M5.2 tunes the new loop, not the old one. M5.2 still needs the theft (M7.3) and the stone (M6.3) readable.
 
 ☁ = cloud session OK (code/docs only) · 🖥 = local, needs the Unity editor (use Claude Code + unity-mcp)
@@ -91,8 +91,9 @@ Mastery from use: the stone levels up from the robots it knocks loose itself (50
 ## M10 — Prototype v2: authored nights, campaign, day phase (new scene; Night.unity keeps working)
 Designed in chat; plan approved 2026-10-04. Everything new activates only when its components/data are present. Structure: ARCHITECTURE.md → "Campaign progression".
 - [x] ☁ M10.A Rules + Meta core, no visuals: `NightPhase.Dusk` + `NightReferee.Begin()` (`NightSession.startImmediately`, `BeginNight()`); per-hour score/breaches + best throw (`NightState.Hours`, `BestThrow*`); `NightGoal.HourGap` / `ThrowQuality`; peg triggers per id per level (MasteryTally → `NightBanked.Level` → profile); `StoneProgression` (10 → 20, evolve at 15, refill 1 → 2), `PegProgression` (weighted triggers → 1–4 copies), `CampaignPlan` (unlocks from dawns, next locked, next night, tower choice); profile `CurrentNight` / `Dawns` / `Towers` (save v1, additive); separate profiles (`NightSession.profileName`); `[Night]` log per hour. CoreCheck.
-  - [ ] 🖥 M10.A-b Editor: NightSession in Night.unity → Profile Name "dev" (the old `piglings_profile.json` is no longer read — rename it to `piglings_dev.json` to keep it); check the `[Night]` line. Steps in the PR.
-- [ ] ☁+🖥 M10.B Authored nights + campaign + the built tower (WallSliceDefinition, NightDefinition slices + camera frame, CampaignDefinition, HourPaletteDefinition, TowerBuilder + preview, campaign mode in NightSession, stone thresholds → stones/evolve). Scan Art/ first.
+  - [x] 🖥 M10.A-b Editor: NightSession in Night.unity → Profile Name "dev" (the old `piglings_profile.json` is no longer read — rename it to `piglings_dev.json` to keep it); check the `[Night]` line. Steps in the PR.
+- [x] ☁ M10.B Authored nights + campaign + the built tower: `WallSliceDefinition`, `NightDefinition` id / slices / camera frame, `CampaignDefinition` (nights + unlock on dawn, starting pegs, slices), `HourPaletteDefinition`; `TowerBuilder` (slices every 1.6 above 3.0, holds, tower top + walls follow, `PegBoard.Rebuild`, edit-mode preview); campaign mode in `NightSession` (night from the save, tower, stones/refill from `StoneProgression`, shelf = unlocked × copies, dawn recorded); stone level from `stoneThresholds` in both scenes; `PegDefinition.copyThresholds` + `masteryWeight`.
+  - [ ] 🖥 M10.B-b Editor (TestNight): slices + nights + campaign + palette assets; Slice and Hold prefabs; a TowerTop parent; TowerBuilder wired; delete Slice_01/02; NightSession campaign fields; check the stone thresholds on Throwable_Stone. Steps in the PR.
 - [ ] ☁+🖥 M10.C Phase flow + camera (CameraDirector frames, NightFlow: Doors → Barn room → Night → Doors, reload on Retry/Next, doors open, moon-rise hook).
 - [ ] ☁+🖥 M10.D Night scoreboard + depth-coloured popups + tutorial cards + debug-HUD toggle.
 - [ ] ☁+🖥 M10.E Post-run screen (night summary + progress).
