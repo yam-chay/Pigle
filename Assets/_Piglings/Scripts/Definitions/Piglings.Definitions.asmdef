@@ -1,7 +1,7 @@
 {
     "name": "Piglings.Definitions",
     "rootNamespace": "Piglings.Definitions",
-    "references": [],
+    "references": ["Piglings.Events"],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,

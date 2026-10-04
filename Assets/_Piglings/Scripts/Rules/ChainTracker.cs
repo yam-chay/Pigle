@@ -22,6 +22,9 @@ namespace Piglings.Rules
             // What each hitter of this chain (the stone, and every robot knocked loose) carries into
             // its next hit. Lives with the chain, so it's forgotten when the chain closes.
             public readonly Dictionary<GameId, int> Carried = new Dictionary<GameId, int>();
+
+            // A hitter's extra peg multiplier (the part above ×1) from the Bouncy pegs it bounced off. Same lifetime.
+            public readonly Dictionary<GameId, float> PegExtra = new Dictionary<GameId, float>();
         }
 
         private readonly EventBus _bus;
@@ -51,6 +54,22 @@ namespace Piglings.Rules
             _bus.Unsubscribe<ThrowableRemoved>(OnThrowableRemoved);
         }
 
+        /// <summary>Is this chain still in play? (A swept robot falls with ChainId.None, which never is.)</summary>
+        public bool IsOpen(ChainId chain) => !chain.IsNone && _open.ContainsKey(chain.Id);
+
+        /// <summary>
+        /// A Bouncy peg gave this hitter extra (its multiplier − 1). Pegs add on the extra part, so two ×2 pegs make ×3.
+        /// It multiplies what the hitter's victims score from now on, never what they carry. Returns the hitter's total
+        /// peg multiplier now; 1 if the chain isn't open (nothing to score into).
+        /// </summary>
+        public float AddPegExtra(ChainId chain, GameId hitter, float extra)
+        {
+            if (chain.IsNone || !_open.TryGetValue(chain.Id, out var c)) return 1f;
+            c.PegExtra.TryGetValue(hitter, out float now);
+            if (extra > 0f) c.PegExtra[hitter] = now += extra;
+            return 1f + now;
+        }
+
         private void OnThrow(ThrowReleased e)
         {
             var c = new Open();
@@ -78,9 +97,11 @@ namespace Piglings.Rules
             int depth = e.Cause.Depth;
             if (!c.Carried.TryGetValue(e.Cause.Source, out int received)) received = _curve.StoneValue;
 
-            // The hour multiplies what this robot scores (RobotTotal applies it), but not what it passes on:
-            // carrying uses the hour-1 value, so the hour is paid once per robot and never compounds down a chain.
-            int total = _curve.RobotTotal(received, depth, c.HourMultiplier);
+            // The hour and the Bouncy pegs multiply what this robot scores (RobotTotal applies them), but not what it passes
+            // on: carrying uses the plain value, so each is paid once per robot and never compounds down a chain.
+            c.PegExtra.TryGetValue(e.Cause.Source, out float pegExtra);
+            float pegMultiplier = 1f + pegExtra;
+            int total = _curve.RobotTotal(received, depth, c.HourMultiplier, pegMultiplier);
             int carries = _curve.CarriedBy(received, _curve.RobotTotal(received, depth));
             c.Carried[e.Cause.Source] = _curve.HitterAfterHit(received);   // its next hit is worth more
             c.Carried[e.Robot] = carries;                                     // this robot is now a stone too
@@ -88,7 +109,7 @@ namespace Piglings.Rules
             c.Total = ScoreMath.AddClamped(c.Total, total);
             _state.Score = ScoreMath.AddClamped(_state.Score, total);
             _bus.Publish(new RobotScored(e.Robot, e.Chain, order, depth, received, _curve.Multiplier(depth), c.Hour, c.HourMultiplier,
-                total, carries));
+                pegMultiplier, total, carries));
         }
 
         private void OnRobotRemoved(RobotRemoved e)

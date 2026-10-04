@@ -1,16 +1,19 @@
+using System.Collections.Generic;
+using Piglings.Events;
 using UnityEngine;
 
 namespace Piglings.Definitions
 {
     /// <summary>
-    /// One peg type (GDD "שעות הלילה"). Immutable design data. Rules only ever see its id, max level and whether it
-    /// merges (NightSession turns those into a Rules.PegType); the board stores the id as a string, never this asset.
-    /// The behaviour (Bouncy first) comes with M8.5.
+    /// One peg type (GDD "שעות הלילה"). Immutable design data. Rules only ever see its id, max level, whether it merges,
+    /// its effect and the per-level numbers they need (NightSession turns those into a Rules.PegType); the board stores
+    /// the id as a string, never this asset.
     /// </summary>
     [CreateAssetMenu(menuName = "Piglings/Peg Definition", fileName = "Peg_")]
     public sealed class PegDefinition : ScriptableObject
     {
-        [Tooltip("Stable id, stored on the board and in saves. Never rename it once nights use it.")]
+        [Tooltip("Save key: stored on the board, and peg stats are saved under it. Never rename it once players have a " +
+                 "save — their progress would be orphaned (it'd need a migration in ProfileJson). Lowercase, e.g. peg_bomb.")]
         [SerializeField] private string id = "peg_plain";
         [Tooltip("Throwing a peg onto a placed peg of the same type levels it up, up to this level.")]
         [SerializeField, Min(1)] private int maxLevel = 3;
@@ -21,10 +24,42 @@ namespace Piglings.Definitions
         [Tooltip("Used only when Sprite is empty, so a peg without art still reads as different from a plain hold.")]
         [SerializeField] private Color fallbackTint = new Color(0.6f, 0.9f, 1f);
 
+        [Tooltip("What it does when something hits it. Plain = nothing (a hold with a look).")]
+        [SerializeField] private PegEffect effect = PegEffect.Plain;
+        [Tooltip("Strength per level (merges level a peg up). Entry 0 = level 1; a level past the list uses the last entry. " +
+                 "Each effect reads only its own fields. A new first entry starts all zeros in the Inspector — fill every field.")]
+        [SerializeField] private List<PegLevel> levels = new List<PegLevel>();
+
         public string Id => id;
         public int MaxLevel => maxLevel;
         public bool Mergeable => mergeable;
         public Sprite Sprite => sprite;
         public Color FallbackTint => fallbackTint;
+        public PegEffect Effect => effect;
+        public int LevelCount => levels.Count;
+
+        /// <summary>This level's numbers; a level past the list uses the last entry. Null when the list is empty.</summary>
+        public PegLevel Level(int level) => levels.Count == 0 ? null : levels[Mathf.Clamp(level - 1, 0, levels.Count - 1)];
+
+        /// <summary>Bouncy: × what a ball's victims score after bouncing off it, per level (1 = no bonus).</summary>
+        public float ScoreMultiplierAt(int level) => Level(level)?.scoreMultiplier ?? 1f;
+
+        /// <summary>Bouncy: the peg's physical bounciness at this level (0 = the hold's own material).</summary>
+        public float BouncinessAt(int level) => Level(level)?.bounciness ?? 0f;
+    }
+
+    /// <summary>
+    /// One level of a peg's effect. Each effect reads only its own fields; the rest are ignored.
+    /// Numbers are placeholders — balance comes later.
+    /// </summary>
+    [System.Serializable]
+    public sealed class PegLevel
+    {
+        [Header("Bouncy")]
+        [Tooltip("× what a falling ball's victims score after it bounces off this peg (2 = double). Not what they carry on. " +
+                 "Several Bouncy pegs add their extra part: two ×2 pegs = ×3.")]
+        [Min(1f)] public float scoreMultiplier = 2f;
+        [Tooltip("Physical bounciness of the peg (0..1+). Balls and stones visibly pop off it. 0 = the hold's own material.")]
+        [Min(0f)] public float bounciness = 0.8f;
     }
 }

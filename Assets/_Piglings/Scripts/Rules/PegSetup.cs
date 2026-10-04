@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Piglings.Events;
 
 namespace Piglings.Rules
 {
@@ -8,12 +9,28 @@ namespace Piglings.Rules
         public string Id { get; }
         public int MaxLevel { get; }
         public bool Mergeable { get; }   // throwing one onto a placed peg of the same type levels it up
+        public PegEffect Effect { get; }
 
-        public PegType(string id, int maxLevel = 3, bool mergeable = true)
+        // Bouncy: × per level (index 0 = level 1). A level past the list uses the last entry.
+        private readonly float[] _scoreMultipliers;
+
+        public PegType(string id, int maxLevel = 3, bool mergeable = true, PegEffect effect = PegEffect.Plain,
+                       IReadOnlyList<float> scoreMultipliers = null)
         {
             Id = id;
             MaxLevel = maxLevel < 1 ? 1 : maxLevel;
             Mergeable = mergeable;
+            Effect = effect;
+            _scoreMultipliers = new float[scoreMultipliers?.Count ?? 0];
+            for (int i = 0; i < _scoreMultipliers.Length; i++) _scoreMultipliers[i] = scoreMultipliers[i];
+        }
+
+        /// <summary>Bouncy: the score multiplier at this level. Never below 1 (a 0 from an unfilled Inspector entry = no bonus).</summary>
+        public float ScoreMultiplierAt(int level)
+        {
+            if (_scoreMultipliers.Length == 0) return 1f;
+            int i = level < 1 ? 0 : level > _scoreMultipliers.Length ? _scoreMultipliers.Length - 1 : level - 1;
+            return _scoreMultipliers[i] < 1f ? 1f : _scoreMultipliers[i];
         }
     }
 
