@@ -24,8 +24,8 @@ MonoBehaviour:
   slices:
   - {fileID: 11400000, guid: 292b3171ccd44c04cada7a3373800aa0, type: 2}
   - {fileID: 11400000, guid: 292b3171ccd44c04cada7a3373800aa0, type: 2}
-  cameraY: 6
-  cameraSize: 3.5
+  cameraY: 0
+  cameraSize: 0
   pegLoadout:
   - peg: {fileID: 11400000, guid: d29abeb2a2ec00f468b743f864604a71, type: 2}
     count: 3
