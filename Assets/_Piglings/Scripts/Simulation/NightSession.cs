@@ -15,8 +15,9 @@ namespace Piglings.Simulation
     /// objects that reference it. Scene objects get it through a serialized field, never through a lookup.
     ///
     /// Persistence: the disk is the home of everything that outlives a night. This owner loads the player's profile in
-    /// Awake and saves it once, at NightEnded (after the referee has banked the night into it). Play Again reloads the
-    /// scene, so the next night loads it again from disk. Quitting mid-night saves nothing: that night's hits are lost.
+    /// Awake and saves it at NightEnded (after the referee has banked the night into it) — and again when the campaign's
+    /// Retry / Next night writes where to go (GoToNight). Play Again / Retry / Next reload the scene, so the next night
+    /// loads it again from disk. Quitting mid-night saves nothing: that night's hits are lost.
     ///
     /// Campaign mode (M10, the v2 scene: a Campaign is assigned): the profile decides tonight's night (its saved index),
     /// the tower (the player's slices, or the night's own — built by TowerBuilder before anything reads the sockets), the
@@ -77,6 +78,8 @@ namespace Piglings.Simulation
         private NightReferee _referee;
         private MasteryTally _tally;
         private PegEffects _pegEffects;
+        private SettleTracker _settle;
+        private NightLog _log;
         private Progression _progression;
         private ProfileFile _profileFile;
         private NightDefinition _night;            // tonight's (see Night)
@@ -140,6 +143,28 @@ namespace Piglings.Simulation
         public void BeginNight() => _referee.Begin();
 
         /// <summary>
+        /// Nothing left to land: no robot off the wall (breaking, falling, breaching) and no chain open. After NightEnded
+        /// this is the sweep finishing — the campaign flow waits for it before the camera goes down to the doors.
+        /// </summary>
+        public bool WallSettled => _settle.Settled;
+
+        /// <summary>
+        /// Leave this night for another one (the campaign's Retry / Next night): saves where the player is and reloads the
+        /// scene, which then starts that night clean. Outside campaign mode it just reloads.
+        /// Tonight's hits are only in the save if the night already ended (banked) — a jump mid-night loses them.
+        /// </summary>
+        public void GoToNight(int index, string why)
+        {
+            if (IsCampaign && Plan != null && Plan.NightCount > 0)
+            {
+                index = Mathf.Clamp(index, 0, Plan.NightCount - 1);
+                _progression.SetCurrentNight(index);
+                Save($"{why} (to night {index + 1})");
+            }
+            ReloadScene();
+        }
+
+        /// <summary>
         /// A flying stone or a falling ball hit the peg in this socket (called by Hold). The Rules decide the effect and
         /// publish the facts; the result says what to do physically.
         /// </summary>
@@ -170,6 +195,8 @@ namespace Piglings.Simulation
             _pegEffects = new PegEffects(Bus, State, _chains, _referee.Pegs, Ids);
             if (board != null) board.Bind(this);
             _tally = new MasteryTally(Bus, State);
+            _settle = new SettleTracker(Bus, _chains);
+            _log = new NightLog(this);
             CheckPalette();
             Bus.Subscribe<NightPhaseChanged>(OnPhaseChanged);
             Bus.Subscribe<NightEnded>(OnNightEnded);
@@ -328,10 +355,7 @@ namespace Piglings.Simulation
         private void DebugGoToNight()
         {
             if (!DebugCampaignReady()) return;
-            int index = Mathf.Clamp(debugNight - 1, 0, Plan.NightCount - 1);
-            _progression.SetCurrentNight(index);
-            Save($"Go to night {index + 1} (debug)");
-            ReloadScene();
+            GoToNight(debugNight - 1, "Go to Debug Night");
         }
 
         [ContextMenu("Campaign/Reset campaign")]
@@ -350,7 +374,7 @@ namespace Piglings.Simulation
             return false;
         }
 
-        // Tonight's hits aren't banked (the night didn't end): a jump or reset keeps only what was saved before it.
+        // A debug jump or reset mid-night keeps only what was saved before it (tonight's hits aren't banked).
         // Reloads by build index, like PlayAgain: the scene must be in Build Settings.
         private void ReloadScene()
         {
@@ -491,6 +515,8 @@ namespace Piglings.Simulation
         {
             Bus?.Unsubscribe<NightPhaseChanged>(OnPhaseChanged);
             Bus?.Unsubscribe<NightEnded>(OnNightEnded);
+            _log?.Dispose();
+            _settle?.Dispose();
             _progression?.Dispose();
             _pegEffects?.Dispose();
             _tally?.Dispose();

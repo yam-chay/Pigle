@@ -1,6 +1,6 @@
 # TASKS — Piglings prototype
 
-> **Next up (2026-10-04):** M10 Prototype v2 — A ✔ → B ✔ → C flow + camera → D scoreboard / E post-run / F barn day phase. Then decide the empty-pile "dead time" → M5.2 — then the vertical slice goes to playtesters.
+> **Next up (2026-10-04):** M10 Prototype v2 — A ✔ → B ✔ → C ✔ (editor steps pending) → D scoreboard / E post-run / F barn day phase. Then decide the empty-pile "dead time" → M5.2 — then the vertical slice goes to playtesters.
 > Why: the hours change what a night is (no more Stay/Leave), so M5.2 tunes the new loop, not the old one. M5.2 still needs the theft (M7.3) and the stone (M6.3) readable.
 
 ☁ = cloud session OK (code/docs only) · 🖥 = local, needs the Unity editor (use Claude Code + unity-mcp)
@@ -95,7 +95,8 @@ Mastery from use: the stone levels up from the robots it knocks loose itself (50
 - [x] ☁ M10.B Authored nights + campaign + the built tower: `WallSliceDefinition`, `NightDefinition` id / slices / camera frame, `CampaignDefinition` (nights + unlock on dawn, starting pegs, slices), `HourPaletteDefinition`; `TowerBuilder` (slices every 1.6 above 3.0, holds, tower top + walls follow, `PegBoard.Rebuild`, edit-mode preview); campaign mode in `NightSession` (night from the save, tower, stones/refill from `StoneProgression`, shelf = unlocked × copies, dawn recorded); stone level from `stoneThresholds` in both scenes; `PegDefinition.copyThresholds` + `masteryWeight`.
   - [x] 🖥 M10.B-b Editor (TestNight): slices + nights + campaign + palette assets; Slice and Hold prefabs; a TowerTop parent; TowerBuilder wired; delete Slice_01/02; NightSession campaign fields; check the stone thresholds on Throwable_Stone. Steps in the PR.
 - [x] ☁ M10.B2 Debug for the campaign: NightSession context menu "Campaign/Go to Debug Night" (saves the index, reloads) and "Campaign/Reset campaign" (night 1, no dawns, no tower choices; mastery kept); the campaign log lists copies per type (`peg_bouncy×2`). TestNight must be in Build Settings for the reload.
-- [ ] ☁+🖥 M10.C Phase flow + camera (CameraDirector frames, NightFlow: Doors → Barn room → Night → Doors, reload on Retry/Next, doors open, moon-rise hook).
+- [x] ☁ M10.C Phase flow + camera: `CameraDirector` (frames Night per night / Doors / Barn room / Tower from the built tower, ease in-out, `CameraFraming` in CoreCheck); `NightFlow` (Boot at the Doors → Barn room ⇄ Tower → rise → `BeginNight()` → wait for the sweep to land (`SettleTracker`, `NightSession.WallSettled`) → Doors, doors open → Retry / Next = `NightSession.GoToNight` → save + reload); `FlowButtons` placeholders (off while the camera moves); `BarnDoorsView`; `MoonRises` hook; `[Night]` log moved to `NightLog` (owned by NightSession, both scenes).
+  - [ ] 🖥 M10.C-b Editor (TestNight): NightSession Start Immediately off; remove PlayAgain + NightEndView; CameraDirector on the camera; NightFlow; BarnDoorsView on the bottom piece; Canvas + EventSystem + 5 placeholder buttons + FlowButtons. Tune the frames and move times. Steps in the PR.
 - [ ] ☁+🖥 M10.D Night scoreboard + depth-coloured popups + tutorial cards + debug-HUD toggle.
 - [ ] ☁+🖥 M10.E Post-run screen (night summary + progress).
 - [ ] ☁+🖥 M10.F Barn room day phase (wall pegboard, rug pile, materials pile → tower slice placement, sign + Start night).
