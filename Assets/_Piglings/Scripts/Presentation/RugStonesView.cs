@@ -6,8 +6,8 @@ namespace Piglings.Presentation
     /// <summary>
     /// The barn room's rug (M10.F, PROTOTYPE_V2.md §5): tonight's stones as a real pile — exactly as many as the night
     /// starts with, in the same pyramid as the perch's pile (PileLayout), at the stone's level and size — plus ONE stone set
-    /// apart with a badge: the hourly refill (badge_refill_1 / badge_refill_2). After the stone evolves every stone shows
-    /// the lv2 sprite. No text: the pile is the number. Built once, at Start. Reads only.
+    /// apart with a badge: the hourly refill (Refill Badges: +1, +2, +3, +4 — the evolutions raise it). Every stone shows the
+    /// level's sprite. No text: the pile is the number. Built once, at Start. Reads only.
     /// </summary>
     public sealed class RugStonesView : MonoBehaviour
     {
@@ -28,8 +28,8 @@ namespace Piglings.Presentation
         [Header("The refill stone, set apart")]
         [Tooltip("Where it sits, from the anchor (world units).")]
         [SerializeField] private Vector2 apartOffset = new Vector2(0.6f, 0f);
-        [SerializeField] private Sprite badgeRefill1;   // badge_refill_1
-        [SerializeField] private Sprite badgeRefill2;   // badge_refill_2
+        [Tooltip("The refill badge per refill amount: entry 0 = +1, entry 1 = +2… A refill past the list uses the last badge.")]
+        [SerializeField] private Sprite[] refillBadges = new Sprite[0];
         [Tooltip("The badge's offset from the refill stone (world units) and its scale.")]
         [SerializeField] private Vector2 badgeOffset = new Vector2(0.06f, 0.06f);
         [SerializeField, Min(0.01f)] private float badgeScale = 1f;
@@ -51,7 +51,7 @@ namespace Piglings.Presentation
 
             var apart = anchor.position + (Vector3)apartOffset + new Vector3(0f, diameter / 2f, 0f);
             Place(sprite, apart, diameter, sortingOrder, "Refill stone");
-            var badge = stone.Refill >= 2 ? badgeRefill1 : badgeRefill2;
+            var badge = refillBadges.Length > 0 ? refillBadges[Mathf.Clamp(stone.Refill - 1, 0, refillBadges.Length - 1)] : null;
             if (stone.Refill > 0 && badge != null)
                 PlaceScaled(badge, apart + (Vector3)badgeOffset, badgeScale, sortingOrder + stone.Stones + 1, "Refill badge");
         }

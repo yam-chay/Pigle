@@ -1,6 +1,6 @@
 # TASKS — Piglings prototype
 
-> **Next up (2026-10-04):** M10 Prototype v2 — A ✔ → B ✔ → C ✔ → D ✔ → F barn day phase ✔ (editor steps pending) → E post-run. Then decide the empty-pile "dead time" → M5.2 — then the vertical slice goes to playtesters.
+> **Next up (2026-10-04):** M10 Prototype v2 — A–D ✔ → F ✔ → stage 2: P ✔ (editor steps pending) → E post-run → G HUD → H night select → I pig face. Then decide the empty-pile "dead time" → M5.2 — then the vertical slice goes to playtesters.
 > Why: the hours change what a night is (no more Stay/Leave), so M5.2 tunes the new loop, not the old one. M5.2 still needs the theft (M7.3) and the stone (M6.3) readable.
 
 ☁ = cloud session OK (code/docs only) · 🖥 = local, needs the Unity editor (use Claude Code + unity-mcp)
@@ -100,7 +100,13 @@ Mastery from use: the stone levels up from the robots it knocks loose itself (50
 - [x] ☁ M10.D Night scoreboard + depth-coloured popups + tutorial cards + debug-HUD toggle, and the Night frame fitted to the tower: `ScoreColoursDefinition` (depth colours, quality bands) shared via `NightSession.ScoreColours`; `ScoreStyles` / `TextColouring`; popups points-only by depth, chain total by quality; `NightScoreboard` (hour, score / next + fill, gap, last 3 throws, best); `DepthCardView`, `HoursCardView` (`TemplateSlot` / `TemplateList`); `ChainDebugHUD` hidden, F1; `CameraDirector` Night frame = fixed bottom (2.5) → tower top + roof, `NightDefinition` camera values = override (0 = auto); post-run log for Next night. CoreCheck (night frame).
   - [x] ☁ M10.D fixes: Next night never advanced (PlayAgain, still in TestNight, reloaded on the press before the click could save) → PlayAgain / NightEndView stand down in campaign mode; Retry / Next log presses; the scoreboard bar glides (fills up at a threshold, then starts the new hour).
   - [ ] 🖥 M10.D-b Editor: Score Colours asset on NightSession (both scenes); lay out the chalkboard, the DEPTH and HOURS cards (world-space Canvas, templates, layout groups); Night_01–03 Camera Y / Size → 0; fix `Campaign.asset` night 2's unlock (Bouncy → Splitter). Steps in the PR.
-- [ ] ☁+🖥 M10.E Post-run screen (night summary + progress).
+- **Stage 2** (plan: PROTOTYPE_V2.md ▸ Stage 2; order P → E → G → H → I):
+  - [x] ☁ M10.P Progression: stone evolution list on `ThrowableDefinition.levels` (Stones Needed, look, Refill; level + refill from the stone count; cap 25); peg copies up to `maxCopies` (8) with `copyStages` (4, 6, 8) → +1 peg throw per hour each (`PegProgression.ThrowsPerHour`, campaign only); the 2-row pegboard (8 slots per type, holes file, optional hole sprite); the rug's refill badges as a list. CoreCheck.
+    - [ ] 🖥 M10.P-b Editor: Throwable_Stone Levels (Stones Needed + Refill per level, lv3/lv4 sprites) + Max Stones; each peg's Max Copies / Copy Thresholds / Copy Stages; room_pegboard v2 + Holes File (+ Hole Sprite); the rug's Refill Badges. Steps in the PR.
+  - [ ] ☁+🖥 M10.E Post-run screen (night summary + progress; avg per stone, thrown vs lost, BEST CHAINS, copy stages; hour colours by night progress).
+  - [ ] ☁+🖥 M10.G HUD reshape: night track (moon), two screen-space chalkboards (record, tips — tips seen saved); removes the world scoreboard and the HOURS card.
+  - [ ] ☁+🖥 M10.H Night selection overlay (replaces Next night).
+  - [ ] ☁+🖥 M10.I Pig face (worried / gritting / mouth_o / flinch).
 - [x] ☁ M10.F Barn room day phase: slice placement (`SlicePicker` in the Tower state; rebuilds the tower live — `PegBoard.Rebuilt` → `PegBoardView` re-binds — and saves the night's tower; Dusk only; `TowerLayout`, CoreCheck); `BarnInteraction` (hover / click the materials pile → Tower, camera nudge via `CameraDirector.Nudge`, `HoverStarted` sound hook); `MaterialsPileView` (lift, glow, sparkles); `BarnPegboardView` (owned copies on the 12 holes, locked types as ghosts under a lock); `RugStonesView` (tonight's stones + the refill stone with its badge); `NightSignView`.
   - [x] ☁ M10.F2 Slice placement by hand: hover jiggle, drag a slice onto another slot to swap, drag from the tray beside the tower to replace (`SlicePicker`, `SliceDrag` in CoreCheck, `NightSession.SetSlice` / `SwapSlices`); the slot frames (`SliceSlotsView`) are gone. UI kit editor tool (Piglings ▸ UI: 9-slice borders on the kit, style selected as primary / secondary / panel).
   - [ ] 🖥 M10.F-b Editor (TestNight): the room (pig rig in Idle, hole mask off; pegboard, rug, materials pile + glow), the components, Night sign + Start night ☾ top-right; tune. Steps in the PR.

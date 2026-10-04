@@ -33,9 +33,13 @@ namespace Piglings.Definitions
         [SerializeField] private List<PegLevel> levels = new List<PegLevel>();
 
         [Header("Progression (campaign)")]
-        [Tooltip("Peg mastery for each extra copy, cumulative and rising: an unlocked type owns 1 copy, +1 per threshold, max 4. " +
-                 "Mastery = its effect's triggers × the level's Mastery Weight (Levels list).")]
-        [SerializeField] private int[] copyThresholds = { 10, 30, 60 };
+        [Tooltip("Peg mastery for each extra copy, cumulative and rising: an unlocked type owns 1 copy, +1 per threshold, up to " +
+                 "Max Copies (so Max Copies − 1 entries). Mastery = its effect's triggers × the level's Mastery Weight (Levels list).")]
+        [SerializeField] private int[] copyThresholds = { 10, 30, 60, 100, 150, 210, 280 };
+        [Tooltip("The most copies of this type a player can own.")]
+        [SerializeField, Min(1)] private int maxCopies = 8;
+        [Tooltip("Copy stages: owning this many copies adds +1 to every hour's peg-throw pool (shared across types). Rising.")]
+        [SerializeField] private int[] copyStages = { 4, 6, 8 };
 
         [Header("Splitter (whatever the level)")]
         [Tooltip("Most stones one throw can have flying at once, the original included. Splits beyond it are cut short.")]
@@ -82,6 +86,8 @@ namespace Piglings.Definitions
         public float ImpulseAt(int level) => Level(level)?.impulse ?? 0f;
 
         public System.Collections.Generic.IReadOnlyList<int> CopyThresholds => copyThresholds;
+        public int MaxCopies => maxCopies;
+        public System.Collections.Generic.IReadOnlyList<int> CopyStages => copyStages;
 
         /// <summary>Peg mastery weight of one trigger at this level: the entry's Mastery Weight, or the level itself when it's 0.</summary>
         public float MasteryWeightAt(int level)
