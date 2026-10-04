@@ -24,9 +24,12 @@ MonoBehaviour:
   - sprite: {fileID: 21300000, guid: 0b15e6bbff99a1246b027413cb7a8c90, type: 3}
     radiusScale: 1.2
     trailColour: {r: 1, g: 0.8537805, b: 0.23113209, a: 1}
-  stoneThresholds: 0a000000190000002d0000003c00000046000000500000005a000000640000007000000078000000
-  startStones: 10
-  evolveAtStones: 15
-  maxStones: 20
+  - sprite: {fileID: 21300000, guid: 0b15e6bbff99a1246b027413cb7a8c90, type: 3}
+    radiusScale: 1.2
+    trailColour: {r: 0.8490566, g: 0.3883659, b: 0, a: 1}
+  stoneThresholds: 0a0000000f00000014000000190000001e00000028000000320000004b000000640000007d00000096000000af000000c80000002c01000090010000f4010000ee020000e8030000d0070000
+  startStones: 5
+  evolveAtStones: 10
+  maxStones: 28
   refill: 1
-  evolvedRefill: 2
+  evolvedRefill: 3

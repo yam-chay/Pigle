@@ -51,7 +51,7 @@ namespace Piglings.Presentation
 
             var apart = anchor.position + (Vector3)apartOffset + new Vector3(0f, diameter / 2f, 0f);
             Place(sprite, apart, diameter, sortingOrder, "Refill stone");
-            var badge = stone.Refill >= 2 ? badgeRefill2 : badgeRefill1;
+            var badge = stone.Refill >= 2 ? badgeRefill1 : badgeRefill2;
             if (stone.Refill > 0 && badge != null)
                 PlaceScaled(badge, apart + (Vector3)badgeOffset, badgeScale, sortingOrder + stone.Stones + 1, "Refill badge");
         }

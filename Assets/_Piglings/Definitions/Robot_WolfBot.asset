@@ -19,4 +19,6 @@ MonoBehaviour:
   ballMass: 1
   ballMaterial: {fileID: 6200000, guid: 0480178cfe783694d99eff3656d98f5d, type: 2}
   maxFallSeconds: 6
-  breachSeconds: 1.2
+  stuckSpeed: 0.1
+  stuckSeconds: 1.5
+  breachSeconds: 1.4

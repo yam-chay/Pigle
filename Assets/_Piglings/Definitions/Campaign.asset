@@ -14,13 +14,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Piglings.Definitions::Piglings.Definitions.CampaignDefinition
   nights:
   - night: {fileID: 11400000, guid: 3f672aa5176394a47ab6bce1dd0f859c, type: 2}
-    unlocksOnDawn: {fileID: 11400000, guid: d29abeb2a2ec00f468b743f864604a71, type: 2}
-  - night: {fileID: 11400000, guid: cb878086a9458a34a909a9eda22d4e00, type: 2}
     unlocksOnDawn: {fileID: 11400000, guid: 364b111cec0941b4982551187aa260be, type: 2}
-  - night: {fileID: 11400000, guid: bcf66cc91d28abd458002fdb12723e19, type: 2}
+  - night: {fileID: 11400000, guid: cb878086a9458a34a909a9eda22d4e00, type: 2}
     unlocksOnDawn: {fileID: 11400000, guid: c85f60bb8dc3a7f4f8dc038fc104a503, type: 2}
+  - night: {fileID: 11400000, guid: bcf66cc91d28abd458002fdb12723e19, type: 2}
+    unlocksOnDawn: {fileID: 0}
   startingPegs:
-  - {fileID: 0}
+  - {fileID: 11400000, guid: d29abeb2a2ec00f468b743f864604a71, type: 2}
   slices:
   - {fileID: 11400000, guid: 292b3171ccd44c04cada7a3373800aa0, type: 2}
   - {fileID: 11400000, guid: 5dda616af5765494e8eeab74d0347a68, type: 2}

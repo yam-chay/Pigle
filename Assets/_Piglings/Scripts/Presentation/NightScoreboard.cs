@@ -125,7 +125,7 @@ namespace Piglings.Presentation
                 hourText.color = session.HourColour(s.Dawn ? count : hour);
             }
             if (scoreText != null) scoreText.text = s.Dawn ? $"{s.Score}" : $"{s.Score} / {to}";
-            if (gapText != null) gapText.text = s.Dawn ? "" : $"hour {segment} gap: {from} → {to}";
+            if (gapText != null) gapText.text = s.Dawn ? "" : $"hour {segment} gap: {from} -> {to}";
             // The bar's target; GlideBar moves it there.
             _barTarget = s.Dawn ? 1f : Mathf.Clamp01((s.Score - from) / (float)Mathf.Max(1, to - from));
             _targetSegment = segment;
