@@ -1796,6 +1796,7 @@ MonoBehaviour:
   hourPalette: {fileID: 11400000, guid: 40591b8285d66af43b1dd0d952087b0f, type: 2}
   profileName: campaign
   startImmediately: 1
+  debugNight: 2
 --- !u!4 &1068153026
 Transform:
   m_ObjectHideFlags: 0
