@@ -9,16 +9,14 @@ namespace Piglings.Meta
         public readonly float Mastery;           // its triggers weighted by level
         public readonly int NextThreshold;       // mastery for the next copy; -1 at the max
         public readonly int PreviousThreshold;   // mastery of the last copy earned (0 before the first): where the bar starts
-        public readonly int FollowUpAt;          // copies that earn the same-type follow-up throw; 0 = never (or past the max)
+        public readonly int FollowUps;           // same-type follow-up throws it earns per round: one per FollowUpEvery copies
+        public readonly int NextFollowUpAt;      // copies that earn the next follow-up; -1 = none left (or past the max)
 
-        public PegStatus(int copies, float mastery, int nextThreshold, int previousThreshold, int followUpAt = 0)
+        public PegStatus(int copies, float mastery, int nextThreshold, int previousThreshold, int followUps = 0, int nextFollowUpAt = -1)
         {
             Copies = copies; Mastery = mastery; NextThreshold = nextThreshold; PreviousThreshold = previousThreshold;
-            FollowUpAt = followUpAt;
+            FollowUps = followUps; NextFollowUpAt = nextFollowUpAt;
         }
-
-        /// <summary>Owns enough copies for the follow-up: placing one in a round gives one more throw of the same type.</summary>
-        public bool HasFollowUp => FollowUpAt > 0 && Copies >= FollowUpAt;
 
         public bool AtMax => NextThreshold < 0;
 
@@ -34,8 +32,9 @@ namespace Piglings.Meta
     /// that level's weight (default weight = the level: a level-2 peg's trigger counts double). A newly unlocked type owns
     /// StartCopies; each threshold of mastery reached adds one, up to MaxCopies (8 by default). Locked types own none —
     /// that's the campaign's call (CampaignPlan), not this one's.
-    /// The follow-up (stage 2): from FollowUpAt copies (4 by default) a type earns a same-type follow-up throw in each round
-    /// (the referee gives it once per round; it never stacks across types).
+    /// Follow-ups (stage 2): every FollowUpEvery copies (3 by default) a type earns one more same-type follow-up throw per
+    /// round — 3 copies → 1, 6 → 2, 9 → 3: with 10 copies, throwing it gives 4 of it in a row. The referee gives the chain
+    /// once per round, for the type thrown; it never stacks across types.
     /// </summary>
     public sealed class PegProgression
     {
@@ -44,13 +43,13 @@ namespace Piglings.Meta
 
         public int StartCopies { get; }
         public int MaxCopies { get; }
-        /// <summary>Copies that earn the same-type follow-up throw; 0 = never.</summary>
-        public int FollowUpAt { get; }
+        /// <summary>One more follow-up per this many copies; 0 = never.</summary>
+        public int FollowUpEvery { get; }
         public IReadOnlyList<int> Thresholds => _thresholds;
 
-        /// <param name="followUpAt">Copies that earn the follow-up throw (0 = never).</param>
+        /// <param name="followUpEvery">One more same-type follow-up per this many copies (0 = never).</param>
         public PegProgression(IReadOnlyList<int> thresholds, IReadOnlyList<float> levelWeights = null, int startCopies = 1,
-                              int maxCopies = 8, int followUpAt = 4)
+                              int maxCopies = 10, int followUpEvery = 3)
         {
             _thresholds = new int[thresholds?.Count ?? 0];
             for (int i = 0; i < _thresholds.Length; i++) _thresholds[i] = thresholds[i];
@@ -58,9 +57,11 @@ namespace Piglings.Meta
             for (int i = 0; i < _weights.Length; i++) _weights[i] = levelWeights[i] < 0f ? 0f : levelWeights[i];
             StartCopies = startCopies < 0 ? 0 : startCopies;
             MaxCopies = maxCopies < StartCopies ? StartCopies : maxCopies;
-            // A follow-up past the max can never be earned: the same as none.
-            FollowUpAt = followUpAt > 0 && followUpAt <= MaxCopies ? followUpAt : 0;
+            FollowUpEvery = followUpEvery > 0 ? followUpEvery : 0;
         }
+
+        /// <summary>Follow-ups earned with this many copies: one per FollowUpEvery (0 when off).</summary>
+        public int FollowUpsFor(int copies) => FollowUpEvery > 0 && copies > 0 ? copies / FollowUpEvery : 0;
 
         public float WeightAt(int level) => level >= 1 && level <= _weights.Length ? _weights[level - 1] : level < 1 ? 1f : level;
 
@@ -82,7 +83,10 @@ namespace Piglings.Meta
             if (copies > MaxCopies) { reached -= copies - MaxCopies; copies = MaxCopies; }
             int next = copies < MaxCopies && reached < _thresholds.Length ? _thresholds[reached] : -1;
             int previous = reached >= 1 ? _thresholds[reached - 1] : 0;
-            return new PegStatus(copies, mastery, next, previous, FollowUpAt);
+            int followUps = FollowUpsFor(copies);
+            int nextFollowUp = FollowUpEvery > 0 ? (followUps + 1) * FollowUpEvery : -1;
+            if (nextFollowUp > MaxCopies) nextFollowUp = -1;
+            return new PegStatus(copies, mastery, next, previous, followUps, nextFollowUp);
         }
     }
 }

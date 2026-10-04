@@ -103,8 +103,9 @@ Mastery from use: the stone levels up from the robots it knocks loose itself (50
 - **Stage 2** (plan: PROTOTYPE_V2.md ▸ Stage 2; order P → E → G → H → I):
   - [x] ☁ M10.P Progression: stone evolution list on `ThrowableDefinition.levels` (Stones Needed, look, Refill; level + refill from the stone count; cap 25); peg copies up to `maxCopies` (8); the 2-row pegboard (8 slots per type, holes file, optional hole sprite); the rug's refill badges as a list. CoreCheck.
     - [x] ☁ M10.P2 Follow-up instead of a shared pool: from `followUpAtCopies` (4) a type gives ONE same-type follow-up throw per round (`NightState.PegFollowUp`, `PegFollowUpGranted`; the shelf follows). Copy stages and `ThrowsPerHour` removed. CoreCheck.
+    - [x] ☁ M10.P3 Follow-ups every N copies: `followUpEveryCopies` (3) → a chain of same-type follow-ups per round (10 copies = 4 in a row); max copies 10. CoreCheck.
     - [ ] ☁ Clean-up pass (Yam, later): residue code the new systems made unneeded — list it before deleting (candidates: `NightEndView` / `PlayAgain` once Night.unity changes, `DepthCardView` / `HoursCardView` / `TemplateSlot` / `TemplateList` after G, the scoreboard after G).
-    - [ ] 🖥 M10.P-b Editor: Throwable_Stone Levels (Stones Needed + Refill per level, lv3/lv4 sprites) + Max Stones; each peg's Max Copies / Copy Thresholds / Follow Up At Copies; room_pegboard v2 + Holes File (+ Hole Sprite); the rug's Refill Badges. Steps in the PR.
+    - [ ] 🖥 M10.P-b Editor: Throwable_Stone Levels (Stones Needed + Refill per level, lv3/lv4 sprites) + Max Stones; each peg's Max Copies / Copy Thresholds / Follow Up Every Copies; room_pegboard v2 + Holes File (+ Hole Sprite); the rug's Refill Badges. Steps in the PR.
   - [ ] ☁+🖥 M10.E Post-run screen (night summary + progress; avg per stone, thrown vs lost, BEST CHAINS, the follow-up; hour colours by night progress).
   - [ ] ☁+🖥 M10.G HUD reshape: night track (moon), two screen-space chalkboards (record, tips — tips seen saved); removes the world scoreboard and the HOURS card.
   - [ ] ☁+🖥 M10.H Night selection overlay (replaces Next night).

@@ -111,49 +111,54 @@ static void CampaignChecks(){
    var s3=pp.For(new[]{100});
    Check(s3.Copies==4 && s3.AtMax && Near(s3.Progress,1f),"the thresholds list ends at 4 copies: then the bar is full");
    Check(Near(pp.For(new[]{10}).Progress,0.5f),"progress from the last copy's threshold: 10 of 5 → 15 = 0.5");
-   var eight=new PegProgression(new[]{1,2,3,4,5,6,7,8,9});
-   Check(eight.For(new[]{100}).Copies==8 && eight.For(new[]{100}).AtMax,"no 4-copy cap any more: max 8 by default (a longer list stops there)");
+   var ten=new PegProgression(new[]{1,2,3,4,5,6,7,8,9,10,11});
+   Check(ten.For(new[]{100}).Copies==10 && ten.For(new[]{100}).AtMax,"no 4-copy cap any more: max 10 by default (a longer list stops there)");
    Check(new PegProgression(new[]{1,2,3,4,5,6,7,8,9},null,1,6).For(new[]{100}).Copies==6,"Max Copies is per type (6 here)"); }
 
- // --- The follow-up (stage 2): from 4 copies, placing one gives ONE more throw of the same type, once per round ---
- { var pp=new PegProgression(new[]{1,2,3,4,5,6,7});
-   Check(!pp.For(new[]{2}).HasFollowUp && pp.For(new[]{2}).Copies==3,"3 copies: no follow-up yet");
-   Check(pp.For(new[]{3}).HasFollowUp && pp.For(new[]{3}).FollowUpAt==4,"4 copies: the follow-up is earned");
-   Check(pp.For(new[]{100}).HasFollowUp && pp.For(new[]{100}).Copies==8,"8 copies: still just the follow-up (more copies only = more pegs for the night)");
-   Check(!new PegProgression(new[]{1,2,3,4,5,6,7},null,1,8,0).For(new[]{100}).HasFollowUp,"Follow-Up At 0 = never");
-   Check(new PegProgression(new[]{1,2,3,4,5,6,7},null,1,8,9).FollowUpAt==0,"a follow-up past Max Copies can never be earned (= none)"); }
+ // --- Follow-ups (stage 2): one per N copies (3 by default); placing the type gives that many more of it in a row ---
+ { var pp=new PegProgression(new[]{1,2,3,4,5,6,7,8,9});   // max 10 copies, a follow-up every 3
+   Check(pp.For(new[]{1}).Copies==2 && pp.For(new[]{1}).FollowUps==0 && pp.For(new[]{1}).NextFollowUpAt==3,"2 copies: no follow-up yet, the first at 3");
+   Check(pp.For(new[]{2}).FollowUps==1 && pp.For(new[]{2}).NextFollowUpAt==6,"3 copies: 1 follow-up, the next at 6");
+   Check(pp.For(new[]{5}).FollowUps==2 && pp.For(new[]{8}).FollowUps==3,"6 copies: 2 follow-ups · 9 copies: 3");
+   Check(pp.For(new[]{100}).Copies==10 && pp.For(new[]{100}).FollowUps==3 && pp.For(new[]{100}).NextFollowUpAt==-1,
+         "10 copies (the max): 3 follow-ups — 4 in a row — and none left to earn (12 is past the max)");
+   Check(new PegProgression(new[]{1,2,3,4,5,6,7,8,9},null,1,10,4).For(new[]{100}).FollowUps==2,"every 4 copies instead: 10 copies → 2");
+   Check(new PegProgression(new[]{1,2,3,4,5,6,7,8,9},null,1,10,0).For(new[]{100}).FollowUps==0,"Follow-Up Every 0 = never"); }
 
  { PegSetup Setup(int sockets,int throws,params (PegType type,int count)[] shelf)=>new PegSetup(new System.Collections.Generic.List<(PegType,int)>(shelf),throws,sockets);
-   var bouncy=new PegType("bouncy",3,true,followUp:true); var bomb=new PegType("bomb",3,true);
-   var n=new Night(Hours(50,100,5000),null,Setup(6,1,(bouncy,8),(bomb,2)));
+   // In a row: how many pegs of `id` one round lets you place, starting with it (the base throw + its chain).
+   int InARow(int followUps,int copies){
+    var n=new Night(Hours(50,5000),null,Setup(20,1,(new PegType("t",3,true,followUps:followUps),copies)));
+    n.Play(3); int placed=0;
+    for(int s=0;s<20 && n.St.Phase==NightPhase.PegPlacement;s++) if(n.Ref.PlacePeg(s,"t")) placed++;
+    return placed; }
+   Check(InARow(0,2)==1,"2 copies (no follow-up): 1 peg");
+   Check(InARow(1,3)==2,"3 copies (1 follow-up): 2 in a row");
+   Check(InARow(2,6)==3,"6 copies (2 follow-ups): 3 in a row");
+   Check(InARow(3,10)==4,"10 copies (3 follow-ups): 4 in a row");
+   Check(InARow(3,2)==2,"a chain ends when that type runs out: 3 follow-ups but 2 pegs → 2");
+
+   var bouncy=new PegType("bouncy",3,true,followUps:2); var bomb=new PegType("bomb",3,true);
+   var n=new Night(Hours(50,100,5000),null,Setup(10,1,(bouncy,8),(bomb,2)));
    var granted=new System.Collections.Generic.List<PegFollowUpGranted>(); n.Bus.Subscribe<PegFollowUpGranted>(e=>granted.Add(e));
    n.Play(3);
-   Check(n.St.Phase==NightPhase.PegPlacement && n.St.PegThrowsLeft==1 && n.St.PegFollowUp==null,"setup: a round with 1 throw, any type");
-   Check(n.Ref.PlacePeg(0,"bouncy") && n.St.Phase==NightPhase.PegPlacement && n.St.PegThrowsLeft==1 && n.St.PegFollowUp=="bouncy" &&
-         granted.Count==1 && granted[0].PegId=="bouncy","8 Bouncy: placing one gives ONE more throw, and it must be Bouncy (PegFollowUpGranted)");
-   Check(!n.Ref.IsValidTarget(1,"bomb") && !n.Ref.PlacePeg(1,"bomb") && n.Shelf("bomb")==2 && n.Ref.IsValidTarget(1,"bouncy"),
-         "during the follow-up another type is refused (nothing used)");
-   Check(n.Ref.PlacePeg(1,"bouncy") && n.St.Phase==NightPhase.Running && n.St.PegFollowUp==null && granted.Count==1,
-         "the follow-up never earns another: 2 Bouncy, the round ends (8 Bouncy + 2 Bomb = 2 throws, not 5)");
+   Check(n.Ref.PlacePeg(0,"bouncy") && n.St.PegFollowUp=="bouncy" && n.St.PegFollowUpsLeft==1 && granted.Count==1 && granted[0].Remaining==1,
+         "Bouncy with 2 follow-ups: the first follow-up (1 more to come)");
+   Check(!n.Ref.IsValidTarget(1,"bomb") && !n.Ref.PlacePeg(1,"bomb") && n.Shelf("bomb")==2,"during the chain another type is refused (nothing used)");
+   Check(n.Ref.PlacePeg(1,"bouncy") && n.St.PegFollowUp=="bouncy" && n.St.PegFollowUpsLeft==0 && granted.Count==2 && granted[1].Remaining==0,"the second follow-up");
+   Check(n.Ref.PlacePeg(2,"bouncy") && n.St.Phase==NightPhase.Running && n.St.PegFollowUp==null,"the chain done: 3 Bouncy, the round ends");
    n.Play(3);
-   Check(n.St.Phase==NightPhase.PegPlacement && n.Ref.PlacePeg(2,"bomb") && n.St.Phase==NightPhase.Running && granted.Count==1,
-         "next round, a Bomb first (no follow-up copies): 1 throw, no follow-up"); }
+   Check(n.St.Phase==NightPhase.PegPlacement && n.Ref.PlacePeg(3,"bomb") && n.St.Phase==NightPhase.Running && granted.Count==2,
+         "next round, a Bomb first (no follow-ups): 1 throw, no chain");
 
- { PegSetup Setup(int sockets,int throws,params (PegType type,int count)[] shelf)=>new PegSetup(new System.Collections.Generic.List<(PegType,int)>(shelf),throws,sockets);
-   var a=new PegType("a",3,true,followUp:true); var b=new PegType("b",3,true,followUp:true);
-   var n=new Night(Hours(50,100,5000),null,Setup(6,2,(a,5),(b,5)));
-   n.Play(3);
-   Check(n.Ref.PlacePeg(0,"a") && n.St.PegFollowUp=="a" && n.St.PegThrowsLeft==2,"2 base throws: placing A gives the follow-up (2 left, the next must be A)");
-   Check(n.Ref.PlacePeg(1,"a") && n.St.PegFollowUp==null && n.St.PegThrowsLeft==1,"the follow-up used: back to any type, 1 base throw left");
-   Check(n.Ref.PlacePeg(2,"b") && n.St.Phase==NightPhase.Running,"once per round: B (also with follow-up copies) gives none — the round ends");
-   n.Play(3);
-   Check(n.St.Phase==NightPhase.PegPlacement && n.Ref.PlacePeg(3,"b") && n.St.PegFollowUp=="b","a new round: the follow-up is available again"); }
+   var two=new Night(Hours(50,100,5000),null,Setup(10,2,(new PegType("a",3,true,followUps:1),5),(new PegType("b",3,true,followUps:1),5)));
+   two.Play(3);
+   Check(two.Ref.PlacePeg(0,"a") && two.Ref.PlacePeg(1,"a") && two.St.PegFollowUp==null && two.St.PegThrowsLeft==1,"2 base throws: A + its follow-up, then 1 base throw left (any type)");
+   Check(two.Ref.PlacePeg(2,"b") && two.St.Phase==NightPhase.Running,"once per round: B's follow-ups don't start a second chain");
+   two.Play(3);
+   Check(two.Ref.PlacePeg(3,"b") && two.St.PegFollowUp=="b","a new round: a chain again");
 
- { PegSetup Setup(int sockets,int throws,params (PegType type,int count)[] shelf)=>new PegSetup(new System.Collections.Generic.List<(PegType,int)>(shelf),throws,sockets);
-   var last=new Night(Hours(50,5000),null,Setup(6,1,(new PegType("a",3,true,followUp:true),1)));
-   last.Play(3);
-   Check(last.Ref.PlacePeg(0,"a") && last.St.Phase==NightPhase.Running && last.St.PegFollowUp==null,"no follow-up when none of that type is left on the shelf");
-   var full=new Night(Hours(50,5000),null,Setup(1,1,(new PegType("solo",1,false,followUp:true),4)));
+   var full=new Night(Hours(50,5000),null,Setup(1,1,(new PegType("solo",1,false,followUps:3),4)));
    full.Play(3);
    Check(full.Ref.PlacePeg(0,"solo") && full.St.Phase==NightPhase.Running,"no follow-up when it couldn't go anywhere (no socket left): the round doesn't stall"); }
 
