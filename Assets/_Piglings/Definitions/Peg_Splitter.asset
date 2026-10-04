@@ -17,3 +17,25 @@ MonoBehaviour:
   mergeable: 1
   sprite: {fileID: 21300000, guid: 51390f13ebad05e49b32d582bfc361e8, type: 3}
   fallbackTint: {r: 0.6, g: 0.9, b: 1, a: 1}
+  spentSprite: {fileID: 0}
+  effect: 2
+  levels:
+  - scoreMultiplier: 0
+    bounciness: 0
+    pieces: 2
+    fanAngle: 30
+    valueShare: 1
+    bombRadius: 0
+    cooldownSeconds: 0
+    impulse: 0
+  - scoreMultiplier: 0
+    bounciness: 0
+    pieces: 3
+    fanAngle: 40
+    valueShare: 1
+    bombRadius: 0
+    cooldownSeconds: 0
+    impulse: 0
+  maxStonesPerThrow: 4
+  pieceScale: 0.8
+  countSplitHitsForMastery: 1

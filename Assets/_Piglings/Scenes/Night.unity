@@ -1964,6 +1964,7 @@ MonoBehaviour:
   traumaPerDepth: 0.2
   bigChainTotal: 300
   chainTrauma: 0.6
+  bombTrauma: 0.4
   maxOffset: 0.15
   maxAngle: 2
   frequency: 22
@@ -2726,6 +2727,43 @@ MonoBehaviour:
     endScale: 0.9
     rise: 0
     spin: 0
+  splitFlashColour: {r: 1, g: 1, b: 0.6, a: 1}
+  splitFlashSeconds: 0.25
+  splitSparkle: {fileID: 21300000, guid: e752cc49ff5a006428d440b8dc7832ae, type: 3}
+  splitSparkles: 6
+  splitSpread: 0.35
+  splitSparkleColour: {r: 1, g: 0.95, b: 0.7, a: 1}
+  splitSparkleMotion:
+    seconds: 0.4
+    startScale: 0.35
+    endScale: 0.1
+    rise: 0
+    spin: 200
+  bombStar: {fileID: 21300000, guid: b082a797dbf35f9468158263d0235eca, type: 3}
+  bombRing: {fileID: 21300000, guid: a47aa05c22925d145a3deb34bad83512, type: 3}
+  bombColour: {r: 1, g: 0.55, b: 0.15, a: 1}
+  bombStarMotion:
+    seconds: 0.3
+    startScale: 0.8
+    endScale: 1.6
+    rise: 0
+    spin: 60
+  bombRingMotion:
+    seconds: 0.45
+    startScale: 0.2
+    endScale: 1
+    rise: 0
+    spin: 0
+  spentTint: {r: 0.45, g: 0.45, b: 0.45, a: 1}
+  rechargeSparkle: {fileID: 21300000, guid: e752cc49ff5a006428d440b8dc7832ae, type: 3}
+  fuseOffset: {x: 0.05, y: 0.12}
+  rechargeSparkles: 4
+  rechargeSparkleMotion:
+    seconds: 0.5
+    startScale: 0.25
+    endScale: 0.05
+    rise: 0.15
+    spin: 240
 --- !u!114 &1064185511
 MonoBehaviour:
   m_ObjectHideFlags: 0
