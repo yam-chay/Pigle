@@ -1,7 +1,7 @@
 {
     "name": "Piglings.Editor",
     "rootNamespace": "Piglings.EditorTools",
-    "references": [],
+    "references": ["UnityEngine.UI"],
     "includePlatforms": [
         "Editor"
     ],

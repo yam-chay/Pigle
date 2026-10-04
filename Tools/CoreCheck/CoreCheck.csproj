@@ -22,6 +22,8 @@
     <Compile Include="../../Assets/_Piglings/Scripts/Simulation/CameraFraming.cs" />
     <!-- And where the tower's slices are (M10.F): the day phase's slice picker. -->
     <Compile Include="../../Assets/_Piglings/Scripts/Simulation/TowerLayout.cs" />
+    <!-- And the drag-and-drop rules + the hover jiggle (M10.F). -->
+    <Compile Include="../../Assets/_Piglings/Scripts/Simulation/SliceDrag.cs" />
   </ItemGroup>
   <ItemGroup>
     <!-- Meta reads the save with Newtonsoft; Unity's com.unity.nuget.newtonsoft-json 3.2 ships Newtonsoft.Json 13.0.2. -->
