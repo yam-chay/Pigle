@@ -21,4 +21,4 @@ MonoBehaviour:
   maxFallSeconds: 10
   stuckSpeed: 0.1
   stuckSeconds: 1.5
-  breachSeconds: 1.4
+  breachSeconds: 1.2
