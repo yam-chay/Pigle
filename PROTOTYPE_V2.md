@@ -17,8 +17,9 @@ camera rises to the **Night** frame as the moon rises.
 - **Restart = reload.** Retry / Next save the choice and reload the scene. The campaign scene boots at the **Doors** frame
   (the same view as before the reload, so the cut is invisible), eases into the **Barn room**, and the night waits in
   **Dusk** until Start night. Every night still starts clean; no reset code.
-- **Stones:** start 10, +1 per stone-mastery threshold, **evolve at 15** (lv2 look + radius, hourly refill 1 → 2), keep
-  adding up to **20** (cap). Hits are the saved cause.
+- **Stones:** start 10, +1 per stone-mastery threshold, up to a cap. *Superseded by stage 2 (PR P):* evolutions are a
+  list — each entry: stones needed, look, refill per hour (10 → lv1 +1 · 15 → lv2 +2 · 20 → lv3 +3 · 25 → lv4 +4, cap 25).
+  Hits are the saved cause.
 - **New look everywhere:** depth-coloured, points-only popups and the debug-HUD toggle apply to Night.unity too.
 - **UI:** Yam lays out each panel's frame once (Canvas, panel images, anchors, one template row/dot) in a local session;
   the components fill and repeat them from data.
@@ -27,7 +28,7 @@ camera rises to the **Night** frame as the moon rises.
 - **Separate profiles:** `NightSession.profileName` → `piglings_<name>.json`: "dev" in Night.unity, "campaign" in TestNight.
 - **Save stores causes only:** dawns per night id (unlocks are derived), the current night index (navigation), peg triggers
   per merged level (copies are derived), tower choices per night. Save stays v1 (additive sections).
-- **One save rule for both scenes:** the stone's level = evolved (15 stones) everywhere.
+- **One save rule for both scenes:** the stone's level comes from its stone count (the evolution list) everywhere.
 - **The Bouncy number tag goes** with the new popups; a peg tutorial card covers it later.
 - **Bombs do nothing during PegPlacement** (a plain hold, charge kept). Chains thrown after a threshold's crossing can
   still be falling then (by design since M8.2c).
@@ -118,8 +119,8 @@ Wall-slice effects, the chimney loss scene, onboarding triggers, a skill tree, s
 | — | Debug: "Campaign/Go to Debug Night", "Campaign/Reset campaign", copies in the campaign log | this file's PR |
 | C | Phase flow + camera (CameraDirector, NightFlow, doors, reload on Retry/Next, moon hook) | ✔ merged (#33) |
 | D | Night scoreboard + popups by depth + tutorial cards + HUD toggle + the Night frame from the tower | ✔ merged (#34, #35) |
-| E | Post-run screen | after C |
-| F | Barn room day phase + slice placement | ✔ code (this PR); editor steps in the PR |
+| F | Barn room day phase + slice placement (+ F2: slices by hand, UI kit tool) | ✔ merged (#36, #37) |
+| E | Post-run screen | moved to stage 2 (below) |
 
 Every PR: updates ARCHITECTURE.md / TASKS.md, lists its editor steps, passes `dotnet run --project Tools/CoreCheck`,
 merges the latest Production first (CLAUDE.md).
@@ -137,18 +138,118 @@ merges the latest Production first (CLAUDE.md).
 - TestNight: NightSession **Start Immediately off** (the flow begins the night); the scene must be in Build Settings.
 - Placeholder Start / Retry / Next buttons are fine (the real post-run screen is PR E, the barn is PR F).
 
+## Stage 2 — progression, post-run, HUD, night select, pig face (planned 2026-10-04)
+
+### Playtest findings that drive it (Yam's logs)
+- Night length is right: hours 21–53 s, ~4 min for a 7-hour night.
+- Night 3 losses all end with **0 stones**: ammo decides them, not breaches. → P raises the refill with each evolution and
+  adds peg throws per hour; the empty-pile "dead time" question (TASKS ▸ Open) is still open.
+- Progression maxed out within ~3 nights with fast-iteration numbers — Yam retunes the thresholds (data, not code).
+- Campaign data fixed: start Bouncy, night 1 dawn → Bomb, night 2 dawn → Splitter.
+
+### PR order and status
+| PR | What | Status |
+|---|---|---|
+| P | Progression: stone evolution list (look + refill per level, cap 25), peg copies up to 8 with copy stages → +1 peg throw per hour per stage, the 2-row pegboard | ✔ code (this PR); editor steps in the PR |
+| E | Post-run screen (§4) + avg per stone, thrown vs lost, BEST CHAINS, stage progress | next |
+| G | HUD reshape: screen-space night track + two screen-space chalkboards (record, tips); removes the world scoreboard and the HOURS card | after E (needs Yam's mockup + peg tip art) |
+| H | Night selection overlay (replaces Next night) | after G |
+| I | Pig face (Presentation only) | after H (any time) |
+
+Every PR: CoreCheck passes, Night.unity keeps working, editor steps listed in the PR, TASKS.md ticked.
+
+### PR P — progression changes
+- **Stone evolutions** = the `levels` list on `ThrowableDefinition` (kept, so each level's sprite / radius / trail stay):
+  each entry adds **Stones Needed** and **Refill** (per hour). Level = how many entries' Stones Needed the night's stone
+  count reaches (entry 0 = level 1, always at least 1); refill = that entry's. `evolveAtStones`, `refill` and
+  `evolvedRefill` are removed. Default list 10 → lv1 +1 · 15 → lv2 +2 · 20 → lv3 +3 · 25 → lv4 +4; max stones 25. The
+  saved cause stays the stone's hits; stones, level and refill are derived (`StoneProgression`, Meta, CoreCheck).
+  `StoneStatus` gains the next evolution (stones needed, its level) for the post-run's "dots up to the next evolution".
+- **Peg copies**: no fixed 4 — `PegDefinition.maxCopies` (default 8); `copyThresholds` has one entry per extra copy.
+  **Copy stages** (`PegDefinition.copyStages`, default 4, 6, 8 copies): each stage a type has reached adds +1 to the
+  hour's peg-throw pool. Throws per hour = the night's `pegThrowsPerThreshold` (base 1) + Σ stages reached over the owned
+  types (`PegProgression`, CoreCheck: 3 copies → 1 · 4 → 2 · 6 → 3 · 8 → 4 · Bouncy 6 + Bomb 4 → 4). The pool is shared
+  across types and still limited by the copies on the shelf. Fixed when the night starts. **Campaign only** — Night.unity's
+  shelf is its loadout, not owned copies, so it keeps its night's own throws.
+- **Barn pegboard**: 8 slots per type, two rows of 4; row 2 only when the type owns more than 4 copies. Hole positions come
+  from a holes file (a TextAsset: 24 "x,y" lines in pixels from the PNG's top-left, group order type 1 row 1, type 1 row 2,
+  type 2 row 1, …), converted with the sprite's pivot and PPU. Locked types: ghosts in row 1 + the lock.
+- **Rug**: one refill badge per refill amount (a list, entry 0 = +1); a missing one uses the last there is.
+- Art from Yam: `stone_lv3`, `stone_lv4` (same size/pivot as lv1/lv2), `room_pegboard` v2 + its 24-hole file.
+- Editor steps: Throwable_Stone's Levels list (4 entries: sprite, radius, trail, Stones Needed, Refill) and Max Stones;
+  each peg's Max Copies, Copy Thresholds (one per extra copy) and Copy Stages; the pegboard sprite + Holes File (+ Hole
+  Sprite, see question 1); the rug's Refill Badges list.
+
+### PR E — post-run screen (§4), plus
+- Night summary adds **avg per stone** (score ÷ stones thrown), and **stones thrown** and **stones lost to breaches** as
+  two lines, so a loss explains itself.
+- **BEST CHAINS**: the top 3 closed chains of the night (Inspector, up to 5), the scoreboard's row format
+  ("9 wolves · depth 2  +620"), quality-coloured. Needs a Rules record of the top chains (`NightState` only keeps the
+  best one today) — CoreCheck.
+- **PROGRESS**: stones a → b with dots up to the NEXT evolution and that evolution's icon (its level sprite); each peg type:
+  copies, the next copy stage ("4/6 → +1 throw per hour"), a NEW tag when unlocked tonight (before/after snapshot of the
+  profile taken before banking).
+- **Hour colours sampled by night progress** (see question 3) land here: the post-run's hour dots are the first new user.
+- Editor steps: the two panels in the Doors frame (UI kit), template rows / dots, the Retry / Next buttons moved in.
+
+### PR G — HUD reshape (replaces the world-space chalkboard and the HOURS card)
+- **Night track** (screen space, across the top): a thin line, one circle per hour (equal segments, not proportional to
+  score), the moon riding it. Inside a segment the moon moves by progress through that hour's gap. Reaching a circle = the
+  hour moment (when the scoreboard's hour changes today: the round's start): the circle fills with the hour colour, its ×m
+  pops; the peg round starts there. A small peg icon between circles. At dawn the moon becomes the sun.
+- The moon rise during the camera's rise uses `sky_moon` / `sky_moon_glow` (`NightFlow.MoonRises` already fires).
+- **Two screen-space chalkboards** (`board_frame`, no post) — LEFT = the record: total score, LAST THROWS, BEST TONIGHT.
+  RIGHT = tips, just in time: DEPTH on the first chain with depth ≥ 1; a peg type's tip the first time it's in the pig's
+  hand during placement. **Tips seen are saved** (a new additive save section, Meta + `ProfileJson` + CoreCheck) so they
+  don't repeat; learned tips collapse to small icons, expandable on hover.
+- Removed: `NightScoreboard` (only TestNight uses it) and `HoursCardView` (in no scene); DEPTH becomes the first tip.
+- Before it starts: Yam's mockup + peg tip art.
+
+### PR H — night selection overlay
+- Replaces the single "Next night" button. From the barn room and the post-run, an overlay lists the campaign's nights.
+  Unlocked = a dawn on the previous night (night 1 always). Each entry: number, hours, slice count, a dawn badge if won;
+  locked: greyed with `icon_lock`. Choosing one saves the index and reloads (like Next night); replaying earlier nights
+  earns mastery.
+
+### PR I — pig face
+- Presentation only, from events / state: calm by default; worried at stones left ≤ A; gritting at ≤ B; `mouth_o` while any
+  wolf is in the danger zone; a flinch on a breach. The rig's swap layers (mouth_smile / grin / grit / o,
+  eye_*_closed); A and B in the Inspector. The PR lists the Animator parameters for Yam to wire.
+
+### Contradictions and open questions (found while planning)
+1. **Pegboard row 2 "only shows" past 4 copies** — if room_pegboard v2 paints all 24 holes, code can't hide row 2's holes.
+   P supports both: with a **Hole Sprite** set, the art has no holes and code draws one per visible slot (row 2 appears at
+   5 copies); without it, the art's holes are always visible and only the pegs follow the copies. *Yam: which art?*
+2. **Refill badges go to +4**, but only `badge_refill_1/2` exist (and Balance swapped which one shows for refill ≥ 2 —
+   the list in P makes the order explicit). *Needs +3 / +4 badge art* (no text on world objects); until then the last
+   badge repeats.
+3. **Hour colours by night progress don't exist yet**: `HourPaletteDefinition.ColourFor` picks by index and clamps, so a
+   5-hour night never reaches the palette's last (dawn gold) colour. Moved to E (first PR showing hour colours after P);
+   the scoreboard / track get it for free.
+4. **Peg throws per hour from copy stages apply to the campaign only** (decision above). Night.unity unchanged.
+5. **Stone asset vs the new defaults**: Throwable_Stone currently has start 5, max 28 and 3 levels (Balance). P's code
+   defaults follow the spec (10 → … → 25, cap 25) but assets keep Yam's numbers; the removed fields' values are dropped
+   and re-entered in the Levels list (editor step).
+6. **H: choosing a night from the barn room** reloads the scene, which boots at the Doors: a visible cut from the barn
+   room. H eases the camera to the Doors before reloading.
+7. **I: there's no "left the danger zone" event**: a wolf counts as in danger from `RobotEnteredDangerZone` until it loses
+   grip, breaches or is removed. Only the night's pig gets the face (the barn room's rig copy stays calm).
+8. **More peg throws + bigger refills** (P) both push against the "0 stones" losses; with Yam's retune, watch that night 3
+   doesn't flip to never-lost. The dead-time decision (TASKS ▸ Open) is still separate.
+
 ## Art map (as found in the repo)
 All PPU 400; white sprites are tinted in code; code must still run with any sprite missing. Sprites go in through
 Inspector fields, so folders don't matter — only names.
 - `Art/Barn/Slices/`: `barn_slice` (the default "barn" slice — no rename), `barn_slice_wood/straw/brick`,
   `barn_bottom_closed/open`, `barn_top`.
 - `Art/Barn/barn_open_doors/`: `room_pegboard` (+ `room_pegboard_holes.txt`), `room_materials`, `room_materials_glow`,
-  `badge_refill_1/2`, `icon_lock`, `room_preview` (reference).
+  `badge_refill_1/2` (+3/+4 wanted, stage 2), `icon_lock`, `room_preview` (reference). Stage 2: `room_pegboard` v2
+  + a 24-hole file.
 - `Art/UI/`: `board_frame` (9-slice L36 R36 T36 B52), `board_post` (Tiled), `ui_pill` (9-slice 12),
   `ui_button_primary/secondary` (9-slice L32 R32 T32 B40), `ui_round_rect` (9-slice 20), `ui_pip`, `ui_pip_ring`,
   `ui_pip_glow`, `tag_new`, `icon_wolf`, `icon_arrow_down`, `icon_moon`, `icon_sun`, `sky_moon`, `sky_moon_glow`.
 - Existing: `Art/Pegs/peg_*` (+ `peg_bomb_spent`, `peg_level_2/3`, `peg_socket_highlight`, `peg_shelf`), `pile_rag`,
-  `Art/Props/Weapons/Stone/stone_lv1/2`, `Art/FX/fx_*`.
+  `Art/Props/Weapons/Stone/stone_lv1/2` (+ lv3/lv4, stage 2), `Art/FX/fx_*`.
 
 ## Debug tools (NightSession context menu, play mode)
 - Mastery/Reset progress · Mastery/Add 10 hits

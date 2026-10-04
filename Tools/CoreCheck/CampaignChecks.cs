@@ -73,23 +73,34 @@ static void CampaignChecks(){
          "the profile keeps triggers per level");
    fx.Dispose(); t.Dispose(); prog.Dispose(); }
 
- // --- Stones: start 10, +1 per threshold, evolve at 15 (refill 2), cap 20 ---
- { var th=new[]{10,20,30,40,50,60,70,80,90,100};
-   var sp=new StoneProgression(th,10,15,20,1,2);
+ // --- Stones: start 10, +1 per threshold, cap 25; level and refill from the evolution list (stage 2, PR P) ---
+ { var th=new[]{10,20,30,40,50,60,70,80,90,100,110,120,130,140,150};
+   var sp=new StoneProgression(th,10,25);   // the default evolutions: 10 → lv1 +1 · 15 → lv2 +2 · 20 → lv3 +3 · 25 → lv4 +4
    var a=sp.For(0);
-   Check(a.Stones==10 && !a.Evolved && a.Level==1 && a.Refill==1 && a.NextThreshold==10 && a.PreviousThreshold==0,"0 hits: 10 stones, level 1, refill 1, next +1 at 10");
+   Check(a.Stones==10 && a.Level==1 && a.Refill==1 && a.NextThreshold==10 && a.PreviousThreshold==0,"0 hits: 10 stones, level 1, refill 1, next +1 at 10");
+   Check(a.NextEvolutionStones==15 && a.NextEvolutionLevel==2,"0 hits: the next evolution is level 2 at 15 stones");
    var b=sp.For(49);
-   Check(b.Stones==14 && !b.Evolved && b.NextThreshold==50 && Near(b.Progress(49),0.9f),"49 hits: 14 stones, 0.9 of the way to the 15th");
+   Check(b.Stones==14 && b.Level==1 && b.NextThreshold==50 && Near(b.Progress(49),0.9f),"49 hits: 14 stones, still level 1, 0.9 of the way to the 15th");
    var e=sp.For(50);
-   Check(e.Stones==15 && e.Evolved && e.Level==2 && e.Refill==2,"50 hits: the 15th stone — evolved: level 2, refill 2");
-   var m=sp.For(100); var big=sp.For(999999);
-   Check(m.Stones==20 && m.AtCap && m.NextThreshold==-1 && Near(m.Progress(100),1f) && big.Stones==20,"100 hits: 20 stones = the cap; more hits change nothing");
-   var shortList=new StoneProgression(new[]{10},10,15,20).For(500);
+   Check(e.Stones==15 && e.Level==2 && e.Refill==2 && e.NextEvolutionStones==20,"50 hits: the 15th stone — level 2, refill 2; level 3 at 20");
+   var l3=sp.For(100); var l4=sp.For(150);
+   Check(l3.Stones==20 && l3.Level==3 && l3.Refill==3,"100 hits: 20 stones — level 3, refill 3");
+   Check(l4.Stones==25 && l4.Level==4 && l4.Refill==4 && l4.AtCap && l4.NextEvolutionStones==-1 && l4.NextEvolutionLevel==0,
+         "150 hits: 25 stones = the cap — level 4, refill 4, no evolution left");
+   Check(sp.For(999999).Stones==25,"more hits change nothing past the cap");
+   var shortList=new StoneProgression(new[]{10},10,25).For(500);
    Check(shortList.Stones==11 && shortList.AtCap,"fewer thresholds than room: the list ends the progression (11, done)");
-   var lowCap=new StoneProgression(th,10,15,12).For(500);
-   Check(lowCap.Stones==12 && lowCap.AtCap && !lowCap.Evolved,"a lower cap wins over a longer list (12 stones, never evolves)"); }
+   var lowCap=new StoneProgression(th,10,12).For(500);
+   Check(lowCap.Stones==12 && lowCap.AtCap && lowCap.Level==1 && lowCap.NextEvolutionStones==-1,
+         "a lower cap wins over a longer list (12 stones: level 1 for good, the next evolution out of reach)");
+   var custom=new StoneProgression(th,5,25,new[]{new StoneEvolution(5,1),new StoneEvolution(8,3)});
+   Check(custom.For(0).Level==1 && custom.For(30).Stones==8 && custom.For(30).Level==2 && custom.For(30).Refill==3,"a custom list: 5 → lv1 +1, 8 → lv2 +3");
+   var none=new StoneProgression(th,10,25,new StoneEvolution[0]).For(500);
+   Check(none.Level==1 && none.Refill==1,"an empty list: one level, refill 1");
+   Check(StoneProgression.Problem(StoneProgression.DefaultEvolutions)==null &&
+         StoneProgression.Problem(new[]{new StoneEvolution(10,1),new StoneEvolution(10,2)})!=null,"evolutions must rise (same Stones Needed twice = a problem)"); }
 
- // --- Peg copies: 1 when unlocked, +1 per weighted-mastery threshold, max 4 ---
+ // --- Peg copies: 1 when unlocked, +1 per weighted-mastery threshold, up to Max Copies (8) ---
  { var pp=new PegProgression(new[]{5,15,30});
    var s0=pp.For(null);
    Check(s0.Copies==1 && s0.NextThreshold==5 && Near(s0.Mastery,0f),"no triggers: 1 copy, next at 5");
@@ -98,8 +109,26 @@ static void CampaignChecks(){
    var s2=new PegProgression(new[]{5,15,30},new[]{1f,3f}).For(new[]{3,1});
    Check(Near(s2.Mastery,6f),"custom weights per level (1, 3): 3 + 3 = 6");
    var s3=pp.For(new[]{100});
-   Check(s3.Copies==4 && s3.AtMax && Near(s3.Progress,1f),"max 4 copies, then the bar is full");
-   Check(Near(pp.For(new[]{10}).Progress,0.5f),"progress from the last copy's threshold: 10 of 5 → 15 = 0.5"); }
+   Check(s3.Copies==4 && s3.AtMax && Near(s3.Progress,1f),"the thresholds list ends at 4 copies: then the bar is full");
+   Check(Near(pp.For(new[]{10}).Progress,0.5f),"progress from the last copy's threshold: 10 of 5 → 15 = 0.5");
+   var eight=new PegProgression(new[]{1,2,3,4,5,6,7,8,9});
+   Check(eight.For(new[]{100}).Copies==8 && eight.For(new[]{100}).AtMax,"no 4-copy cap any more: max 8 by default (a longer list stops there)");
+   Check(new PegProgression(new[]{1,2,3,4,5,6,7,8,9},null,1,6).For(new[]{100}).Copies==6,"Max Copies is per type (6 here)"); }
+
+ // --- Copy stages: 4, 6, 8 copies each add +1 to the hour's peg-throw pool (base 1) ---
+ { var pp=new PegProgression(new[]{1,2,3,4,5,6,7});
+   int Throws(params int[] copiesPerType){ var stages=new System.Collections.Generic.List<int>(); foreach(var c in copiesPerType) stages.Add(pp.StagesReached(c)); return PegProgression.ThrowsPerHour(1,stages); }
+   Check(Throws(3)==1,"3 copies → 1 throw per hour");
+   Check(Throws(4)==2,"4 copies → 2 throws per hour");
+   Check(Throws(6)==3,"6 copies → 3 throws per hour");
+   Check(Throws(8)==4,"8 copies → 4 throws per hour");
+   Check(Throws(6,4)==4,"Bouncy 6 + Bomb 4 → 4 throws per hour (the pool is shared)");
+   Check(Throws()==1 && PegProgression.ThrowsPerHour(2,null)==2,"no types → the night's base");
+   var st=pp.For(new[]{3});   // mastery 3 → 4 copies
+   Check(st.Copies==4 && st.StagesReached==1 && st.NextStage==6,"a status says the stages reached and the next stage (4 copies: 1 reached, next at 6)");
+   Check(pp.For(new[]{100}).NextStage==-1 && pp.For(new[]{100}).StagesReached==3,"8 copies: every stage reached, none next");
+   Check(new PegProgression(new[]{1,2,3,4,5,6,7},null,1,5).For(new[]{100}).NextStage==-1,"a stage past Max Copies is never 'next'");
+   Check(new PegProgression(new[]{1},null,1,8,new int[0]).StagesReached(8)==0,"no stages: never extra throws"); }
 
  // --- The campaign: unlocks from dawns, the next night, the tower ---
  { var plan=new CampaignPlan(new[]{"night_01","night_02","night_03"},new[]{"peg_bomb","peg_splitter",null},new[]{"peg_bouncy"});

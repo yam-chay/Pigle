@@ -15,8 +15,9 @@ namespace Piglings.Definitions
         [SerializeField, Min(0f)] private float lifetime = 6f;             // safety cleanup
         [SerializeField] private PhysicsMaterial2D material;
 
-        [Tooltip("How each level looks: entry 0 = level 1, entry 1 = level 2 (the evolved stone). The level comes from the stone " +
-                 "progression below. Empty = one level that looks like its prefab.")]
+        [Tooltip("The stone's evolutions, in order (entry 0 = level 1): from Stones Needed stones the stone is that level — its " +
+                 "look, radius, trail and hourly Refill. Stones Needed must rise. Empty = one level that looks like its prefab, refill 1. " +
+                 "Default plan: 10 → lv1 +1 · 15 → lv2 +2 · 20 → lv3 +3 · 25 → lv4 +4.")]
         [SerializeField] private List<ThrowableLevel> levels = new List<ThrowableLevel>();
 
         [Header("Stone progression (mastery from use)")]
@@ -25,13 +26,8 @@ namespace Piglings.Definitions
         [SerializeField] private int[] stoneThresholds = { 10, 25, 45, 70, 100, 140, 190, 250, 320, 400 };
         [Tooltip("Stones on the pile at the start of a campaign night, before any threshold.")]
         [SerializeField, Min(0)] private int startStones = 10;
-        [Tooltip("At this many stones the stone evolves: level 2 (its look and radius), and the hourly refill goes up.")]
-        [SerializeField, Min(1)] private int evolveAtStones = 15;
         [Tooltip("No more stones past this, whatever the hits.")]
-        [SerializeField, Min(1)] private int maxStones = 20;
-        [Tooltip("Stones added at each hour's placement round, before / after evolving (campaign).")]
-        [SerializeField, Min(0)] private int refill = 1;
-        [SerializeField, Min(0)] private int evolvedRefill = 2;
+        [SerializeField, Min(1)] private int maxStones = 25;
 
         public string Id => id;
         public float Radius => radius;
@@ -43,10 +39,9 @@ namespace Piglings.Definitions
 
         public IReadOnlyList<int> StoneThresholds => stoneThresholds;
         public int StartStones => startStones;
-        public int EvolveAtStones => evolveAtStones;
         public int MaxStones => maxStones;
-        public int Refill => refill;
-        public int EvolvedRefill => evolvedRefill;
+        /// <summary>The evolutions (entry 0 = level 1): look + Stones Needed + Refill. NightSession turns them into Meta's rule.</summary>
+        public IReadOnlyList<ThrowableLevel> Levels => levels;
 
         /// <summary>This level's sprite; a level without one uses the one before. Null = keep the prefab's sprite.</summary>
         public Sprite SpriteFor(int level)
@@ -79,10 +74,14 @@ namespace Piglings.Definitions
         private int Index(int level) => levels.Count == 0 ? -1 : Mathf.Clamp(level - 1, 0, levels.Count - 1);
     }
 
-    /// <summary>One level of a weapon: how it looks and how big it is (the level itself comes from the stone progression).</summary>
+    /// <summary>One evolution of a weapon: from how many stones it's this level, how it looks, and its hourly refill.</summary>
     [System.Serializable]
     public sealed class ThrowableLevel
     {
+        [Tooltip("From this many stones on the pile the stone is this level. Must rise from entry to entry.")]
+        [Min(0)] public int stonesNeeded = 10;
+        [Tooltip("Stones added at each hour's placement round at this level (campaign).")]
+        [Min(0)] public int refill = 1;
         [Tooltip("The weapon's sprite at this level (the stone should fill the canvas). Empty = the level before's.")]
         public Sprite sprite;
         [Tooltip("× Radius. Collider and sprite scale together. The pile's spacing grows with it too.")]

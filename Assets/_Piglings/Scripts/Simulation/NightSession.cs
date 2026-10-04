@@ -136,7 +136,7 @@ namespace Piglings.Simulation
         /// <summary>Where the stone stands with tonight's hits so far (after the night is banked, = the saved total).</summary>
         public StoneStatus StoneNow => _stones.For(WeaponHitsSoFar);
 
-        /// <summary>The level tonight's stones play at (2 once evolved), fixed when the night started.</summary>
+        /// <summary>The level tonight's stones play at (the evolution its stone count reached), fixed when the night started.</summary>
         public int WeaponLevel => StoneAtStart.Level;
 
         /// <summary>
@@ -267,16 +267,23 @@ namespace Piglings.Simulation
         private void FixStone()
         {
             var weapon = _night.Throwable;
-            _stones = new StoneProgression(weapon.StoneThresholds, weapon.StartStones, weapon.EvolveAtStones, weapon.MaxStones,
-                                           weapon.Refill, weapon.EvolvedRefill);
+            // The evolutions: one per entry of the weapon's Levels list (its look stays in the definition).
+            var evolutions = new List<StoneEvolution>();
+            foreach (var level in weapon.Levels)
+                if (level != null) evolutions.Add(new StoneEvolution(level.stonesNeeded, level.refill));
+            _stones = new StoneProgression(weapon.StoneThresholds, weapon.StartStones, weapon.MaxStones, evolutions);
             var problem = MasteryLevels.Problem(weapon.StoneThresholds);
             if (problem != null) Debug.LogWarning($"{weapon.name}: stone thresholds — {problem}.", weapon);
+            var evolutionProblem = StoneProgression.Problem(evolutions);
+            if (evolutionProblem != null)
+                Debug.LogWarning($"{weapon.name}: Levels — {evolutionProblem}. Fill each level's Stones Needed (rising) and Refill.", weapon);
             int hits = _progression.Profile.DirectHits(weapon.Id);
             _savedHitsAtStart = hits;
             StoneAtStart = _stones.For(hits);
             var s = StoneAtStart;
             Debug.Log($"Piglings save: {weapon.Id} tonight — level {s.Level}, {s.Stones} stones, refill {s.Refill} ({hits} hits" +
-                      (s.AtCap ? ", at the cap)" : $", +1 stone at {s.NextThreshold})") +
+                      (s.AtCap ? ", at the cap" : $", +1 stone at {s.NextThreshold}") +
+                      (s.NextEvolutionStones < 0 ? ")" : $"; level {s.NextEvolutionLevel} at {s.NextEvolutionStones} stones)") +
                       (IsCampaign ? "" : $"; this night's own pile ({_night.ThrowsAvailable}) and refill ({_night.StonesPerThreshold}) apply"), this);
         }
 
@@ -527,16 +534,23 @@ namespace Piglings.Simulation
         {
             var loadout = new List<(PegType, int)>();
             _pegDefs.Clear();
+            PegThrowsPerHour = _night.PegThrowsPerThreshold;
             if (IsCampaign)
             {
+                // The hour's throw pool: the night's base + every owned type's copy stages reached (fixed for the night).
+                var stages = new List<int>();
                 foreach (var id in Plan.UnlockedPegs(_progression.Profile))
                 {
                     var peg = campaign.FindPeg(id);
                     if (peg == null) continue;
-                    int copies = CopiesOwned(peg);
+                    var status = PegStatusFor(peg);
                     _pegDefs.Add(peg);
-                    if (copies > 0) loadout.Add((ToPegType(peg), copies));
+                    stages.Add(status.StagesReached);
+                    if (status.Copies > 0) loadout.Add((ToPegType(peg), status.Copies));
                 }
+                PegThrowsPerHour = PegProgression.ThrowsPerHour(_night.PegThrowsPerThreshold, stages);
+                Debug.Log($"Piglings campaign: {PegThrowsPerHour} peg throw(s) per hour (base {_night.PegThrowsPerThreshold} + " +
+                          $"{PegThrowsPerHour - _night.PegThrowsPerThreshold} from copy stages)", this);
             }
             else
             {
@@ -547,7 +561,7 @@ namespace Piglings.Simulation
                     loadout.Add((ToPegType(entry.peg), entry.count));
                 }
             }
-            var pegs = new PegSetup(loadout, _night.PegThrowsPerThreshold, board != null ? board.SocketCount : 0);
+            var pegs = new PegSetup(loadout, PegThrowsPerHour, board != null ? board.SocketCount : 0);
             if (pegs.DroppedTypes > 0)
                 Debug.LogWarning($"NightSession: {_night.name} brings more than {PegSetup.ShelfCapacity} peg types; " +
                                  $"{pegs.DroppedTypes} ignored (the shelf holds {PegSetup.ShelfCapacity}).", _night);
@@ -559,15 +573,24 @@ namespace Piglings.Simulation
         {
             var weights = new float[Mathf.Max(peg.MaxLevel, peg.LevelCount)];
             for (int i = 0; i < weights.Length; i++) weights[i] = peg.MasteryWeightAt(i + 1);
-            return new PegProgression(peg.CopyThresholds, weights);
+            return new PegProgression(peg.CopyThresholds, weights, 1, peg.MaxCopies, peg.CopyStages);
         }
 
-        /// <summary>How many copies of this (unlocked) peg type the player owns, from its saved triggers.</summary>
-        public int CopiesOwned(PegDefinition peg)
+        /// <summary>Where an (unlocked) peg type stands, from its saved triggers: copies, copy stages, progress to the next.</summary>
+        public PegStatus PegStatusFor(PegDefinition peg)
         {
             _progression.Profile.Pegs.TryGetValue(peg.Id, out var record);
-            return ProgressionFor(peg).For(record != null ? record.Triggers : null).Copies;
+            return ProgressionFor(peg).For(record != null ? record.Triggers : null);
         }
+
+        /// <summary>
+        /// Peg throws per hour tonight: the night's base, plus in the campaign every owned type's copy stages (fixed when the
+        /// night starts). Night.unity: the night's own number.
+        /// </summary>
+        public int PegThrowsPerHour { get; private set; }
+
+        /// <summary>How many copies of this (unlocked) peg type the player owns, from its saved triggers.</summary>
+        public int CopiesOwned(PegDefinition peg) => PegStatusFor(peg).Copies;
 
         // The Rules' view of a peg: id, levels, effect and the per-level numbers the Rules use (physics stays here).
         private PegType ToPegType(PegDefinition peg)
