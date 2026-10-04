@@ -1613,6 +1613,70 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
   m_BlendShapeWeights: []
+--- !u!1 &427426260
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 427426261}
+  - component: {fileID: 427426262}
+  m_Layer: 0
+  m_Name: FX
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &427426261
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 427426260}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 519420032}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &427426262
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 427426260}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 056fa7a12cbfa914383104dbaa6e6f1c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Piglings.Presentation::Piglings.Presentation.StoneHitFx
+  session: {fileID: 1068153025}
+  spawner: {fileID: 1317582554}
+  hitStar: {fileID: 21300000, guid: b082a797dbf35f9468158263d0235eca, type: 3}
+  sparkle: {fileID: 21300000, guid: e752cc49ff5a006428d440b8dc7832ae, type: 3}
+  starColour: {r: 1, g: 0.95, b: 0.7, a: 1}
+  starMotion:
+    seconds: 0.25
+    startScale: 0.6
+    endScale: 1.1
+    rise: 0
+    spin: 90
+  sparkleColour: {r: 1, g: 0.85, b: 0.35, a: 1}
+  sparkleMotion:
+    seconds: 0.6
+    startScale: 0.5
+    endScale: 0.3
+    rise: 0.45
+    spin: 180
+  sortingLayer: PopUp
+  sortingOrder: -1
 --- !u!1 &470349676
 GameObject:
   m_ObjectHideFlags: 0
@@ -1879,7 +1943,8 @@ Transform:
   m_LocalPosition: {x: 0, y: 4.8, z: -10}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 1
-  m_Children: []
+  m_Children:
+  - {fileID: 427426261}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &519420033
@@ -3037,6 +3102,7 @@ GameObject:
   - component: {fileID: 1333078231}
   - component: {fileID: 1333078232}
   - component: {fileID: 1333078233}
+  - component: {fileID: 1333078234}
   m_Layer: 0
   m_Name: StonePile
   m_TagString: Untagged
@@ -3097,6 +3163,44 @@ MonoBehaviour:
   m_EditorClassIdentifier: Piglings.Presentation::Piglings.Presentation.PlacementFade
   session: {fileID: 1068153025}
   opacity: 0.35
+--- !u!114 &1333078234
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1333078230}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 18b9202bc9ab2954fa501311c35d1b01, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Piglings.Presentation::Piglings.Presentation.StonePileMasteryView
+  session: {fileID: 1068153025}
+  pile: {fileID: 1333078232}
+  sparkle: {fileID: 21300000, guid: e752cc49ff5a006428d440b8dc7832ae, type: 3}
+  burstRing: {fileID: 21300000, guid: a47aa05c22925d145a3deb34bad83512, type: 3}
+  slowestGlint: 4
+  fastestGlint: 0.4
+  glintFrom: 0
+  glintColour: {r: 1, g: 0.95, b: 0.75, a: 1}
+  glintMotion:
+    seconds: 0.45
+    startScale: 0.15
+    endScale: 0.45
+    rise: 0
+    spin: 120
+  restColour: {r: 1, g: 1, b: 1, a: 1}
+  goldColour: {r: 1, g: 0.8, b: 0.25, a: 1}
+  pulseRate: 1.5
+  pulseStrength: 0.8
+  ringColour: {r: 1, g: 0.85, b: 0.35, a: 1}
+  ringMotion:
+    seconds: 0.7
+    startScale: 0.3
+    endScale: 3
+    rise: 0
+    spin: 0
+  ringOffset: {x: 0, y: 0.15, z: 0}
 --- !u!1 &1342713311
 GameObject:
   m_ObjectHideFlags: 0
