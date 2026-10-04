@@ -10,18 +10,19 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 49ef4c93aa10b6f4d83bfbab1b0ec40d, type: 3}
-  m_Name: Night_01
+  m_Name: Night_02
   m_EditorClassIdentifier: Piglings.Definitions::Piglings.Definitions.NightDefinition
-  id: night_01
+  id: night_02
   robot: {fileID: 11400000, guid: ee37ff9b637829446aa9eb6fed6a8e64, type: 2}
   throwable: {fileID: 11400000, guid: 8b24c133a3567b546ab1718b3aabd560, type: 2}
   wall: {fileID: 11400000, guid: ce9cccee93d7cf04d865dd675bc6bb58, type: 2}
   spawnInterval: 1
   throwsAvailable: 17
-  thresholds: 64000000fa000000f4010000e8030000d0070000
+  thresholds: f4010000c40900008813000010270000983a0000
   stonesPerThreshold: 2
   refillPauseSeconds: 1
   slices:
+  - {fileID: 11400000, guid: 5dda616af5765494e8eeab74d0347a68, type: 2}
   - {fileID: 11400000, guid: 292b3171ccd44c04cada7a3373800aa0, type: 2}
   - {fileID: 11400000, guid: 292b3171ccd44c04cada7a3373800aa0, type: 2}
   cameraY: 6

@@ -18,11 +18,15 @@ MonoBehaviour:
   lifetime: 6
   material: {fileID: 6200000, guid: 9281883772b675c4490389c880b39fae, type: 2}
   levels:
-  - hitsRequired: 0
-    sprite: {fileID: 21300000, guid: 560ba9160ba34824389ccef2dad1c3f6, type: 3}
+  - sprite: {fileID: 21300000, guid: 560ba9160ba34824389ccef2dad1c3f6, type: 3}
     radiusScale: 1
     trailColour: {r: 1, g: 1, b: 1, a: 1}
-  - hitsRequired: 50
-    sprite: {fileID: 21300000, guid: 0b15e6bbff99a1246b027413cb7a8c90, type: 3}
+  - sprite: {fileID: 21300000, guid: 0b15e6bbff99a1246b027413cb7a8c90, type: 3}
     radiusScale: 1.2
     trailColour: {r: 1, g: 0.8537805, b: 0.23113209, a: 1}
+  stoneThresholds: 0a000000190000002d0000003c00000046000000500000005a000000640000007000000078000000
+  startStones: 10
+  evolveAtStones: 15
+  maxStones: 20
+  refill: 1
+  evolvedRefill: 2
