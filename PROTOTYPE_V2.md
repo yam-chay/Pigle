@@ -150,7 +150,7 @@ merges the latest Production first (CLAUDE.md).
 ### PR order and status
 | PR | What | Status |
 |---|---|---|
-| P | Progression: stone evolution list (look + refill per level, cap 25), peg copies up to 8 + the same-type follow-up throw, the 2-row pegboard | ✔ merged (#38); follow-up fix in this PR |
+| P | Progression: stone evolution list (look + refill per level, cap 25), peg copies up to 10 + same-type follow-ups (one per N copies), the 2-row pegboard | ✔ merged (#38, #39); follow-up chain in this PR |
 | E | Post-run screen (§4) + avg per stone, thrown vs lost, BEST CHAINS, stage progress | next |
 | G | HUD reshape: screen-space night track + two screen-space chalkboards (record, tips); removes the world scoreboard and the HOURS card | after E (needs Yam's mockup + peg tip art) |
 | H | Night selection overlay (replaces Next night) | after G |
@@ -165,21 +165,21 @@ Every PR: CoreCheck passes, Night.unity keeps working, editor steps listed in th
   `evolvedRefill` are removed. Default list 10 → lv1 +1 · 15 → lv2 +2 · 20 → lv3 +3 · 25 → lv4 +4; max stones 25. The
   saved cause stays the stone's hits; stones, level and refill are derived (`StoneProgression`, Meta, CoreCheck).
   `StoneStatus` gains the next evolution (stones needed, its level) for the post-run's "dots up to the next evolution".
-- **Peg copies**: no fixed 4 — `PegDefinition.maxCopies` (default 8); `copyThresholds` has one entry per extra copy.
-  **The follow-up** (`PegDefinition.followUpAtCopies`, default 4): a type that owns that many copies earns, in each hour's
-  round, ONE more throw right after one of its pegs is placed — and that throw must be the same type. Once per round; it
-  never stacks across types or copies (8 Bouncy + 2 Bomb = 2 throws: a Bouncy and its Bouncy follow-up). Given only if
-  that type can still be placed. More copies past the follow-up = more pegs for the night. Rules: `PegType.FollowUp`,
-  `NightState.PegFollowUp` (the next throw's required type), `PegFollowUpGranted`; CoreCheck. **Campaign only** (from owned
-  copies); Night.unity's loadout has no follow-ups. *(First version: copy stages at 4/6/8 each added +1 to a shared pool —
-  replaced after Yam played it: up to 5 pegs in a row wasn't the intent.)*
+- **Peg copies**: no fixed 4 — `PegDefinition.maxCopies` (default 10); `copyThresholds` has one entry per extra copy.
+  **Follow-ups** (`PegDefinition.followUpEveryCopies`, default 3): a type earns one follow-up per that many copies
+  (3 copies → 1, 6 → 2, 9 → 3). In an hour's round, placing one of its pegs then gives that many more throws, one after
+  another, each the **same type**: with 10 copies, 4 in a row. The chain is given once per round (for the type thrown;
+  it never stacks across types), each follow-up only if that type can still be placed (a chain that can't go on ends).
+  Rules: `PegType.FollowUps`, `NightState.PegFollowUp` / `PegFollowUpsLeft`, `PegFollowUpGranted(id, remaining)`; CoreCheck.
+  **Campaign only** (from owned copies); Night.unity's loadout has none. *(History: copy stages adding to a shared pool
+  (#38), then one follow-up at 4 copies (#39) — both replaced after Yam played them.)*
 - **Barn pegboard**: 8 slots per type, two rows of 4; row 2 only when the type owns more than 4 copies. Hole positions come
   from a holes file (a TextAsset: 24 "x,y" lines in pixels from the PNG's top-left, group order type 1 row 1, type 1 row 2,
   type 2 row 1, …), converted with the sprite's pivot and PPU. Locked types: ghosts in row 1 + the lock.
 - **Rug**: one refill badge per refill amount (a list, entry 0 = +1); a missing one uses the last there is.
 - Art from Yam: `stone_lv3`, `stone_lv4` (same size/pivot as lv1/lv2), `room_pegboard` v2 + its 24-hole file.
 - Editor steps: Throwable_Stone's Levels list (4 entries: sprite, radius, trail, Stones Needed, Refill) and Max Stones;
-  each peg's Max Copies, Copy Thresholds (one per extra copy) and Follow Up At Copies; the pegboard sprite + Holes File (+ Hole
+  each peg's Max Copies, Copy Thresholds (one per extra copy) and Follow Up Every Copies; the pegboard sprite + Holes File (+ Hole
   Sprite, see question 1); the rug's Refill Badges list.
 
 ### PR E — post-run screen (§4), plus
@@ -189,7 +189,7 @@ Every PR: CoreCheck passes, Night.unity keeps working, editor steps listed in th
   ("9 wolves · depth 2  +620"), quality-coloured. Needs a Rules record of the top chains (`NightState` only keeps the
   best one today) — CoreCheck.
 - **PROGRESS**: stones a → b with dots up to the NEXT evolution and that evolution's icon (its level sprite); each peg type:
-  copies, the follow-up ("3/4 → follow-up throw", or "follow-up ✓"), a NEW tag when unlocked tonight (before/after snapshot of the
+  copies and follow-ups ("5/6 → 2nd follow-up"), a NEW tag when unlocked tonight (before/after snapshot of the
   profile taken before banking).
 - **Hour colours sampled by night progress** (see question 3) land here: the post-run's hour dots are the first new user.
 - Editor steps: the two panels in the Doors frame (UI kit), template rows / dots, the Retry / Next buttons moved in.
@@ -228,7 +228,7 @@ Every PR: CoreCheck passes, Night.unity keeps working, editor steps listed in th
 3. **Hour colours by night progress don't exist yet**: `HourPaletteDefinition.ColourFor` picks by index and clamps, so a
    5-hour night never reaches the palette's last (dawn gold) colour. Moved to E (first PR showing hour colours after P);
    the scoreboard / track get it for free.
-4. **The follow-up applies to the campaign only** (decision above). Night.unity unchanged.
+4. **Follow-ups apply to the campaign only** (decision above). Night.unity unchanged.
 5. **Stone asset vs the new defaults**: Throwable_Stone currently has start 5, max 28 and 3 levels (Balance). P's code
    defaults follow the spec (10 → … → 25, cap 25) but assets keep Yam's numbers; the removed fields' values are dropped
    and re-entered in the Levels list (editor step).
@@ -236,7 +236,7 @@ Every PR: CoreCheck passes, Night.unity keeps working, editor steps listed in th
    room. H eases the camera to the Doors before reloading.
 7. **I: there's no "left the danger zone" event**: a wolf counts as in danger from `RobotEnteredDangerZone` until it loses
    grip, breaches or is removed. Only the night's pig gets the face (the barn room's rig copy stays calm).
-8. **The follow-up + bigger refills** (P) both push against the "0 stones" losses; with Yam's retune, watch that night 3
+8. **Follow-ups + bigger refills** (P) both push against the "0 stones" losses; with Yam's retune, watch that night 3
    doesn't flip to never-lost. The dead-time decision (TASKS ▸ Open) is still separate.
 
 ## Art map (as found in the repo)

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Piglings.Events;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Piglings.Definitions
 {
@@ -35,12 +36,14 @@ namespace Piglings.Definitions
         [Header("Progression (campaign)")]
         [Tooltip("Peg mastery for each extra copy, cumulative and rising: an unlocked type owns 1 copy, +1 per threshold, up to " +
                  "Max Copies (so Max Copies − 1 entries). Mastery = its effect's triggers × the level's Mastery Weight (Levels list).")]
-        [SerializeField] private int[] copyThresholds = { 10, 30, 60, 100, 150, 210, 280 };
+        [SerializeField] private int[] copyThresholds = { 10, 30, 60, 100, 150, 210, 280, 360, 450 };
         [Tooltip("The most copies of this type a player can own.")]
-        [SerializeField, Min(1)] private int maxCopies = 8;
-        [Tooltip("Owning this many copies earns the follow-up: in each hour's round, placing one of this type gives ONE more " +
-                 "throw, which must be this type (once per round; it never stacks). 0 = never.")]
-        [SerializeField, Min(0)] private int followUpAtCopies = 4;
+        [SerializeField, Min(1)] private int maxCopies = 10;
+        [Tooltip("One follow-up throw per this many copies: in an hour's round, placing one of this type then gives that many " +
+                 "more throws, each of this same type (3 → 3 copies = 1, 6 = 2, 9 = 3: with 10 copies, 4 in a row). Once per " +
+                 "round, never across types. 0 = never.")]
+        [FormerlySerializedAs("followUpAtCopies")]
+        [SerializeField, Min(0)] private int followUpEveryCopies = 3;
 
         [Header("Splitter (whatever the level)")]
         [Tooltip("Most stones one throw can have flying at once, the original included. Splits beyond it are cut short.")]
@@ -88,7 +91,7 @@ namespace Piglings.Definitions
 
         public System.Collections.Generic.IReadOnlyList<int> CopyThresholds => copyThresholds;
         public int MaxCopies => maxCopies;
-        public int FollowUpAtCopies => followUpAtCopies;
+        public int FollowUpEveryCopies => followUpEveryCopies;
 
         /// <summary>Peg mastery weight of one trigger at this level: the entry's Mastery Weight, or the level itself when it's 0.</summary>
         public float MasteryWeightAt(int level)

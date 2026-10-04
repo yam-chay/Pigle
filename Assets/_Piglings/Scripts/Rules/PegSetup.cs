@@ -10,8 +10,9 @@ namespace Piglings.Rules
         public int MaxLevel { get; }
         public bool Mergeable { get; }   // throwing one onto a placed peg of the same type levels it up
         public PegEffect Effect { get; }
-        /// <summary>The type has reached its follow-up copies (stage 2): placing one gives one more throw of the same type, once per round.</summary>
-        public bool FollowUp { get; }
+        /// <summary>Same-type follow-up throws this type earns (stage 2): placing one in a round then gives this many more throws
+        /// of it, one after another. The chain is given once per round. 0 = none.</summary>
+        public int FollowUps { get; }
 
         // Splitter, whatever the level.
         public int MaxStonesPerThrow { get; }         // stones of one throw flying at once, the original included
@@ -26,9 +27,9 @@ namespace Piglings.Rules
         public PegType(string id, int maxLevel = 3, bool mergeable = true, PegEffect effect = PegEffect.Plain,
                        IReadOnlyList<float> scoreMultipliers = null, IReadOnlyList<int> pieces = null,
                        IReadOnlyList<float> valueShares = null, int maxStonesPerThrow = 4, bool splitHitsCountForMastery = true,
-                       IReadOnlyList<float> cooldowns = null, bool followUp = false)
+                       IReadOnlyList<float> cooldowns = null, int followUps = 0)
         {
-            FollowUp = followUp;
+            FollowUps = followUps < 0 ? 0 : followUps;
             Id = id;
             MaxLevel = maxLevel < 1 ? 1 : maxLevel;
             Mergeable = mergeable;

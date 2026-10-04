@@ -536,7 +536,7 @@ namespace Piglings.Simulation
             _pegDefs.Clear();
             if (IsCampaign)
             {
-                // A type with its follow-up copies earns one same-type follow-up throw per round (the referee gives it).
+                // A type earns one same-type follow-up per N copies; the referee gives the chain once per round.
                 var followUps = new List<string>();
                 foreach (var id in Plan.UnlockedPegs(_progression.Profile))
                 {
@@ -544,10 +544,10 @@ namespace Piglings.Simulation
                     if (peg == null) continue;
                     var status = PegStatusFor(peg);
                     _pegDefs.Add(peg);
-                    if (status.HasFollowUp) followUps.Add(peg.Id);
-                    if (status.Copies > 0) loadout.Add((ToPegType(peg, status.HasFollowUp), status.Copies));
+                    if (status.FollowUps > 0) followUps.Add($"{peg.Id} +{status.FollowUps}");
+                    if (status.Copies > 0) loadout.Add((ToPegType(peg, status.FollowUps), status.Copies));
                 }
-                Debug.Log($"Piglings campaign: {_night.PegThrowsPerThreshold} peg throw(s) per round; same-type follow-up: " +
+                Debug.Log($"Piglings campaign: {_night.PegThrowsPerThreshold} peg throw(s) per round; same-type follow-ups: " +
                           (followUps.Count == 0 ? "none yet" : string.Join(", ", followUps)), this);
             }
             else
@@ -571,7 +571,7 @@ namespace Piglings.Simulation
         {
             var weights = new float[Mathf.Max(peg.MaxLevel, peg.LevelCount)];
             for (int i = 0; i < weights.Length; i++) weights[i] = peg.MasteryWeightAt(i + 1);
-            return new PegProgression(peg.CopyThresholds, weights, 1, peg.MaxCopies, peg.FollowUpAtCopies);
+            return new PegProgression(peg.CopyThresholds, weights, 1, peg.MaxCopies, peg.FollowUpEveryCopies);
         }
 
         /// <summary>Where an (unlocked) peg type stands, from its saved triggers: copies, the follow-up, progress to the next.</summary>
@@ -585,8 +585,8 @@ namespace Piglings.Simulation
         public int CopiesOwned(PegDefinition peg) => PegStatusFor(peg).Copies;
 
         // The Rules' view of a peg: id, levels, effect, the per-level numbers the Rules use (physics stays here), and whether
-        // it has earned the same-type follow-up throw (campaign).
-        private PegType ToPegType(PegDefinition peg, bool followUp = false)
+        // how many same-type follow-up throws it has earned (campaign).
+        private PegType ToPegType(PegDefinition peg, int followUps = 0)
         {
             var multipliers = new float[peg.LevelCount];
             var pieces = new int[peg.LevelCount];
@@ -609,7 +609,7 @@ namespace Piglings.Simulation
                 Debug.LogWarning($"{peg.name}: Splitter with {peg.PiecesAt(1)} piece(s) at level 1 never splits — fill its Levels " +
                                  "list (a new entry starts at 0).", peg);
             return new PegType(peg.Id, peg.MaxLevel, peg.Mergeable, peg.Effect, multipliers, pieces, shares,
-                               peg.MaxStonesPerThrow, peg.CountSplitHitsForMastery, cooldowns, followUp);
+                               peg.MaxStonesPerThrow, peg.CountSplitHitsForMastery, cooldowns, followUps);
         }
 
         private static int[] ToArray(IReadOnlyList<int> list)

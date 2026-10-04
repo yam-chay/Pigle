@@ -202,13 +202,14 @@ namespace Piglings.Events
     }
 
     /// <summary>
-    /// A follow-up throw (stage 2): a peg of a type that has reached its follow-up copies was just placed, so the round gives
-    /// ONE more throw, which must be the same type. Once per round. Views can celebrate it; the shelf brings that type up.
+    /// A follow-up throw (stage 2): the round gives one more throw, which must be this same peg type — after a peg of a type
+    /// with follow-ups was placed (the chain is given once per round), and again after each follow-up while the type still has
+    /// some. Remaining = follow-ups still to come after this one. Views can celebrate it; the shelf brings that type up.
     /// </summary>
     public readonly struct PegFollowUpGranted
     {
-        public readonly string PegId;
-        public PegFollowUpGranted(string pegId) { PegId = pegId; }
+        public readonly string PegId; public readonly int Remaining;
+        public PegFollowUpGranted(string pegId, int remaining) { PegId = pegId; Remaining = remaining; }
     }
 
     /// <summary>What a placed peg does when something hits it. Plain = nothing (a hold with a look).</summary>
