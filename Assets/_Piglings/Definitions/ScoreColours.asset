@@ -34,7 +34,7 @@ MonoBehaviour:
   - minQuality: 0.5
     colour: {r: 1, g: 0.3, b: 0.85, a: 1}
     look: 1
-  - minQuality: 1
+  - minQuality: 0.9
     colour: {r: 1, g: 1, b: 1, a: 1}
     look: 2
   pulseAmount: 0.45

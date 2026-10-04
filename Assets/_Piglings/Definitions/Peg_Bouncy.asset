@@ -20,7 +20,8 @@ MonoBehaviour:
   spentSprite: {fileID: 0}
   effect: 1
   levels:
-  - scoreMultiplier: 2
+  - masteryWeight: 0
+    scoreMultiplier: 2
     bounciness: 0.8
     pieces: 2
     fanAngle: 30
@@ -28,7 +29,8 @@ MonoBehaviour:
     bombRadius: 1
     cooldownSeconds: 8
     impulse: 0.5
-  - scoreMultiplier: 3
+  - masteryWeight: 0
+    scoreMultiplier: 3
     bounciness: 1
     pieces: 2
     fanAngle: 30
@@ -36,7 +38,8 @@ MonoBehaviour:
     bombRadius: 1
     cooldownSeconds: 8
     impulse: 0.5
-  - scoreMultiplier: 4
+  - masteryWeight: 0
+    scoreMultiplier: 4
     bounciness: 1.2
     pieces: 2
     fanAngle: 30
@@ -44,6 +47,9 @@ MonoBehaviour:
     bombRadius: 1
     cooldownSeconds: 8
     impulse: 0.5
+  copyThresholds: 0a0000001e0000003c0000006400000096000000d200000018010000
+  maxCopies: 8
+  copyStages: 020000000400000008000000
   maxStonesPerThrow: 4
   pieceScale: 0.8
   countSplitHitsForMastery: 1

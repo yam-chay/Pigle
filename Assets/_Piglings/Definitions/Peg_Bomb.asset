@@ -47,7 +47,9 @@ MonoBehaviour:
     bombRadius: 1.8
     cooldownSeconds: 3
     impulse: 1
-  copyThresholds: 0a0000001e0000003c000000
+  copyThresholds: 0a0000001e0000003c0000006400000096000000d200000018010000
+  maxCopies: 3
+  copyStages: 020000000400000008000000
   maxStonesPerThrow: 4
   pieceScale: 0.8
   countSplitHitsForMastery: 1

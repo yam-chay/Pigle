@@ -336,7 +336,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -4.8, y: -25}
+  m_AnchoredPosition: {x: -4.8, y: -21}
   m_SizeDelta: {x: 300, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &111645224
@@ -2426,7 +2426,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: 419e50dbf09e2ec48bf06179dd358c70, type: 3}
+  m_Sprite: {fileID: 2724146485946993742, guid: da6b0cc4e51df544da720edede32371d, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -2446,7 +2446,7 @@ Transform:
   m_GameObject: {fileID: 577540935}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 1.458, z: 0}
+  m_LocalPosition: {x: 0, y: 1.793, z: 0}
   m_LocalScale: {x: 0.95, y: 0.9, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2466,6 +2466,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Piglings.Presentation::Piglings.Presentation.BarnPegboardView
   session: {fileID: 1068153025}
   pegboard: {fileID: 577540936}
+  holesFile: {fileID: 4900000, guid: 852883f88c605224a818c5fb251f6bfc, type: 3}
   holePixels:
   - {x: 44.7, y: 88}
   - {x: 102, y: 88}
@@ -2479,9 +2480,24 @@ MonoBehaviour:
   - {x: 560.7, y: 88}
   - {x: 618, y: 88}
   - {x: 675.3, y: 88}
-  holesPerGroup: 4
+  - {x: 675.3, y: 88}
+  - {x: 675.3, y: 88}
+  - {x: 675.3, y: 88}
+  - {x: 675.3, y: 88}
+  - {x: 675.3, y: 88}
+  - {x: 675.3, y: 88}
+  - {x: 675.3, y: 88}
+  - {x: 675.3, y: 88}
+  - {x: 675.3, y: 88}
+  - {x: 675.3, y: 88}
+  - {x: 675.3, y: 88}
+  - {x: 675.3, y: 88}
+  slotsPerType: 8
+  slotsPerRow: 4
   pegScale: 0.3
   pegOffset: {x: 0, y: 0}
+  holeSprite: {fileID: 0}
+  holeScale: 1
   lockIcon: {fileID: 21300000, guid: 89ece36a66f91df4a941a0ccbb552a97, type: 3}
   lockScale: 1
   lockedTint: {r: 0.15, g: 0.12, b: 0.12, a: 0.45}
@@ -2799,7 +2815,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 394}
+  m_AnchoredPosition: {x: 0, y: 367}
   m_SizeDelta: {x: 300, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &713702838
@@ -3003,8 +3019,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: -4.3106, y: 0.0385}
-  m_SizeDelta: {x: 407.7743, y: 974.1912}
+  m_AnchoredPosition: {x: -4.3106, y: 0.3668}
+  m_SizeDelta: {x: 407.7743, y: 869.775}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &748995733
 GameObject:
@@ -3835,7 +3851,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 176}
+  m_AnchoredPosition: {x: 0, y: 146}
   m_SizeDelta: {x: 300, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &988247872
@@ -3885,8 +3901,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 24
-  m_fontSizeBase: 24
+  m_fontSize: 36
+  m_fontSizeBase: 36
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -4643,8 +4659,11 @@ MonoBehaviour:
   rowHeight: 0.5
   stoneScale: 0.7
   apartOffset: {x: 0.35, y: 0}
-  badgeRefill1: {fileID: 21300000, guid: 97d4f3b3665782d4e935d8acb8907d8a, type: 3}
-  badgeRefill2: {fileID: 21300000, guid: 9ee97b6da91226a4382def4a64d5ec83, type: 3}
+  refillBadges:
+  - {fileID: 21300000, guid: 9ee97b6da91226a4382def4a64d5ec83, type: 3}
+  - {fileID: 21300000, guid: 97d4f3b3665782d4e935d8acb8907d8a, type: 3}
+  - {fileID: 21300000, guid: 1e7e53f75df932a47acc2120d38325f5, type: 3}
+  - {fileID: 21300000, guid: 207d6dbf18e2aaf47b9bae9a89429c48, type: 3}
   badgeOffset: {x: 0.1, y: 0.08}
   badgeScale: 1
 --- !u!1 &1304672911
@@ -5015,7 +5034,7 @@ MonoBehaviour:
   m_FillClockwise: 1
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 0.5
+  m_PixelsPerUnitMultiplier: 0.6
 --- !u!222 &1348453148
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -5786,7 +5805,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 54}
+  m_AnchoredPosition: {x: 0, y: 71}
   m_SizeDelta: {x: 300, y: 15}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1620279146
@@ -5861,7 +5880,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 244}
+  m_AnchoredPosition: {x: 0, y: 261}
   m_SizeDelta: {x: 300, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1664803143
@@ -6218,12 +6237,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Piglings.Simulation::Piglings.Simulation.PegShelf
   session: {fileID: 1068153025}
   hand: {fileID: 1732647304}
-  pileSpacing: 0.55
+  pileSpacing: 0.6
   pileOffset: {x: 0, y: 0.2, z: 0}
-  bottomRow: 3
-  spacing: 0.14
-  rowHeight: 0.12
-  pegScale: 0.8
+  bottomRow: 4
+  spacing: 0.1
+  rowHeight: 0.1
+  pegScale: 0.6
   pickRadius: 0.2
   sortingLayer: Pig
   sortingOrder: 20
@@ -6264,7 +6283,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 2.9799957, y: -194.99997}
+  m_AnchoredPosition: {x: 2.9799957, y: -157}
   m_SizeDelta: {x: -65.96, y: -666.24}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1848078886
@@ -6805,7 +6824,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: -328}
+  m_AnchoredPosition: {x: 0, y: -300}
   m_SizeDelta: {x: 300, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1959402901
