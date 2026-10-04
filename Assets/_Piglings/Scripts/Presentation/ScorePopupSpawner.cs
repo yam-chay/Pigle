@@ -6,8 +6,10 @@ using UnityEngine;
 namespace Piglings.Presentation
 {
     /// <summary>
-    /// Makes chains readable: where each robot loses grip, "received ×mult" resolving into "+total"
-    /// (RobotScored); and a big "robots · depth / +total" when a chain closes (ChainScored).
+    /// Makes chains readable (M10.D look, both scenes): where each robot loses grip, its points only ("+60"), coloured by
+    /// its DEPTH (cream, amber, orange, red, magenta…); and when a chain closes, its total ("+620") at a fixed spot,
+    /// coloured by the throw's QUALITY (its points ÷ the gap of the hour it was thrown in). No depth or multiplier tags:
+    /// the colour says how deep, the scoreboard says the rest. Colours come from NightSession.ScoreColours.
     ///
     /// Only listens and spawns visuals — never touches game state. The numbers come from the Rules
     /// events, so the popups always show exactly what was added to the score.
@@ -28,11 +30,7 @@ namespace Piglings.Presentation
         [SerializeField, Min(0.01f)] private float robotScale = 1f;
         [Tooltip("Each depth step makes the popup this much bigger (0.2 = +20%), so deeper hits read as bigger.")]
         [SerializeField, Min(0f)] private float scalePerDepth = 0.2f;
-        [Tooltip("Robot popups. Solid mode picks the colour by depth: left of the gradient = hit by the stone, " +
-                 "right = 'Deep At Depth' or deeper.")]
-        [SerializeField] private PopupColor robotColor = new PopupColor
-            { mode = PopupColorMode.Solid, gradient = PopupColor.TwoColor(Color.white, new Color(1f, 0.75f, 0.2f)) };
-        [Tooltip("Depth at which a robot popup is fully 'deep': right end of the gradient, full shake and extra life.")]
+        [Tooltip("Depth at which a robot popup gets the full shake and extra life. (Its colour is the depth's, from Score Colours.)")]
         [SerializeField, Min(1)] private int deepAtDepth = 3;
 
 
@@ -40,14 +38,13 @@ namespace Piglings.Presentation
         [Tooltip("Where the chain result appears — a fixed spot (e.g. above the barn) so it's always read in the same place.")]
         [SerializeField] private Transform chainAnchor;
         [SerializeField, Min(0.01f)] private float chainScale = 2f;
-        [SerializeField] private PopupColor chainColor = new PopupColor
-            { mode = PopupColorMode.Solid, gradient = PopupColor.Flat(new Color(1f, 0.85f, 0.3f)) };
         [Tooltip("A chain worth this much (or more) gets the full treatment: longest life, strongest shake.")]
         [SerializeField, Min(1)] private int bigChainTotal = 300;
         [Tooltip("Smallest chain that gets the big popup. 1-robot chains already got their \"+N\"; 0 = misses.")]
         [SerializeField, Min(0)] private int minRobotsForChainPopup = 2;
 
         private readonly Dictionary<GameId, Transform> _robots = new Dictionary<GameId, Transform>();
+        private ScoreStyles _styles;
 
         private void OnEnable() => spawner.Spawned += OnSpawned;
         private void OnDisable() => spawner.Spawned -= OnSpawned;
@@ -55,6 +52,7 @@ namespace Piglings.Presentation
         // Start, not Awake/OnEnable: same as ChainDebugHUD — the session's bus is created in its Awake.
         private void Start()
         {
+            _styles = new ScoreStyles(session.ScoreColours);
             session.Bus.Subscribe<RobotScored>(OnRobotScored);
             session.Bus.Subscribe<ChainScored>(OnChainScored);
             session.Bus.Subscribe<RobotRemoved>(OnRobotRemoved);
@@ -77,64 +75,53 @@ namespace Piglings.Presentation
             // still exactly where it was hit.
             if (!_robots.TryGetValue(e.Robot, out var t) || t == null) return;
 
-            // How deep, 0..1: picks the colour (Solid mode) and how much it shakes and lingers.
+            // How deep, 0..1: how much it shakes and lingers. The colour is the depth's own.
             float depthT = Mathf.Clamp01(e.Depth / (float)deepAtDepth);
             float scale = robotScale * (1f + scalePerDepth * e.Depth);
-            string total = $"+{e.Total}";
-
-            // Show the sum only when something multiplies: a plain ×1 robot in hour 1 goes straight to "+10".
-            // The hour's multiplier gets its own tag ("H2×1.5"), so the player sees which part the hour added.
-            // (Each hour's own colours come with the hour palettes.)
-            bool hourBonus = e.HourMultiplier > 1f;
-            bool pegBonus = e.PegMultiplier > 1f;   // its hitter bounced off Bouncy pegs
-            string why = e.Multiplier > 1f ? $"{e.Received} ×{e.Multiplier:0.##}" : $"{e.Received}";
-            if (hourBonus) why += $"  H{e.Hour}×{e.HourMultiplier:0.##}";
-            if (pegBonus) why += $"  B×{e.PegMultiplier:0.##}";
-
-            if (e.Multiplier > 1f || hourBonus || pegBonus) Spawn(t.position + robotOffset, why, robotColor, depthT, scale, depthT, total);
-            else Spawn(t.position + robotOffset, total, robotColor, depthT, scale, depthT);
+            Spawn(t.position + robotOffset, $"+{e.Total}", _styles.ForDepth(e.Depth), scale, depthT);
         }
 
         private void OnChainScored(ChainScored e)
         {
             if (e.RobotsDropped < minRobotsForChainPopup || chainAnchor == null) return;
-
-            string robots = e.RobotsDropped == 1 ? "1 robot" : $"{e.RobotsDropped} robots";
             float size = Mathf.Clamp01(e.Total / (float)bigChainTotal);
-            Spawn(chainAnchor.position, $"{robots} · depth {e.MaxDepth}\n+{e.Total}", chainColor, 0f, chainScale, size);
+            Spawn(chainAnchor.position, $"+{e.Total}", _styles.ForQuality(session.ThrowQuality(e.Total, e.Hour)), chainScale, size);
         }
 
         // Inspector: ⋮ (or right-click the component header) → "Preview popups", in Play mode.
-        // Spawns one of every kind side by side at the chain anchor — depth 0..3, an hour bonus, chain result —
-        // so colour modes, shake and life can be compared in seconds instead of playing into a later hour.
-        // Visuals only: nothing is scored.
+        // Spawns one of every look side by side at the chain anchor — a robot popup per depth 0..4, then a chain total in
+        // every quality band — so the colours, shake and life can be compared in seconds. Visuals only: nothing is scored.
         [ContextMenu("Preview popups (Play mode)")]
         private void PreviewPopups()
         {
-            if (!Application.isPlaying || chainAnchor == null)
+            if (!Application.isPlaying || chainAnchor == null || _styles == null)
             {
                 Debug.LogWarning("ScorePopupSpawner: Preview popups works in Play mode, with a Chain Anchor set.", this);
                 return;
             }
 
             var origin = chainAnchor.position;
-            for (int depth = 0; depth <= 3; depth++)
+            for (int depth = 0; depth <= 4; depth++)
             {
-                float depthT = Mathf.Clamp01(depth / (float)deepAtDepth);
-                float mult = 1f + 0.5f * depth;
-                var pos = origin + new Vector3(-1.5f + depth, -1.2f, 0f);
-                Spawn(pos, $"{10 * (depth + 1)} ×{mult:0.##}", robotColor, depthT, robotScale * (1f + scalePerDepth * depth), depthT,
-                      $"+{Mathf.RoundToInt(10 * (depth + 1) * mult)}");
+                var pos = origin + new Vector3(-2f + depth, -1.2f, 0f);
+                Spawn(pos, $"+{10 * (depth + 1)}", _styles.ForDepth(depth), robotScale * (1f + scalePerDepth * depth),
+                      Mathf.Clamp01(depth / (float)deepAtDepth));
             }
-            Spawn(origin + new Vector3(0f, -2.2f, 0f), "20 ×1.5  H3×2", robotColor, 0.33f, robotScale * 1.2f, 0.33f, "+60");
-            Spawn(origin, "5 robots · depth 3\n+300", chainColor, 0f, chainScale, 1f);
+            // One chain total per band, at that band's quality (hour 1's gap): cream … rainbow.
+            float[] qualities = { 0.02f, 0.1f, 0.2f, 0.4f, 0.7f, 1.2f };
+            int gap = session.HourGap(1);
+            for (int i = 0; i < qualities.Length; i++)
+            {
+                int points = Mathf.Max(1, Mathf.RoundToInt(qualities[i] * gap));
+                var pos = origin + new Vector3(-2.5f + i, 0f, 0f);
+                Spawn(pos, $"+{points}", _styles.ForQuality(session.ThrowQuality(points, 1)), chainScale * 0.6f, qualities[i]);
+            }
         }
 
-        private void Spawn(Vector3 position, string text, PopupColor color, float colorKey, float scale, float intensity,
-                           string resolvedText = null)
+        private void Spawn(Vector3 position, string text, PopupColor color, float scale, float intensity)
         {
             var popup = Instantiate(popupPrefab, position, Quaternion.identity, container);
-            popup.Show(text, color, colorKey, scale, intensity, resolvedText);
+            popup.Show(text, color, 0f, scale, intensity);
         }
     }
 }

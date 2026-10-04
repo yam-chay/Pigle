@@ -110,33 +110,7 @@ namespace Piglings.Presentation
             if (_age >= _totalLife) Destroy(gameObject);
         }
 
-        private void ApplyColor(float alpha)
-        {
-            float life = Mathf.Clamp01(_age / Mathf.Max(0.0001f, _totalLife));
-            if (!_style.IsPerLetter)
-            {
-                var c = _style.Evaluate(_key, life, Time.time);
-                label.color = new Color(c.r, c.g, c.b, c.a * alpha);
-                return;
-            }
-
-            // Per letter: rebuild the mesh (the text may just have changed), then colour each visible
-            // character's four vertices by its position along the text.
-            label.color = Color.white;
-            label.ForceMeshUpdate();
-            var info = label.textInfo;
-            int count = info.characterCount;
-            for (int i = 0; i < count; i++)
-            {
-                var ch = info.characterInfo[i];
-                if (!ch.isVisible) continue;
-                var c = _style.Evaluate(_key, life, Time.time, count > 1 ? i / (float)(count - 1) : 0f);
-                Color32 c32 = new Color(c.r, c.g, c.b, c.a * alpha);
-                var colors = info.meshInfo[ch.materialReferenceIndex].colors32;
-                int v = ch.vertexIndex;
-                colors[v] = colors[v + 1] = colors[v + 2] = colors[v + 3] = c32;
-            }
-            label.UpdateVertexData(TMP_VertexDataUpdateFlags.Colors32);
-        }
+        private void ApplyColor(float alpha) =>
+            TextColouring.Apply(label, _style, _key, Mathf.Clamp01(_age / Mathf.Max(0.0001f, _totalLife)), alpha);
     }
 }

@@ -1,14 +1,30 @@
 using Piglings.Events;
 using Piglings.Simulation;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace Piglings.Presentation
 {
-    /// <summary>Throwaway on-screen readout so chains are visible from the first playtest.</summary>
+    /// <summary>
+    /// Throwaway on-screen readout so chains are visible from the first playtest. Hidden by default since the scoreboard
+    /// (M10.D): the toggle key shows it. The key only changes what this view draws — nothing in play reads it.
+    /// </summary>
     public sealed class ChainDebugHUD : MonoBehaviour
     {
         [SerializeField] private NightSession session;
+        [Tooltip("Shows / hides this HUD in play.")]
+        [SerializeField] private Key toggleKey = Key.F1;
+        [SerializeField] private bool visibleAtStart = false;
         private string _last = "—";
+        private bool _visible;
+
+        private void Awake() => _visible = visibleAtStart;
+
+        private void Update()
+        {
+            var keyboard = Keyboard.current;
+            if (keyboard != null && toggleKey != Key.None && keyboard[toggleKey].wasPressedThisFrame) _visible = !_visible;
+        }
 
         private void Start() => session.Bus.Subscribe<ChainClosed>(OnChain);
         private void OnDestroy() { if (session != null && session.Bus != null) session.Bus.Unsubscribe<ChainClosed>(OnChain); }
@@ -36,6 +52,7 @@ namespace Piglings.Presentation
 
         private void OnGUI()
         {
+            if (!_visible) return;
             var s = session.State;
             GUILayout.BeginArea(new Rect(10, 10, 320, 240), GUI.skin.box);
             // The HUD always shows the next threshold; the hour and its multiplier say what a chain is worth now.

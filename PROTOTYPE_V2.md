@@ -44,7 +44,10 @@ camera rises to the **Night** frame as the moon rises.
 ### 2. Camera frames — PR C
 Camera moves **only between phases**; input locked while moving; ease in-out. CameraShake keeps working as an offset
 (it already re-reads the pose every frame); popups stay inside the Night frame.
-- **Night:** per night, on `NightDefinition` (`cameraY`, `cameraSize`; N1 tuned: y 6, size 3.5).
+- **Night:** computed from the built tower, like the Tower frame (M10.D): a **fixed bottom** (N1's frame bottom, y 2.5 —
+  `CameraDirector` Night Bottom Y) up to the tower's top + the roof (Barn_Top + the pig: the same Above Top as the Tower
+  frame, 3.3). A taller tower zooms out upward. `NightDefinition` `cameraY` / `cameraSize` stay as an **optional override,
+  0 = auto** (each on its own). The formula reproduces the hand-tuned frames: N1 y 6 / 3.5, N2 6.8 / 4.3, N3 7.6 / 5.1.
 - **Doors** (post-run): y 2, size 2.
 - **Barn room** (day loadout): ~y 1.16, size ~1.15 (inside the open doorway).
 - **Tower** (slice placement): the whole tower, wide — computed from the built tower (`TowerBuilder.TopY`).
@@ -109,8 +112,8 @@ Wall-slice effects, the chimney loss scene, onboarding triggers, a skill tree, s
 | A | Rules + Meta core: Dusk + Begin, per-hour stats, quality, peg triggers, Stone/Peg progression, CampaignPlan, save sections, profiles | ✔ merged (#30) |
 | B | Authored nights, campaign mode, the built tower | ✔ merged (#31) |
 | — | Debug: "Campaign/Go to Debug Night", "Campaign/Reset campaign", copies in the campaign log | this file's PR |
-| C | Phase flow + camera (CameraDirector, NightFlow, doors, reload on Retry/Next, moon hook) | ✔ code (this PR); editor steps in the PR |
-| D | Night scoreboard + popups by depth + tutorial cards + HUD toggle | after A (any time) |
+| C | Phase flow + camera (CameraDirector, NightFlow, doors, reload on Retry/Next, moon hook) | ✔ merged (#33) |
+| D | Night scoreboard + popups by depth + tutorial cards + HUD toggle + the Night frame from the tower | ✔ code (this PR); editor steps in the PR |
 | E | Post-run screen | after C |
 | F | Barn room day phase + slice placement | after C |
 

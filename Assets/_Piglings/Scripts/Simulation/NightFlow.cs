@@ -157,6 +157,7 @@ namespace Piglings.Simulation
                 case FlowState.PostRun:
                     // The camera has reached the Doors: they open on the post-run.
                     DoorsOpen = true;
+                    LogPostRun();
                     break;
             }
         }
@@ -181,6 +182,21 @@ namespace Piglings.Simulation
                     if (!CameraMoving) SetState(FlowState.PostRun);
                     break;
             }
+        }
+
+        // One line on what the post-run offers and why, so "Next night didn't show" can be read straight off the console.
+        private void LogPostRun()
+        {
+            var plan = session.Plan;
+            if (plan == null) { Debug.Log("NightFlow: post-run — not a campaign: Retry only.", this); return; }
+            int index = session.NightIndex;
+            string id = plan.NightId(index);
+            int dawns = session.Profile.DawnsOn(id);
+            string next = NextEarned ? $"Next night offered (to night {index + 2})"
+                : index + 1 >= plan.NightCount ? "no Next night: this is the last night"
+                : "no Next night: no dawn saved on this night yet";
+            Debug.Log($"NightFlow: post-run — night {index + 1}/{plan.NightCount} ({id}), {session.State.Result}, " +
+                      $"dawns saved on it: {dawns}. {next}.", this);
         }
 
         // The sweep has landed (no robot off the wall, no chain open) and stayed so for a beat → down to the doors.
