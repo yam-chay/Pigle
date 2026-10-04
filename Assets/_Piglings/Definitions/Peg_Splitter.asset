@@ -36,6 +36,14 @@ MonoBehaviour:
     bombRadius: 0
     cooldownSeconds: 0
     impulse: 0
+  - scoreMultiplier: 0
+    bounciness: 0
+    pieces: 4
+    fanAngle: 60
+    valueShare: 1
+    bombRadius: 0
+    cooldownSeconds: 0
+    impulse: 0
   maxStonesPerThrow: 4
-  pieceScale: 0.8
+  pieceScale: 1
   countSplitHitsForMastery: 1

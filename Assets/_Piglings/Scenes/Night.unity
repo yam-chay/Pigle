@@ -2718,25 +2718,25 @@ MonoBehaviour:
   highlightPulse: 2.5
   blockedOpacity: 0.3
   popSeconds: 0.3
-  popAmount: 0.3
+  popAmount: 0.4
   bonusRing: {fileID: 21300000, guid: a47aa05c22925d145a3deb34bad83512, type: 3}
   bonusRingColour: {r: 1, g: 0.8, b: 0.25, a: 1}
   bonusRingMotion:
-    seconds: 0.35
+    seconds: 0.5
     startScale: 0.2
-    endScale: 0.9
+    endScale: 1.2
     rise: 0
     spin: 0
   splitFlashColour: {r: 1, g: 1, b: 0.6, a: 1}
-  splitFlashSeconds: 0.25
+  splitFlashSeconds: 0.4
   splitSparkle: {fileID: 21300000, guid: e752cc49ff5a006428d440b8dc7832ae, type: 3}
   splitSparkles: 6
-  splitSpread: 0.35
+  splitSpread: 0.5
   splitSparkleColour: {r: 1, g: 0.95, b: 0.7, a: 1}
   splitSparkleMotion:
     seconds: 0.4
     startScale: 0.35
-    endScale: 0.1
+    endScale: 0.15
     rise: 0
     spin: 200
   bombStar: {fileID: 21300000, guid: b082a797dbf35f9468158263d0235eca, type: 3}
