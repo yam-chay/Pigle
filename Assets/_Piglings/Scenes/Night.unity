@@ -906,7 +906,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!212 &248366450
 SpriteRenderer:
   serializedVersion: 3
@@ -1915,7 +1915,7 @@ Camera:
   far clip plane: 1000
   field of view: 22.9
   orthographic: 1
-  orthographic size: 5.3
+  orthographic size: 4.8
   m_Depth: -1
   m_CullingMask:
     serializedVersion: 2
