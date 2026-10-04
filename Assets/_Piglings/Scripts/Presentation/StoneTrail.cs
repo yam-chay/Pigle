@@ -47,13 +47,24 @@ namespace Piglings.Presentation
             {
                 // Clear first: points recorded while it hopped from the pile to the hand would draw a streak.
                 trail.Clear();
-                var colour = stone.Definition != null ? stone.Definition.TrailColourFor(stone.Level) : Color.white;
-                var head = colour; head.a *= headAlpha;
-                var tail = colour; tail.a = 0f;
+
+                var colour = stone.Definition != null
+                    ? stone.Definition.TrailColourFor(stone.Level)
+                    : Color.white;
+
+                var head = colour;
+                head.a *= headAlpha;
+
+                var tail = colour;
+                tail.a *= 0.5f;
+
                 trail.startColor = head;
                 trail.endColor = tail;
+
                 // No definition (a stone never given a level): keep the Inspector width.
-                if (stone.Definition != null) trail.widthMultiplier = 2f * stone.Definition.RadiusAt(stone.Level) * stone.SizeScale * widthOfStone;
+                if (stone.Definition != null)
+                    trail.widthMultiplier =
+                        2f * stone.Definition.RadiusAt(stone.Level) * stone.SizeScale * widthOfStone;
             }
             trail.emitting = flying;
         }

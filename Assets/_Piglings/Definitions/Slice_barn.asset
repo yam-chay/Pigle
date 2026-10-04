@@ -22,5 +22,5 @@ MonoBehaviour:
   - {x: -0.55, y: 0.54}
   - {x: 0.55, y: 0.54}
   - {x: 1.7, y: 0.54}
-  holdMaterial: {fileID: 0}
+  holdMaterial: {fileID: 6200000, guid: 0fc3d7f6112b7e141a2c7f7179479ca3, type: 2}
   effect: 0

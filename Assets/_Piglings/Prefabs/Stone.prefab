@@ -309,4 +309,4 @@ MonoBehaviour:
   stone: {fileID: 7447952842840273357}
   trail: {fileID: -7033912458353743434}
   widthOfStone: 0.9
-  headAlpha: 0.9
+  headAlpha: 1

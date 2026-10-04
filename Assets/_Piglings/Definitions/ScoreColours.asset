@@ -18,6 +18,8 @@ MonoBehaviour:
   - {r: 1, g: 0.52, b: 0.15, a: 1}
   - {r: 1, g: 0.25, b: 0.2, a: 1}
   - {r: 1, g: 0.3, b: 0.85, a: 1}
+  - {r: 0.26666668, g: 0, b: 0.5019608, a: 1}
+  - {r: 0, g: 0.011191719, b: 0.3584906, a: 1}
   qualityBands:
   - minQuality: 0
     colour: {r: 1, g: 0.95, b: 0.82, a: 1}
@@ -33,6 +35,9 @@ MonoBehaviour:
     look: 0
   - minQuality: 0.5
     colour: {r: 1, g: 0.3, b: 0.85, a: 1}
+    look: 1
+  - minQuality: 0.7
+    colour: {r: 0.26670426, g: 0, b: 0.5, a: 1}
     look: 1
   - minQuality: 0.9
     colour: {r: 1, g: 1, b: 1, a: 1}
