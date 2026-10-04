@@ -49,7 +49,7 @@ MonoBehaviour:
     impulse: 1
   copyThresholds: 0a0000001e0000003c0000006400000096000000d200000018010000
   maxCopies: 8
-  followUpAtCopies: 2
+  followUpEveryCopies: 3
   maxStonesPerThrow: 4
   pieceScale: 0.8
   countSplitHitsForMastery: 1
