@@ -26,6 +26,8 @@ namespace Piglings.Presentation
         [Tooltip("A chain worth this much or more adds Chain Trauma in full when it closes; smaller ones add less.")]
         [SerializeField, Min(1)] private int bigChainTotal = 300;
         [SerializeField, Range(0f, 1f)] private float chainTrauma = 0.6f;
+        [Tooltip("A Bomb going off adds this (its victims, falling deeper, add their own as they score).")]
+        [SerializeField, Range(0f, 1f)] private float bombTrauma = 0.4f;
 
         [Header("How it shakes")]
         [SerializeField, Min(0f)] private float maxOffset = 0.15f;     // world units at full trauma
@@ -43,6 +45,7 @@ namespace Piglings.Presentation
         {
             session.Bus.Subscribe<RobotScored>(OnRobotScored);
             session.Bus.Subscribe<ChainScored>(OnChainScored);
+            session.Bus.Subscribe<BombExploded>(OnBombExploded);
         }
 
         private void OnDestroy()
@@ -50,6 +53,7 @@ namespace Piglings.Presentation
             if (session == null || session.Bus == null) return;
             session.Bus.Unsubscribe<RobotScored>(OnRobotScored);
             session.Bus.Unsubscribe<ChainScored>(OnChainScored);
+            session.Bus.Unsubscribe<BombExploded>(OnBombExploded);
         }
 
         private void OnRobotScored(RobotScored e)
@@ -58,6 +62,8 @@ namespace Piglings.Presentation
         }
 
         private void OnChainScored(ChainScored e) => AddTrauma(chainTrauma * Mathf.Clamp01(e.Total / (float)bigChainTotal));
+
+        private void OnBombExploded(BombExploded e) => AddTrauma(bombTrauma);
 
         private void AddTrauma(float amount) => _trauma = Mathf.Clamp01(_trauma + amount);
 

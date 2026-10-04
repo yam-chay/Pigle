@@ -331,6 +331,7 @@ namespace Piglings.Rules
             foreach (var hits in _state.WeaponHits) Bank(MasteryDestination.Weapon, hits.Key, MasteryStat.DirectHits, hits.Value, 1);
             foreach (var knocks in _state.BallKnocks) Bank(MasteryDestination.Lineage, knocks.Key, MasteryStat.BallKnocks, knocks.Value, 1);
             foreach (var knocked in _state.KnockedByBall) Bank(MasteryDestination.Lineage, knocked.Key, MasteryStat.KnockedByBall, knocked.Value, 1);
+            foreach (var peg in _state.PegKnocks) Bank(MasteryDestination.Peg, peg.Key, MasteryStat.PegKnocks, peg.Value, 1);
 
             _bus.Publish(new NightEnded(_state.Result, _state.EndReason, _state.Score, _state.BankedScore,
                 _state.ThresholdsReached, _state.StonesLeft, _state.RobotsReachedTop, _state.ThrowsUsed));

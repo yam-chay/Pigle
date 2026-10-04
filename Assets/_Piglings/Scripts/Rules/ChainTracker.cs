@@ -28,6 +28,9 @@ namespace Piglings.Rules
 
             // The thrown stones of this chain still flying: the original and any Splitter pieces (InPlay holds robots too).
             public readonly HashSet<GameId> Stones = new HashSet<GameId>();
+
+            // How deep each robot of this chain is (a Bomb set off by its ball knocks robots one deeper).
+            public readonly Dictionary<GameId, int> Depths = new Dictionary<GameId, int>();
         }
 
         private readonly EventBus _bus;
@@ -91,6 +94,21 @@ namespace Piglings.Rules
             c.Carried[stone] = shared >= int.MaxValue ? int.MaxValue : (int)shared;
         }
 
+        /// <summary>A robot's depth in this chain (from its RobotLostGrip), or -1 if it isn't one of the chain's robots.</summary>
+        public int DepthOf(ChainId chain, GameId robot) =>
+            !chain.IsNone && _open.TryGetValue(chain.Id, out var c) && c.Depths.TryGetValue(robot, out int d) ? d : -1;
+
+        /// <summary>
+        /// Bomb: the explosion becomes a hitter of this chain, starting with what its trigger carries now. It grows with
+        /// each robot it knocks loose, like a stone that hits several; the trigger itself doesn't grow from those.
+        /// </summary>
+        public void StartExplosion(ChainId chain, GameId explosion, GameId trigger)
+        {
+            if (chain.IsNone || !_open.TryGetValue(chain.Id, out var c)) return;
+            if (!c.Carried.TryGetValue(trigger, out int value)) value = _curve.StoneValue;
+            c.Carried[explosion] = value;
+        }
+
         // A piece joins its parent's chain: the chain now waits for it too, and it carries what its parent carries.
         private void OnPieceLaunched(StonePieceLaunched e)
         {
@@ -119,6 +137,7 @@ namespace Piglings.Rules
         {
             if (!_open.TryGetValue(e.Chain.Id, out var c)) return;
             c.InPlay.Add(e.Robot);
+            c.Depths[e.Robot] = e.Cause.Depth;
             c.Dropped++;
             if (e.Cause.Depth > c.MaxDepth) c.MaxDepth = e.Cause.Depth;
             _state.RobotsDropped++;

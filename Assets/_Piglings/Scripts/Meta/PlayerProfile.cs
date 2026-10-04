@@ -17,6 +17,7 @@ namespace Piglings.Meta
 
         public readonly SortedDictionary<string, WeaponRecord> Weapons = new SortedDictionary<string, WeaponRecord>(StringComparer.Ordinal);
         public readonly SortedDictionary<string, RobotRecord> Robots = new SortedDictionary<string, RobotRecord>(StringComparer.Ordinal);
+        public readonly SortedDictionary<string, PegRecord> Pegs = new SortedDictionary<string, PegRecord>(StringComparer.Ordinal);
 
         /// <summary>Total robots this weapon knocked loose itself, over every banked night. 0 for a weapon never used.</summary>
         public int DirectHits(string weaponId) =>
@@ -34,12 +35,19 @@ namespace Piglings.Meta
             return r;
         }
 
+        public PegRecord Peg(string pegId)
+        {
+            if (!Pegs.TryGetValue(pegId, out var p)) Pegs[pegId] = p = new PegRecord();
+            return p;
+        }
+
         /// <summary>One line for the save/load log: "stone 137 hits · wolfbot_basic 412 ball knocks / 300 knocked by a ball".</summary>
         public string Describe()
         {
             var parts = new List<string>();
             foreach (var w in Weapons) parts.Add($"{w.Key} {w.Value.DirectHits} hits");
             foreach (var r in Robots) parts.Add($"{r.Key} {r.Value.BallKnocks} ball knocks / {r.Value.KnockedByBall} knocked by a ball");
+            foreach (var p in Pegs) parts.Add($"{p.Key} {p.Value.Knocks} knocks");
             return parts.Count == 0 ? "empty (no banked nights)" : string.Join(" · ", parts);
         }
     }
@@ -48,6 +56,12 @@ namespace Piglings.Meta
     public sealed class WeaponRecord
     {
         public int DirectHits;   // robots this weapon knocked loose itself (not through a ball)
+    }
+
+    /// <summary>One peg type's saved stats. Recorded for later (peg mastery?); nothing reads them yet.</summary>
+    public sealed class PegRecord
+    {
+        public int Knocks;   // robots this peg type knocked loose itself (a Bomb's explosion), whatever set it off
     }
 
     /// <summary>One robot type's saved ball stats. Recorded for future wolf-lineage mastery; nothing reads them yet.</summary>

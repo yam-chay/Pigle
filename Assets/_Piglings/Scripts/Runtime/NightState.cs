@@ -47,6 +47,7 @@ namespace Piglings.Runtime
         public SortedDictionary<string, int> WeaponHits = new SortedDictionary<string, int>(System.StringComparer.Ordinal);    // weapon → robots it knocked loose itself
         public SortedDictionary<string, int> BallKnocks = new SortedDictionary<string, int>(System.StringComparer.Ordinal);    // robot type → robots its ball knocked loose
         public SortedDictionary<string, int> KnockedByBall = new SortedDictionary<string, int>(System.StringComparer.Ordinal); // robot type → times it was knocked loose by a ball
+        public SortedDictionary<string, int> PegKnocks = new SortedDictionary<string, int>(System.StringComparer.Ordinal);     // peg id → robots its effect knocked loose (Bomb)
 
         // Derived, not stored: Phase is the source of truth.
         public bool Ended => Phase == NightPhase.Ended;
@@ -62,7 +63,9 @@ namespace Piglings.Runtime
     {
         public string PegId;   // null or "" = empty
         public int Level;      // 0 when empty; 1 when placed; +1 per merge, up to the type's max level
+        public float Recharge; // Bomb: seconds until it can go off again; 0 = charged. Counts down only while the night is Running.
         public bool IsEmpty => string.IsNullOrEmpty(PegId);
+        public bool IsSpent => Recharge > 0f;
     }
 
     /// <summary>How many pegs of one type are left on the shelf.</summary>

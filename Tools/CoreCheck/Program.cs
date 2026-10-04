@@ -27,6 +27,7 @@ static void Main(){
  SaveChecks();
  PegEffectChecks();
  SplitterChecks();
+ BombChecks();
 }
 // Scoring: value flows down the chain. A hitter (stone or ball) carries a value; the robot it knocks
 // scores value x (1 + 0.5 x depth); the hitter grows +10 per hit; the robot then carries 10 + what it received.

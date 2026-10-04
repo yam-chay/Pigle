@@ -113,7 +113,7 @@ namespace Piglings.Simulation
             _referee = new NightReferee(Bus, State, _chains,
                 new NightGoal(ToArray(night.Thresholds), night.ThrowsAvailable, night.StonesPerThreshold),
                 BuildPegs());
-            _pegEffects = new PegEffects(Bus, State, _chains, _referee.Pegs);
+            _pegEffects = new PegEffects(Bus, State, _chains, _referee.Pegs, Ids);
             if (board != null) board.Bind(this);
             _tally = new MasteryTally(Bus, State);
             _progression = new Progression(Bus, LoadProfile());
@@ -209,6 +209,9 @@ namespace Piglings.Simulation
             if (State.Phase == NightPhase.PegPlacement && !_referee.CanPlaceAnyPeg
                 && Time.time - _roundStartedAt >= night.RefillPauseSeconds)
                 _referee.EndPlacement();
+
+            // Spent bombs recharge on wall time: the Rules ignore this unless the night is Running.
+            _pegEffects.Advance(Time.deltaTime);
         }
 
         // One socket per Hold (PegBoard). No board = no sockets: every round is then just a refill pause.
@@ -233,20 +236,25 @@ namespace Piglings.Simulation
             var multipliers = new float[peg.LevelCount];
             var pieces = new int[peg.LevelCount];
             var shares = new float[peg.LevelCount];
+            var cooldowns = new float[peg.LevelCount];
             for (int i = 0; i < multipliers.Length; i++)
             {
                 multipliers[i] = peg.ScoreMultiplierAt(i + 1);
                 pieces[i] = peg.PiecesAt(i + 1);
                 shares[i] = peg.ValueShareAt(i + 1);
+                cooldowns[i] = peg.CooldownAt(i + 1);
             }
             if (peg.Effect == PegEffect.Bouncy && peg.ScoreMultiplierAt(1) <= 1f)
                 Debug.LogWarning($"{peg.name}: Bouncy with a score multiplier of {peg.ScoreMultiplierAt(1)} at level 1 gives no " +
                                  "bonus — fill its Levels list (a new entry starts at 0).", peg);
+            if (peg.Effect == PegEffect.Bomb && peg.BombRadiusAt(1) <= 0f)
+                Debug.LogWarning($"{peg.name}: Bomb with a radius of {peg.BombRadiusAt(1)} at level 1 knocks nothing loose — fill its " +
+                                 "Levels list (a new entry starts at 0).", peg);
             if (peg.Effect == PegEffect.Splitter && peg.PiecesAt(1) < 2)
                 Debug.LogWarning($"{peg.name}: Splitter with {peg.PiecesAt(1)} piece(s) at level 1 never splits — fill its Levels " +
                                  "list (a new entry starts at 0).", peg);
             return new PegType(peg.Id, peg.MaxLevel, peg.Mergeable, peg.Effect, multipliers, pieces, shares,
-                               peg.MaxStonesPerThrow, peg.CountSplitHitsForMastery);
+                               peg.MaxStonesPerThrow, peg.CountSplitHitsForMastery, cooldowns);
         }
 
         private static int[] ToArray(IReadOnlyList<int> list)

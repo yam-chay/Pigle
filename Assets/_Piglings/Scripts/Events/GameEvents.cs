@@ -143,12 +143,14 @@ namespace Piglings.Events
     }
     // Where a night's banking goes. Barn: the banked score. Weapon: a weapon's use (Id = the weapon id).
     // Lineage: a robot type's ball stats (Id = the robot type) — recorded for future wolf-lineage mastery, unused for now.
-    public enum MasteryDestination { Barn, Weapon, Lineage }
+    // Peg: a peg type's stats (Id = the peg id) — recorded, unused for now.
+    public enum MasteryDestination { Barn, Weapon, Lineage, Peg }
 
     // What was counted. Score → Barn. DirectHits → Weapon (a robot knocked loose by the thrown weapon itself).
     // BallKnocks / KnockedByBall → Lineage: this type's ball knocked another robot loose / this type was knocked loose
     // by a ball. Both sides are kept so the lineage design can pick later without losing data.
-    public enum MasteryStat { Score, DirectHits, BallKnocks, KnockedByBall }
+    // PegKnocks → Peg: robots this peg type knocked loose itself (a Bomb's explosion), whatever set it off.
+    public enum MasteryStat { Score, DirectHits, BallKnocks, KnockedByBall, PegKnocks }
 
     /// <summary>
     /// Published by NightReferee on every phase change. Simulation pauses, resumes and sweeps the wall off this.
@@ -260,6 +262,32 @@ namespace Piglings.Events
         {
             Chain = chain; Piece = piece; Parent = parent; Socket = socket;
         }
+    }
+
+    /// <summary>
+    /// A Bomb went off (the Rules decided: it was charged, the night Running, the trigger in an open chain). Explosion is
+    /// a new hitter in the trigger's chain: it carries the trigger's current value and grows with each robot it knocks
+    /// loose; those robots are VictimDepth deep (1 from a stone, the ball's depth + 1 from a ball). The Simulation knocks
+    /// every climbing robot in the level's radius loose with Attribution.FromPeg(Explosion, VictimDepth).
+    /// The bomb is now spent — a plain hold — until PegRecharged.
+    /// </summary>
+    public readonly struct BombExploded
+    {
+        public readonly int Socket; public readonly string PegId; public readonly int Level; public readonly ChainId Chain;
+        public readonly GameId Explosion; public readonly PegHitter Trigger; public readonly GameId TriggerId; public readonly int VictimDepth;
+        public BombExploded(int socket, string pegId, int level, ChainId chain, GameId explosion, PegHitter trigger, GameId triggerId,
+                            int victimDepth)
+        {
+            Socket = socket; PegId = pegId; Level = level; Chain = chain; Explosion = explosion;
+            Trigger = trigger; TriggerId = triggerId; VictimDepth = victimDepth;
+        }
+    }
+
+    /// <summary>A spent Bomb has recharged (its cooldown ran out while the wall was moving): it can go off again.</summary>
+    public readonly struct PegRecharged
+    {
+        public readonly int Socket;
+        public PegRecharged(int socket) { Socket = socket; }
     }
 
     /// <summary>

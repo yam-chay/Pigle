@@ -23,6 +23,8 @@ namespace Piglings.Definitions
         [SerializeField] private Sprite sprite;
         [Tooltip("Used only when Sprite is empty, so a peg without art still reads as different from a plain hold.")]
         [SerializeField] private Color fallbackTint = new Color(0.6f, 0.9f, 1f);
+        [Tooltip("Bomb: how it looks while spent (after going off, until it recharges). Empty = its sprite, greyed.")]
+        [SerializeField] private Sprite spentSprite;
 
         [Tooltip("What it does when something hits it. Plain = nothing (a hold with a look).")]
         [SerializeField] private PegEffect effect = PegEffect.Plain;
@@ -43,6 +45,7 @@ namespace Piglings.Definitions
         public bool Mergeable => mergeable;
         public Sprite Sprite => sprite;
         public Color FallbackTint => fallbackTint;
+        public Sprite SpentSprite => spentSprite;
         public PegEffect Effect => effect;
         public int LevelCount => levels.Count;
 
@@ -63,6 +66,15 @@ namespace Piglings.Definitions
 
         /// <summary>Splitter: × the stone's value each stone carries after the split (1 = each carries it in full).</summary>
         public float ValueShareAt(int level) => Level(level)?.valueShare ?? 1f;
+
+        /// <summary>Bomb: climbing robots within this many world units of it are knocked loose.</summary>
+        public float BombRadiusAt(int level) => Level(level)?.bombRadius ?? 0f;
+
+        /// <summary>Bomb: seconds it stays spent after going off (counted only while the wall moves).</summary>
+        public float CooldownAt(int level) => Level(level)?.cooldownSeconds ?? 0f;
+
+        /// <summary>Bomb: the push given to falling balls and flying stones in its radius (0 = none).</summary>
+        public float ImpulseAt(int level) => Level(level)?.impulse ?? 0f;
 
         public int MaxStonesPerThrow => maxStonesPerThrow;
         public float PieceScale => pieceScale;
@@ -90,5 +102,13 @@ namespace Piglings.Definitions
         [Range(0f, 180f)] public float fanAngle = 30f;
         [Tooltip("Each stone (the original too) carries the stone's value × this. 1 = every piece carries it in full.")]
         [Min(0f)] public float valueShare = 1f;
+
+        [Header("Bomb")]
+        [Tooltip("A stone or falling ball that hits it knocks every CLIMBING robot within this radius (world units) loose.")]
+        [Min(0f)] public float bombRadius = 1f;
+        [Tooltip("Seconds it stays spent (a plain hold) after going off. Counts only while the wall moves.")]
+        [Min(0f)] public float cooldownSeconds = 8f;
+        [Tooltip("Push given to falling balls and flying stones in the radius, away from the bomb (0 = none).")]
+        [Min(0f)] public float impulse = 0.5f;
     }
 }

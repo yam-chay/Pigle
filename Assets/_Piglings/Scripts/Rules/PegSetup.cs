@@ -19,10 +19,12 @@ namespace Piglings.Rules
         private readonly float[] _scoreMultipliers;   // Bouncy
         private readonly int[] _pieces;               // Splitter: stones after a split, the original included
         private readonly float[] _valueShares;        // Splitter: × the stone's value each stone carries after it
+        private readonly float[] _cooldowns;          // Bomb: seconds spent after it goes off (wall time)
 
         public PegType(string id, int maxLevel = 3, bool mergeable = true, PegEffect effect = PegEffect.Plain,
                        IReadOnlyList<float> scoreMultipliers = null, IReadOnlyList<int> pieces = null,
-                       IReadOnlyList<float> valueShares = null, int maxStonesPerThrow = 4, bool splitHitsCountForMastery = true)
+                       IReadOnlyList<float> valueShares = null, int maxStonesPerThrow = 4, bool splitHitsCountForMastery = true,
+                       IReadOnlyList<float> cooldowns = null)
         {
             Id = id;
             MaxLevel = maxLevel < 1 ? 1 : maxLevel;
@@ -31,6 +33,7 @@ namespace Piglings.Rules
             _scoreMultipliers = Copy(scoreMultipliers);
             _pieces = Copy(pieces);
             _valueShares = Copy(valueShares);
+            _cooldowns = Copy(cooldowns);
             MaxStonesPerThrow = maxStonesPerThrow < 1 ? 1 : maxStonesPerThrow;
             SplitHitsCountForMastery = splitHitsCountForMastery;
         }
@@ -43,6 +46,9 @@ namespace Piglings.Rules
 
         /// <summary>Splitter: × the stone's value each stone carries after a split at this level. Never negative.</summary>
         public float ValueShareAt(int level) => System.Math.Max(0f, At(_valueShares, level, 1f));
+
+        /// <summary>Bomb: seconds it stays spent after going off at this level (counted only while the wall moves).</summary>
+        public float CooldownAt(int level) => System.Math.Max(0f, At(_cooldowns, level, 0f));
 
         private static T At<T>(T[] perLevel, int level, T none)
         {

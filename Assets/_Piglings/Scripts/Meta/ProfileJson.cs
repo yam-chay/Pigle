@@ -17,8 +17,11 @@ namespace Piglings.Meta
     /// {
     ///   "version": 1,
     ///   "weapons": { "stone":         { "directHits": 137 } },
-    ///   "robots":  { "wolfbot_basic": { "ballKnocks": 412, "knockedByBall": 300 } }
+    ///   "robots":  { "wolfbot_basic": { "ballKnocks": 412, "knockedByBall": 300 } },
+    ///   "pegs":    { "peg_bomb":      { "knocks": 12 } }
     /// }
+    /// ("pegs" came later, inside version 1: an older build reads the file fine and ignores it — but would drop it if it
+    /// then saved.)
     /// </code>
     /// One object per id (not a bare number), so a later field (feats…) is an addition, not a new version.
     /// Reading is strict about what it does read — anything our writer can't produce means the file was damaged or
@@ -46,11 +49,16 @@ namespace Piglings.Meta
             foreach (var r in profile.Robots)
                 robots[r.Key] = new JObject { ["ballKnocks"] = r.Value.BallKnocks, ["knockedByBall"] = r.Value.KnockedByBall };
 
+            var pegs = new JObject();
+            foreach (var p in profile.Pegs)
+                pegs[p.Key] = new JObject { ["knocks"] = p.Value.Knocks };
+
             var root = new JObject
             {
                 ["version"] = PlayerProfile.CurrentVersion,
                 ["weapons"] = weapons,
                 ["robots"] = robots,
+                ["pegs"] = pegs,
             };
             return root.ToString(Formatting.Indented);
         }
@@ -96,6 +104,15 @@ namespace Piglings.Meta
                     var r = result.Robot(entry.Name);
                     if (!ReadField(fields, entry.Name, "ballKnocks", ref r.BallKnocks, ref problem)) return ProfileReadResult.Corrupt;
                     if (!ReadField(fields, entry.Name, "knockedByBall", ref r.KnockedByBall, ref problem)) return ProfileReadResult.Corrupt;
+                }
+
+            if (!ReadSection(root, "pegs", out var pegs, ref problem)) return ProfileReadResult.Corrupt;
+            if (pegs != null)
+                foreach (var entry in pegs.Properties())
+                {
+                    if (!ReadEntry(entry, out var fields, ref problem)) return ProfileReadResult.Corrupt;
+                    var p = result.Peg(entry.Name);
+                    if (!ReadField(fields, entry.Name, "knocks", ref p.Knocks, ref problem)) return ProfileReadResult.Corrupt;
                 }
 
             profile = result;
