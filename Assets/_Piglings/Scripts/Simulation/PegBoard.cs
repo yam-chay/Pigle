@@ -34,6 +34,16 @@ namespace Piglings.Simulation
         public Vector3 Position(int socket) => Holds[socket].transform.position;
         public Hold HoldAt(int socket) => Holds[socket];
 
+        /// <summary>
+        /// The Holds changed (TowerBuilder built a tower): forget the old list and bind the new one. Sockets are per night —
+        /// only call this before the night begins (the Rules sized the board from the count).
+        /// </summary>
+        public void Rebuild()
+        {
+            _holds = null;
+            if (_session != null) Bind(_session);
+        }
+
         /// <summary>Called once by NightSession in Awake: every Hold learns its socket and reports peg hits from now on.</summary>
         public void Bind(NightSession session)
         {

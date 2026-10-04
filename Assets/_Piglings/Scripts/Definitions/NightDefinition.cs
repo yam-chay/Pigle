@@ -10,6 +10,8 @@ namespace Piglings.Definitions
     [CreateAssetMenu(menuName = "Piglings/Night Definition", fileName = "Night_")]
     public sealed class NightDefinition : ScriptableObject
     {
+        [Tooltip("Save key (campaign): dawns and tower choices are saved by this id. Never rename it once players have a save.")]
+        [SerializeField] private string id = "night_01";
         [SerializeField] private RobotDefinition robot;
         [SerializeField] private ThrowableDefinition throwable;
         [SerializeField] private WallMaterialDefinition wall;
@@ -29,6 +31,15 @@ namespace Piglings.Definitions
                  "long enough to watch the refill land on the pile.")]
         [SerializeField, Min(0f)] private float refillPauseSeconds = 1f;
 
+        [Header("Tower (campaign scene: TowerBuilder)")]
+        [Tooltip("The tower, bottom → top: one slice per 1.6 units above the bottom piece. The player can swap them in the day phase; " +
+                 "the count is the night's (more slices = a taller tower, a longer climb).")]
+        [SerializeField] private List<WallSliceDefinition> slices = new List<WallSliceDefinition>();
+        [Tooltip("The camera during this night (tuned by hand per tower): centre height…")]
+        [SerializeField] private float cameraY = 6f;
+        [Tooltip("…and orthographic size.")]
+        [SerializeField, Min(0.5f)] private float cameraSize = 3.5f;
+
         [Header("Pegs")]
         [Tooltip("The peg shelf for this night (until the day phase chooses it): up to 5 types, one pile each. " +
                  "Types past the 5th are ignored; the same type twice adds up.")]
@@ -36,6 +47,10 @@ namespace Piglings.Definitions
         [Tooltip("Pegs the player throws at each threshold. (Future: a skill-tree node adds +1.)")]
         [SerializeField, Min(0)] private int pegThrowsPerThreshold = 1;
 
+        public string Id => id;
+        public IReadOnlyList<WallSliceDefinition> Slices => slices;
+        public float CameraY => cameraY;
+        public float CameraSize => cameraSize;
         public RobotDefinition Robot => robot;
         public ThrowableDefinition Throwable => throwable;
         public WallMaterialDefinition Wall => wall;
