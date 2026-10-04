@@ -1786,7 +1786,6 @@ GameObject:
   m_Component:
   - component: {fileID: 397069837}
   - component: {fileID: 397069838}
-  - component: {fileID: 397069839}
   m_Layer: 0
   m_Name: Debug
   m_TagString: Untagged
@@ -1824,20 +1823,6 @@ MonoBehaviour:
   session: {fileID: 1068153025}
   toggleKey: 94
   visibleAtStart: 0
---- !u!114 &397069839
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 397069836}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3a18b45a6578f7d45b3af93a66f60319, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Piglings.Presentation::Piglings.Presentation.NightEndView
-  session: {fileID: 1068153025}
-  sweepCountSeconds: 1.2
 --- !u!1 &427426260
 GameObject:
   m_ObjectHideFlags: 0
@@ -6401,6 +6386,7 @@ MonoBehaviour:
   scoreText: {fileID: 988247872}
   fill: {fileID: 843287988}
   gapText: {fileID: 1664803143}
+  barEaseSeconds: 0.35
   throwRow: {fileID: 2143778204}
   rowBrightness:
   - 1
@@ -6584,52 +6570,6 @@ BoxCollider2D:
   m_AutoTiling: 0
   m_Size: {x: 4.4, y: 0.2}
   m_EdgeRadius: 0
---- !u!1 &2082312476
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 2082312478}
-  - component: {fileID: 2082312477}
-  m_Layer: 0
-  m_Name: PlayAgain
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &2082312477
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2082312476}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7c7f4cfe0143a444191796bd37dc0b32, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Piglings.Simulation::Piglings.Simulation.PlayAgain
-  session: {fileID: 1068153025}
-  ignoreClicksFor: 0
---- !u!4 &2082312478
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2082312476}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.31274, y: 6.12363, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2096460684
 GameObject:
   m_ObjectHideFlags: 0
@@ -7096,7 +7036,6 @@ SceneRoots:
   - {fileID: 397069837}
   - {fileID: 121294482}
   - {fileID: 2030246746}
-  - {fileID: 2082312478}
   - {fileID: 99004604}
   - {fileID: 1599771213}
   - {fileID: 248366451}
