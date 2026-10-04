@@ -28,6 +28,14 @@ namespace Piglings.Simulation
         [Tooltip("The wall's peg sockets (PegBoard on Barn). Empty = no sockets: every threshold is just a refill pause.")]
         [SerializeField] private PegBoard board;
 
+        [Header("Save and start")]
+        [Tooltip("Which save this scene uses: piglings_<name>.json. \"dev\" for Night.unity, \"campaign\" for the v2 scene — " +
+                 "separate files, so testing here never advances the campaign. Letters, digits, - and _ only.")]
+        [SerializeField] private string profileName = "dev";
+        [Tooltip("On (Night.unity): the night is Running as soon as the scene loads. Off (the campaign scene): it waits in " +
+                 "Dusk — the day phase, the camera rising — until BeginNight().")]
+        [SerializeField] private bool startImmediately = true;
+
         public NightDefinition Night => night;
         public EventBus Bus { get; private set; }
         public NightState State { get; private set; }
@@ -88,6 +96,9 @@ namespace Piglings.Simulation
         public bool IsValidPegTarget(int socket, string pegId) => _referee.IsValidTarget(socket, pegId);
         public bool CanPlaceAnyPeg => _referee.CanPlaceAnyPeg;
 
+        /// <summary>The night begins (Dusk → Running): called by the campaign flow once the camera reaches the Night frame.</summary>
+        public void BeginNight() => _referee.Begin();
+
         /// <summary>
         /// A flying stone or a falling ball hit the peg in this socket (called by Hold). The Rules decide the effect and
         /// publish the facts; the result says what to do physically.
@@ -112,7 +123,7 @@ namespace Piglings.Simulation
             // After ChainTracker: the referee reads its open-chain count.
             _referee = new NightReferee(Bus, State, _chains,
                 new NightGoal(ToArray(night.Thresholds), night.ThrowsAvailable, night.StonesPerThreshold),
-                BuildPegs());
+                BuildPegs(), startImmediately);
             _pegEffects = new PegEffects(Bus, State, _chains, _referee.Pegs, Ids);
             if (board != null) board.Bind(this);
             _tally = new MasteryTally(Bus, State);
@@ -126,7 +137,7 @@ namespace Piglings.Simulation
 
         private PlayerProfile LoadProfile()
         {
-            _profileFile = new ProfileFile(Application.persistentDataPath);
+            _profileFile = new ProfileFile(Application.persistentDataPath, profileName);
             var load = _profileFile.Load();
             string line = $"Piglings save: loaded ({load.Source}) — {load.Profile.Describe()}  ({_profileFile.MainPath})";
             if (load.Problems.Count == 0 && load.SaveError == null) Debug.Log(line, this);

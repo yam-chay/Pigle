@@ -29,10 +29,11 @@ namespace Piglings.Simulation
     /// (Application.persistentDataPath). Engine-free on purpose — like ThrowSolver — so CoreCheck runs it on a real
     /// temp folder.
     ///
-    ///   piglings_profile.json        the save
-    ///   piglings_profile.prev.json   the save before the last one (the fallback)
-    ///   piglings_profile.json.tmp    a save being written; ignored on load
-    ///   piglings_profile.corrupt-*   copies of bad files, kept for us to look at
+    ///   piglings_<name>.json        the save            (name = the profile: "dev" for Night.unity, "campaign" for the v2 scene)
+    ///   piglings_<name>.prev.json   the save before the last one (the fallback)
+    ///   piglings_<name>.json.tmp    a save being written; ignored on load
+    ///   piglings_<name>.corrupt-*   copies of bad files, kept for us to look at
+    /// Separate profiles are separate files: testing in Night.unity never advances the campaign.
     ///
     /// Save never leaves a half-written file: it writes the .tmp, flushes it to disk, then swaps it in with File.Replace
     /// (one rename). Before the swap the current save is copied to .prev.
@@ -43,7 +44,8 @@ namespace Piglings.Simulation
     /// </summary>
     public sealed class ProfileFile
     {
-        public const string FileName = "piglings_profile.json";
+        /// <summary>The profile name used when none is given — and the file the first saves were written to.</summary>
+        public const string DefaultProfile = "profile";
 
         public string MainPath { get; }
         public string PrevPath { get; }
@@ -56,11 +58,14 @@ namespace Piglings.Simulation
         // UTF-8 without a byte-order mark: plain JSON for any tool that opens it.
         private static readonly Encoding Utf8 = new UTF8Encoding(false);
 
-        public ProfileFile(string directory)
+        public string ProfileName { get; }
+
+        public ProfileFile(string directory, string profileName = DefaultProfile)
         {
             _directory = directory;
-            MainPath = Path.Combine(directory, FileName);
-            PrevPath = Path.Combine(directory, "piglings_profile.prev.json");
+            ProfileName = SafeName(profileName);
+            MainPath = Path.Combine(directory, $"piglings_{ProfileName}.json");
+            PrevPath = Path.Combine(directory, $"piglings_{ProfileName}.prev.json");
             TempPath = MainPath + ".tmp";
         }
 
@@ -157,6 +162,15 @@ namespace Piglings.Simulation
             return false;
         }
 
+        // A profile name becomes part of a file name: letters, digits, - and _ only; anything else (or nothing) → the default.
+        private static string SafeName(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return DefaultProfile;
+            foreach (char c in name)
+                if (!(char.IsLetterOrDigit(c) || c == '-' || c == '_')) return DefaultProfile;
+            return name;
+        }
+
         private static void TryDelete(string path)
         {
             try { File.Delete(path); }
@@ -167,12 +181,12 @@ namespace Piglings.Simulation
         {
             try
             {
-                // piglings_profile.corrupt-20261003-142501.json (or .prev.json), -2, -3… if that second is taken.
+                // piglings_<name>.corrupt-20261003-142501.json (or .prev.json), -2, -3… if that second is taken.
                 string kind = path == PrevPath ? ".prev" : "";
                 string stamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss", System.Globalization.CultureInfo.InvariantCulture);
-                string name = $"piglings_profile.corrupt-{stamp}{kind}.json";
+                string name = $"piglings_{ProfileName}.corrupt-{stamp}{kind}.json";
                 for (int n = 2; File.Exists(Path.Combine(_directory, name)); n++)
-                    name = $"piglings_profile.corrupt-{stamp}-{n}{kind}.json";
+                    name = $"piglings_{ProfileName}.corrupt-{stamp}-{n}{kind}.json";
                 var target = Path.Combine(_directory, name);
                 File.Copy(path, target);
                 return target;

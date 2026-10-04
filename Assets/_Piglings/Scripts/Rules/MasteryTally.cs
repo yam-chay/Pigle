@@ -17,6 +17,8 @@ namespace Piglings.Rules
     /// - A Bomb's victims (CauseKind.Peg) count for the peg type that exploded (PegKnocks), whatever set it off — and as
     ///   stone hits only when the stone itself (or a piece that counts) set it off by hitting it. A ball-triggered
     ///   explosion gives the stone nothing.
+    /// - Peg triggers (PegTriggers, per peg id and merged level): each time a peg's effect fires — a Bouncy bonus granted
+    ///   (already once per peg per ball), a Splitter split, a Bomb explosion. Peg mastery (copies owned) is derived from them.
     /// - A Splitter piece's direct hits count as its stone's hits when the split said so (StoneSplit.PiecesCountForMastery,
     ///   the Splitter's toggle); otherwise only the original stone's own hits count.
     ///
@@ -44,6 +46,7 @@ namespace Piglings.Rules
             _bus.Subscribe<StoneSplit>(OnSplit);
             _bus.Subscribe<StonePieceLaunched>(OnPieceLaunched);
             _bus.Subscribe<BombExploded>(OnBombExploded);
+            _bus.Subscribe<PegBounced>(OnPegBounced);
         }
 
         public void Dispose()
@@ -56,6 +59,7 @@ namespace Piglings.Rules
             _bus.Unsubscribe<StoneSplit>(OnSplit);
             _bus.Unsubscribe<StonePieceLaunched>(OnPieceLaunched);
             _bus.Unsubscribe<BombExploded>(OnBombExploded);
+            _bus.Unsubscribe<PegBounced>(OnPegBounced);
         }
 
         /// <summary>
@@ -78,12 +82,35 @@ namespace Piglings.Rules
 
         // A piece is credited to its parent's weapon only if this split counts — and only if the parent itself counts
         // (a piece of an uncounted piece stays uncounted).
-        private void OnSplit(StoneSplit e) => _piecesCount[e.Stone] = e.PiecesCountForMastery;
+        private void OnSplit(StoneSplit e)
+        {
+            TriggerAt(e.Socket);
+            _piecesCount[e.Stone] = e.PiecesCountForMastery;
+        }
+
+        private void OnPegBounced(PegBounced e) => TriggerAt(e.Socket);
+
+        // Splitter and Bouncy events carry the socket: the peg there now (written by the referee) is the one that fired.
+        private void TriggerAt(int socket)
+        {
+            if (socket < 0 || socket >= _state.Sockets.Length || _state.Sockets[socket].IsEmpty) return;
+            Trigger(_state.Sockets[socket].PegId, _state.Sockets[socket].Level);
+        }
+
+        private void Trigger(string pegId, int level)
+        {
+            if (_state.Ended || string.IsNullOrEmpty(pegId)) return;
+            if (!_state.PegTriggers.TryGetValue(pegId, out var perLevel)) _state.PegTriggers[pegId] = perLevel = new List<int>();
+            int i = level < 1 ? 0 : level - 1;
+            while (perLevel.Count <= i) perLevel.Add(0);
+            perLevel[i] = ScoreMath.AddClamped(perLevel[i], 1);
+        }
 
         // Explosions live only as long as their knocks (synchronous, inside the Simulation's handling of the hit), but
         // nights are short and an explosion is rare: these maps aren't worth pruning.
         private void OnBombExploded(BombExploded e)
         {
+            Trigger(e.PegId, e.Level);
             _explosionPegs[e.Explosion] = e.PegId;
             // _weapons only holds stones that count (a piece whose split didn't count isn't in it), so this one lookup
             // is the whole rule: the stone or a counted piece → the stone's hits; a ball → nothing.

@@ -10,6 +10,8 @@ namespace Piglings.Rules
     ///   Running(hour 1) ──threshold──▶ PegPlacement ──▶ Running(hour 2) ──▶ … ──last threshold──▶ Ended (dawn, won)
     ///      └──a robot breaches with no stones left (caught, lost)─────────────────────────────▶ Ended
     ///
+    /// - Dusk (campaign scene only, before all of the above): the night hasn't begun — nothing climbs, nothing is thrown.
+    ///   Begin() → Running. Night.unity starts straight in Running.
     /// - Running: the normal night. The stones are the pig's life. A robot that breaches takes the top stone;
     ///   a robot that breaches while the pile is empty catches the pigs — the ONLY loss, possible until dawn.
     ///   Throwing your last stone isn't a loss: the night goes on, and a chain still in flight can cross a threshold.
@@ -56,10 +58,15 @@ namespace Piglings.Rules
         /// <summary>What chains thrown now score with.</summary>
         public float HourMultiplier => _chains.Curve.HourMultiplier(_state.Hour - 1);
 
-        public NightReferee(EventBus bus, NightState state, ChainTracker chains, NightGoal goal = null, PegSetup pegs = null)
+        /// <param name="startImmediately">
+        /// True (Night.unity): the night is Running from the start. False (the campaign scene): it waits in Dusk — the day
+        /// phase, the camera rising — until Begin().
+        /// </param>
+        public NightReferee(EventBus bus, NightState state, ChainTracker chains, NightGoal goal = null, PegSetup pegs = null,
+                            bool startImmediately = true)
         {
             _bus = bus; _state = state; _chains = chains; _goal = goal ?? new NightGoal(); _pegs = pegs ?? new PegSetup();
-            _state.Phase = NightPhase.Running;
+            _state.Phase = startImmediately ? NightPhase.Running : NightPhase.Dusk;
             _state.StonesLeft = _goal.ThrowsAvailable;
             _state.Sockets = new PegSocket[_pegs.SocketCount];
             for (int i = 0; i < _state.Sockets.Length; i++) _state.Sockets[i] = new PegSocket();
@@ -81,6 +88,12 @@ namespace Piglings.Rules
             _bus.Unsubscribe<RobotBreached>(OnRobotBreached);
             _bus.Unsubscribe<ChainScored>(OnChainScored);
             _bus.Unsubscribe<RobotSwept>(OnRobotSwept);
+        }
+
+        /// <summary>The night begins: Dusk → Running (the wall starts climbing, the pig may throw). Ignored in any other phase.</summary>
+        public void Begin()
+        {
+            if (_state.Phase == NightPhase.Dusk) SetPhase(NightPhase.Running);
         }
 
         // ---------- pegs (called by Simulation during PegPlacement; ignored otherwise) ----------
@@ -202,6 +215,9 @@ namespace Piglings.Rules
         private void OnRobotScored(RobotScored e)
         {
             if (_state.Phase == NightPhase.Ended) return;
+            // Per hour by the hour the chain was thrown in (the hour its multiplier came from), not when the points landed.
+            var hour = HourStatsFor(e.Hour);
+            hour.Score = ScoreMath.AddClamped(hour.Score, e.Total);
             while (!_state.Dawn && _state.Score >= _goal.Thresholds[_state.ThresholdsReached])
             {
                 _state.ThresholdsReached++;
@@ -226,6 +242,7 @@ namespace Piglings.Rules
         {
             if (_state.Phase == NightPhase.Ended) return;
             _state.RobotsReachedTop++;
+            HourStatsFor(_state.Hour).Breaches++;
 
             // Only a running night before dawn can be hurt. (In PegPlacement the wall is frozen, so no new breach
             // starts; after dawn the night is already won.)
@@ -240,6 +257,12 @@ namespace Piglings.Rules
         // ChainTracker publishes this after it has closed the chain, so OpenChainCount is current.
         private void OnChainScored(ChainScored e)
         {
+            // The best throw tonight: most points (its quality, points ÷ its hour's gap, is for the views).
+            if (e.Total > _state.BestThrowPoints)
+            {
+                _state.BestThrowPoints = e.Total;
+                _state.BestThrowHour = e.Hour;
+            }
             foreach (var waiting in _roundWaitsFor) waiting.Remove(e.Chain.Id);
             CheckSettled();
         }
@@ -264,6 +287,14 @@ namespace Piglings.Rules
                 if (_chains.OpenChainCount == 0) End(NightResult.Won, NightEndReason.Dawn);
             }
             else if (RoundReady) SetPhase(NightPhase.PegPlacement);
+        }
+
+        // Hour n's stats (1-based), the list grown as hours are reached.
+        private HourStats HourStatsFor(int hour)
+        {
+            int i = hour < 1 ? 0 : hour - 1;
+            while (_state.Hours.Count <= i) _state.Hours.Add(new HourStats());
+            return _state.Hours[i];
         }
 
         private void UpdateCanThrow()
@@ -332,17 +363,20 @@ namespace Piglings.Rules
             foreach (var knocks in _state.BallKnocks) Bank(MasteryDestination.Lineage, knocks.Key, MasteryStat.BallKnocks, knocks.Value, 1);
             foreach (var knocked in _state.KnockedByBall) Bank(MasteryDestination.Lineage, knocked.Key, MasteryStat.KnockedByBall, knocked.Value, 1);
             foreach (var peg in _state.PegKnocks) Bank(MasteryDestination.Peg, peg.Key, MasteryStat.PegKnocks, peg.Value, 1);
+            foreach (var peg in _state.PegTriggers)
+                for (int i = 0; i < peg.Value.Count; i++)
+                    Bank(MasteryDestination.Peg, peg.Key, MasteryStat.PegTriggers, peg.Value[i], 1, level: i + 1);
 
             _bus.Publish(new NightEnded(_state.Result, _state.EndReason, _state.Score, _state.BankedScore,
                 _state.ThresholdsReached, _state.StonesLeft, _state.RobotsReachedTop, _state.ThrowsUsed));
         }
 
-        private void Bank(MasteryDestination destination, string id, MasteryStat stat, int amount, int multiplier)
+        private void Bank(MasteryDestination destination, string id, MasteryStat stat, int amount, int multiplier, int level = 0)
         {
             if (amount <= 0) return;
             int gained = (int)System.Math.Min(int.MaxValue, (long)amount * multiplier);
             if (destination == MasteryDestination.Barn) _state.BarnMastery = ScoreMath.AddClamped(_state.BarnMastery, gained);
-            _bus.Publish(new NightBanked(destination, id, stat, amount, multiplier));
+            _bus.Publish(new NightBanked(destination, id, stat, amount, multiplier, level));
         }
     }
 }

@@ -34,5 +34,22 @@ namespace Piglings.Rules
 
         /// <summary>The score a night keeps when caught after crossing this many thresholds (0 before the first).</summary>
         public int ScoreAtThreshold(int reached) => reached <= 0 ? 0 : _thresholds[System.Math.Min(reached, _thresholds.Length) - 1];
+
+        /// <summary>
+        /// Hour n's gap: the points it takes to get through it, T(n) − T(n−1) with T(0) = 0. Hours past the last threshold
+        /// (there are none in play; a guard) use the last gap. Never below 1.
+        /// </summary>
+        public int HourGap(int hour)
+        {
+            int h = hour < 1 ? 1 : hour > _thresholds.Length ? _thresholds.Length : hour;
+            int gap = _thresholds[h - 1] - (h >= 2 ? _thresholds[h - 2] : 0);
+            return gap < 1 ? 1 : gap;
+        }
+
+        /// <summary>
+        /// How good a throw was: its points ÷ the gap of the hour it was thrown in (1 = it alone was worth a whole hour).
+        /// The scoreboard and the post-run screen colour throws by this; the bands are a Presentation choice.
+        /// </summary>
+        public float ThrowQuality(int points, int hour) => points <= 0 ? 0f : points / (float)HourGap(hour);
     }
 }
