@@ -27,7 +27,7 @@ namespace Piglings.Presentation
         private void Update()
         {
             var s = session.State;
-            if (!s.Ended) return;
+            if (!s.Ended || session.IsCampaign) return;
             // Constant rate sized to the total, so a big sweep is as quick to read as a small one.
             float rate = Mathf.Max(1f, s.SweepScore / sweepCountSeconds);
             _shownSweep = Mathf.MoveTowards(_shownSweep, s.SweepScore, rate * Time.deltaTime);
@@ -36,7 +36,9 @@ namespace Piglings.Presentation
         private void OnGUI()
         {
             var s = session.State;
-            if (!s.Ended) return;
+            // Night.unity only: in a campaign scene the post-run (at the doors) shows the result, and "Click to play again"
+            // would be a lie there — PlayAgain stands down too.
+            if (!s.Ended || session.IsCampaign) return;
             if (_big == null) _big = new GUIStyle(GUI.skin.label) { fontSize = 36, alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold };
 
             if (s.SweepScore > 0)

@@ -11,6 +11,10 @@ namespace Piglings.Simulation
     /// Why a scene reload: everything a night owns lives in the scene (no statics, no
     /// DontDestroyOnLoad), so reloading is the whole reset — nothing to clear by hand.
     /// Lives in Simulation because it changes what's running; views only read.
+    ///
+    /// Night.unity only. In a campaign scene NightFlow owns restarting (Retry / Next night save first, then reload), so
+    /// this stands down: left in, it reloaded on the PRESS of the Next night button — before the button's click (on
+    /// release) could save the next night — and the player never advanced.
     /// </summary>
     public sealed class PlayAgain : MonoBehaviour
     {
@@ -22,8 +26,16 @@ namespace Piglings.Simulation
 
         private float _endedAt = -1f;   // Time.time when we first saw the night end; -1 = still running
 
+        private void Start()
+        {
+            if (session.IsCampaign)
+                Debug.LogWarning("PlayAgain: this is a campaign scene — NightFlow's Retry / Next night restart the night, so " +
+                                 "PlayAgain does nothing here. Remove it from this scene.", this);
+        }
+
         private void Update()
         {
+            if (session.IsCampaign) return;   // the campaign flow restarts (see the summary)
             if (!session.State.Ended) return;
             if (_endedAt < 0f) _endedAt = Time.time;
             if (Time.time < _endedAt + ignoreClicksFor) return;
