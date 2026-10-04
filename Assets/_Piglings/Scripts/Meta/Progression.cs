@@ -39,6 +39,17 @@ namespace Piglings.Meta
             Profile.Dawns[nightId] = AddClamped(n, 1);
         }
 
+        /// <summary>
+        /// Debug (playtesting): back to night 1 with no dawns and no tower choices — so every unlock is locked again.
+        /// Mastery (hits, triggers, knocks) is kept. The caller saves.
+        /// </summary>
+        public void ResetCampaign()
+        {
+            Profile.CurrentNight = 0;
+            Profile.Dawns.Clear();
+            Profile.Towers.Clear();
+        }
+
         /// <summary>Where the player is in the campaign (0 = the first night). Retry keeps it; Next moves it on.</summary>
         public void SetCurrentNight(int index) => Profile.CurrentNight = index < 0 ? 0 : index;
 

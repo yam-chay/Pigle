@@ -5,6 +5,7 @@ climbing robot-wolves; hit robots lose their grip, break into balls and knock ot
 **Gravity is the weapon — chains are the game.**
 
 Read first: `ARCHITECTURE.md` (structure, wins over this file), then `TASKS.md` (what's next). Design lives in the GDD (Claude Docs).
+Working on Prototype v2 (M10: campaign, day phase, post-run, scoreboard)? Read `PROTOTYPE_V2.md` — the approved plan.
 
 ## Rules for all code
 - Respect the layer references in ARCHITECTURE.md. If you need a forbidden reference, stop and explain why in the PR instead.
@@ -22,7 +23,7 @@ Read first: `ARCHITECTURE.md` (structure, wins over this file), then `TASKS.md` 
 - ONLY touch: `*.cs`, `*.asmdef`, `*.md`, `Tools/**`.
 - NEVER create or edit: `*.unity`, `*.prefab`, `*.asset`, `*.meta`, `*.anim`, `*.controller`, ProjectSettings/. Those need the editor.
 - New `.cs` files are fine without `.meta` — Unity generates them when Yam pulls; he commits them afterward.
-- Before opening a PR: `dotnet run --project Tools/CoreCheck` must pass. Add checks there for any Rules/Runtime/Events/Meta change (and the save file, `ProfileFile`). It restores Newtonsoft.Json from NuGet on first run.
+- Before opening a PR: `dotnet run --project Tools/CoreCheck` must pass (no .NET in a fresh container? `apt-get install -y dotnet-sdk-8.0`; the dotnet.microsoft.com installer is blocked by the network policy). Add checks there for any Rules/Runtime/Events/Meta change (and the save file, `ProfileFile`). It restores Newtonsoft.Json from NuGet on first run.
 - You can't compile Unity-side code (Simulation/Presentation/Definitions). Say so in the PR and list what Yam should verify in the editor.
 - PR description: what changed, why, and what to test in play mode — in plain language.
 - Tick the task in TASKS.md in the same PR.

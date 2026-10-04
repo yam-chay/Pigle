@@ -154,3 +154,14 @@ static void CampaignChecks(){
    } finally { try{ Directory.Delete(dir,true); } catch(IOException){} } }
 }
 }
+partial class P{
+static void ResetCampaignChecks(){
+ var bus=new EventBus(); var prog=new Progression(bus,null); var p=prog.Profile;
+ p.Weapon("stone").DirectHits=120; p.Peg("peg_bouncy").Triggers.Add(5);
+ prog.SetCurrentNight(2); prog.RecordNightResult("night_01",true); prog.SetTower("night_02",new[]{"a","b","c"});
+ prog.ResetCampaign();
+ Check(p.CurrentNight==0 && p.Dawns.Count==0 && p.Towers.Count==0,"Reset campaign: night 1, no dawns, no tower choices");
+ Check(p.DirectHits("stone")==120 && p.Pegs["peg_bouncy"].TriggersAt(1)==5,"...mastery kept (hits, peg triggers)");
+ prog.Dispose();
+}
+}

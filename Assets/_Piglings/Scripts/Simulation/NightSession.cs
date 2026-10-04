@@ -5,6 +5,7 @@ using Piglings.Meta;
 using Piglings.Rules;
 using Piglings.Runtime;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace Piglings.Simulation
 {
@@ -49,6 +50,10 @@ namespace Piglings.Simulation
         [Tooltip("On (Night.unity): the night is Running as soon as the scene loads. Off (the campaign scene): it waits in " +
                  "Dusk — the day phase, the camera rising — until BeginNight().")]
         [SerializeField] private bool startImmediately = true;
+
+        [Header("Debug (campaign, play mode)")]
+        [Tooltip("For the context menu \"Campaign/Go to Debug Night\": the night (1-based) to jump to.")]
+        [SerializeField, Min(1)] private int debugNight = 2;
 
         /// <summary>Tonight's night: the Night field, or in campaign mode the one at the saved index.</summary>
         public NightDefinition Night => _night;
@@ -192,8 +197,14 @@ namespace Piglings.Simulation
             var picked = campaign.NightAt(NightIndex);
             if (picked != null) _night = picked;
             else Debug.LogWarning($"NightSession: {campaign.name} has no night {NightIndex + 1}; playing {night.name}.", campaign);
-            Debug.Log($"Piglings campaign: night {NightIndex + 1}/{Plan.NightCount} ({_night.Id}), " +
-                      $"pegs {string.Join(", ", Plan.UnlockedPegs(_progression.Profile))}", this);
+            // Copies per type too, so the shelf can be checked without counting it.
+            var pegs = new List<string>();
+            foreach (var id in Plan.UnlockedPegs(_progression.Profile))
+            {
+                var peg = campaign.FindPeg(id);
+                pegs.Add(peg != null ? $"{id}×{CopiesOwned(peg)}" : $"{id} (not in the campaign)");
+            }
+            Debug.Log($"Piglings campaign: night {NightIndex + 1}/{Plan.NightCount} ({_night.Id}), pegs {string.Join(", ", pegs)}", this);
         }
 
         // The stone's progression, from the saved hits: tonight's stones, level and refill (fixed for the night).
@@ -311,6 +322,46 @@ namespace Piglings.Simulation
             _savedHitsAtStart = 0;   // progress views count from the empty profile now (tonight's level stays as it started)
             // Tonight's hits still bank at the end of this night, on top of the empty profile.
             Save("Reset progress (the old save is in .prev until the next save)");
+        }
+
+        [ContextMenu("Campaign/Go to Debug Night")]
+        private void DebugGoToNight()
+        {
+            if (!DebugCampaignReady()) return;
+            int index = Mathf.Clamp(debugNight - 1, 0, Plan.NightCount - 1);
+            _progression.SetCurrentNight(index);
+            Save($"Go to night {index + 1} (debug)");
+            ReloadScene();
+        }
+
+        [ContextMenu("Campaign/Reset campaign")]
+        private void DebugResetCampaign()
+        {
+            if (!DebugCampaignReady()) return;
+            _progression.ResetCampaign();
+            Save("Reset campaign (night 1, no dawns, no tower choices; mastery kept)");
+            ReloadScene();
+        }
+
+        private bool DebugCampaignReady()
+        {
+            if (Application.isPlaying && _progression != null && IsCampaign && Plan != null && Plan.NightCount > 0) return true;
+            Debug.LogWarning("Campaign debug works in play mode, in the campaign scene (a Campaign assigned).", this);
+            return false;
+        }
+
+        // Tonight's hits aren't banked (the night didn't end): a jump or reset keeps only what was saved before it.
+        // Reloads by build index, like PlayAgain: the scene must be in Build Settings.
+        private void ReloadScene()
+        {
+            int index = SceneManager.GetActiveScene().buildIndex;
+            if (index < 0)
+            {
+                Debug.LogError($"Can't reload {SceneManager.GetActiveScene().name}: it isn't in File ▸ Build Profiles (Scene List). " +
+                               "Add it there — the campaign's Retry / Next reload it too. (The save was written.)", this);
+                return;
+            }
+            SceneManager.LoadScene(index);
         }
 
         [ContextMenu("Mastery/Add 10 hits")]
