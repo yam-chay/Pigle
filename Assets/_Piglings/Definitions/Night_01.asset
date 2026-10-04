@@ -16,8 +16,8 @@ MonoBehaviour:
   throwable: {fileID: 11400000, guid: 8b24c133a3567b546ab1718b3aabd560, type: 2}
   wall: {fileID: 11400000, guid: ce9cccee93d7cf04d865dd675bc6bb58, type: 2}
   spawnInterval: 1
-  throwsAvailable: 15
-  thresholds: f4010000d0070000a00f0000401f000010270000
+  throwsAvailable: 17
+  thresholds: f4010000c40900008813000010270000983a0000
   stonesPerThreshold: 2
   refillPauseSeconds: 1
   pegLoadout:
