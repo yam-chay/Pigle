@@ -9,14 +9,16 @@ namespace Piglings.Meta
         public readonly float Mastery;           // its triggers weighted by level
         public readonly int NextThreshold;       // mastery for the next copy; -1 at the max
         public readonly int PreviousThreshold;   // mastery of the last copy earned (0 before the first): where the bar starts
-        public readonly int StagesReached;       // copy stages reached: each adds +1 peg throw per hour
-        public readonly int NextStage;           // copies the next stage needs; -1 = none left (or past the max)
+        public readonly int FollowUpAt;          // copies that earn the same-type follow-up throw; 0 = never (or past the max)
 
-        public PegStatus(int copies, float mastery, int nextThreshold, int previousThreshold, int stagesReached = 0, int nextStage = -1)
+        public PegStatus(int copies, float mastery, int nextThreshold, int previousThreshold, int followUpAt = 0)
         {
             Copies = copies; Mastery = mastery; NextThreshold = nextThreshold; PreviousThreshold = previousThreshold;
-            StagesReached = stagesReached; NextStage = nextStage;
+            FollowUpAt = followUpAt;
         }
+
+        /// <summary>Owns enough copies for the follow-up: placing one in a round gives one more throw of the same type.</summary>
+        public bool HasFollowUp => FollowUpAt > 0 && Copies >= FollowUpAt;
 
         public bool AtMax => NextThreshold < 0;
 
@@ -32,25 +34,23 @@ namespace Piglings.Meta
     /// that level's weight (default weight = the level: a level-2 peg's trigger counts double). A newly unlocked type owns
     /// StartCopies; each threshold of mastery reached adds one, up to MaxCopies (8 by default). Locked types own none —
     /// that's the campaign's call (CampaignPlan), not this one's.
-    /// Copy stages (stage 2): at 4, 6, 8 copies (by default) a type adds +1 to the hour's peg-throw pool — ThrowsPerHour.
+    /// The follow-up (stage 2): from FollowUpAt copies (4 by default) a type earns a same-type follow-up throw in each round
+    /// (the referee gives it once per round; it never stacks across types).
     /// </summary>
     public sealed class PegProgression
     {
         private readonly int[] _thresholds;
         private readonly float[] _weights;   // index 0 = level 1; empty / past the list = the level itself
-        private readonly int[] _stages;      // copies at which a stage is reached, rising
-
-        /// <summary>The default copy stages: 4, 6 and 8 copies.</summary>
-        public static readonly int[] DefaultStages = { 4, 6, 8 };
 
         public int StartCopies { get; }
         public int MaxCopies { get; }
+        /// <summary>Copies that earn the same-type follow-up throw; 0 = never.</summary>
+        public int FollowUpAt { get; }
         public IReadOnlyList<int> Thresholds => _thresholds;
-        public IReadOnlyList<int> Stages => _stages;
 
-        /// <param name="stages">Copies at which each stage is reached. Null = the defaults (4, 6, 8); empty = no stages.</param>
+        /// <param name="followUpAt">Copies that earn the follow-up throw (0 = never).</param>
         public PegProgression(IReadOnlyList<int> thresholds, IReadOnlyList<float> levelWeights = null, int startCopies = 1,
-                              int maxCopies = 8, IReadOnlyList<int> stages = null)
+                              int maxCopies = 8, int followUpAt = 4)
         {
             _thresholds = new int[thresholds?.Count ?? 0];
             for (int i = 0; i < _thresholds.Length; i++) _thresholds[i] = thresholds[i];
@@ -58,31 +58,8 @@ namespace Piglings.Meta
             for (int i = 0; i < _weights.Length; i++) _weights[i] = levelWeights[i] < 0f ? 0f : levelWeights[i];
             StartCopies = startCopies < 0 ? 0 : startCopies;
             MaxCopies = maxCopies < StartCopies ? StartCopies : maxCopies;
-            if (stages == null) _stages = (int[])DefaultStages.Clone();
-            else
-            {
-                _stages = new int[stages.Count];
-                for (int i = 0; i < _stages.Length; i++) _stages[i] = stages[i];
-            }
-        }
-
-        /// <summary>Copy stages reached with this many copies (in order: a stage not reached stops the count).</summary>
-        public int StagesReached(int copies)
-        {
-            int n = 0;
-            while (n < _stages.Length && copies >= _stages[n]) n++;
-            return n;
-        }
-
-        /// <summary>
-        /// The hour's peg-throw pool: the night's base throws + every owned type's stages reached. Shared across types
-        /// (still limited by the pegs on the shelf).
-        /// </summary>
-        public static int ThrowsPerHour(int baseThrows, IEnumerable<int> stagesReachedPerType)
-        {
-            int throws = baseThrows < 0 ? 0 : baseThrows;
-            if (stagesReachedPerType != null) foreach (int s in stagesReachedPerType) if (s > 0) throws += s;
-            return throws;
+            // A follow-up past the max can never be earned: the same as none.
+            FollowUpAt = followUpAt > 0 && followUpAt <= MaxCopies ? followUpAt : 0;
         }
 
         public float WeightAt(int level) => level >= 1 && level <= _weights.Length ? _weights[level - 1] : level < 1 ? 1f : level;
@@ -105,9 +82,7 @@ namespace Piglings.Meta
             if (copies > MaxCopies) { reached -= copies - MaxCopies; copies = MaxCopies; }
             int next = copies < MaxCopies && reached < _thresholds.Length ? _thresholds[reached] : -1;
             int previous = reached >= 1 ? _thresholds[reached - 1] : 0;
-            int stages = StagesReached(copies);
-            int nextStage = stages < _stages.Length && _stages[stages] <= MaxCopies ? _stages[stages] : -1;
-            return new PegStatus(copies, mastery, next, previous, stages, nextStage);
+            return new PegStatus(copies, mastery, next, previous, FollowUpAt);
         }
     }
 }

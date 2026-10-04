@@ -87,6 +87,10 @@ namespace Piglings.Simulation
         // A round with throws left: the shelf is live.
         private bool Active => session.State.Phase == NightPhase.PegPlacement && session.State.PegThrowsLeft > 0;
 
+        // A follow-up throw (stage 2) must be this type; null = any. The Rules refuse other types, the hand follows.
+        private string FollowUp => session.State.PegFollowUp;
+        private bool Allowed(Pile pile) => FollowUp == null || pile.Id == FollowUp;
+
         private void Awake()
         {
             _hops = new HopMover(t => Destroy(t.gameObject));
@@ -121,7 +125,7 @@ namespace Piglings.Simulation
         /// <summary>Right mouse: the peg in the hand goes back, the next type's top peg comes up (cycles).</summary>
         public void SwapNext()
         {
-            if (!Active || _held == null || _piles.Count < 2) return;
+            if (!Active || _held == null || _piles.Count < 2 || FollowUp != null) return;   // a follow-up is one type only
             int start = _piles.IndexOf(_heldPile);
             for (int step = 1; step < _piles.Count; step++)
             {
@@ -140,7 +144,7 @@ namespace Piglings.Simulation
             foreach (var pile in _piles)
             {
                 if (!Contains(pile, peg)) continue;
-                if (pile == _heldPile) return;
+                if (pile == _heldPile || !Allowed(pile)) return;
                 ReturnHeld();
                 TakeToHand(pile);
                 return;
@@ -226,9 +230,14 @@ namespace Piglings.Simulation
 
             if (Active && _held == null && !_inFlight)
             {
-                // The next peg comes up by itself: the first pile (in shelf order) that still has one.
+                // The next peg comes up by itself: the first pile (in shelf order) that still has one — the follow-up's
+                // type when the round gave one.
                 foreach (var pile in _piles)
-                    if (pile.Items.Count > 0) { TakeToHand(pile); break; }
+                    if (pile.Items.Count > 0 && Allowed(pile)) { TakeToHand(pile); break; }
+            }
+            else if (Active && _held != null && !Allowed(_heldPile) && !_hops.IsHopping(_held.transform))
+            {
+                ReturnHeld();   // a follow-up started with another type in the hand: swap it for the follow-up's
             }
             else if (!Active && _held != null)
             {

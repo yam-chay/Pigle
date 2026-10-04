@@ -22,7 +22,9 @@ namespace Piglings.Rules
     ///   the crossing don't hold the round off (or steady throwing would postpone it forever): they keep falling and
     ///   scoring through the pause. A chain that crosses several thresholds earns one round each, back to back.
     /// - PegPlacement: the wall pauses (Simulation reads Phase). The pile gets its refill (StonesPerThreshold) and the
-    ///   player gets PegThrowsPerThreshold pegs to place (PlacePeg). The round ends when the throws are used, or —
+    ///   player gets PegThrowsPerThreshold pegs to place (PlacePeg) — plus, once per round, one same-type follow-up after
+    ///   placing a type that has reached its follow-up copies (PegType.FollowUp; NightState.PegFollowUp restricts the next
+    ///   throw to that type). The round ends when the throws are used, or —
     ///   when nothing can be placed — when Simulation calls EndPlacement after the refill pause. Unused throws are lost.
     /// - Crossing the last threshold: DawnReached. The night is won from here (no more catches); throwing stops, and
     ///   it ends once every chain has settled. No placement round at dawn, so no refill either.
@@ -40,6 +42,7 @@ namespace Piglings.Rules
         private readonly ChainTracker _chains;
         private readonly NightGoal _goal;
         private readonly PegSetup _pegs;
+        private bool _followUpGiven;   // this round's follow-up throw was already given (one per round)
 
         // True while Simulation sweeps the wall inside the Ended phase change; RobotSwept only counts then.
         private bool _sweeping;
@@ -107,6 +110,8 @@ namespace Piglings.Rules
             if (socket < 0 || socket >= _state.Sockets.Length) return false;
             var type = _pegs.Find(pegId);
             if (type == null) return false;
+            // A follow-up throw must be the type that earned it.
+            if (_state.PegFollowUp != null && pegId != _state.PegFollowUp) return false;
             var s = _state.Sockets[socket];
             if (s.IsEmpty) return true;
             return s.PegId == pegId && type.Mergeable && s.Level < type.MaxLevel;
@@ -161,8 +166,29 @@ namespace Piglings.Rules
                 _bus.Publish(new PegMerged(socket, pegId, s.Level));
             }
 
+            // Follow-ups (stage 2): a type with its follow-up copies gives ONE more throw of the same type, once per round,
+            // and only if it can still be placed (else the round would wait on a throw that can't happen). The follow-up
+            // itself never earns another.
+            if (_state.PegFollowUp != null) _state.PegFollowUp = null;
+            else if (!_followUpGiven && _pegs.Find(pegId).FollowUp && CanPlace(pegId))
+            {
+                _followUpGiven = true;
+                _state.PegFollowUp = pegId;
+                _state.PegThrowsLeft++;
+                _bus.Publish(new PegFollowUpGranted(pegId));
+            }
+
             if (_state.PegThrowsLeft <= 0) EndPlacement();
             return true;
+        }
+
+        // A peg of this type is on the shelf and has a socket to go into.
+        private bool CanPlace(string pegId)
+        {
+            if (ShelfCount(pegId) <= 0) return false;
+            for (int i = 0; i < _state.Sockets.Length; i++)
+                if (IsValidTarget(i, pegId)) return true;
+            return false;
         }
 
         /// <summary>
@@ -174,6 +200,7 @@ namespace Piglings.Rules
         {
             if (_state.Phase != NightPhase.PegPlacement) return;
             _state.PegThrowsLeft = 0;
+            _state.PegFollowUp = null;
             if (RoundReady) SetPhase(NightPhase.PegPlacement);
             else
             {
@@ -342,6 +369,8 @@ namespace Piglings.Rules
                 _state.Hour++;
                 _bus.Publish(new HourReached(_state.Hour, HourMultiplier, _goal.Thresholds[_state.Hour - 2]));
                 _state.PegThrowsLeft = _pegs.ThrowsPerThreshold;
+                _state.PegFollowUp = null;
+                _followUpGiven = false;
                 // The refill lands during the pause, where the player can watch the pile grow.
                 if (_goal.StonesPerThreshold > 0) ChangeStones(_goal.StonesPerThreshold, StoneChange.Added, GameId.None);
             }

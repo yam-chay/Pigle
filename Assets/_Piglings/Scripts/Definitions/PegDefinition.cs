@@ -38,8 +38,9 @@ namespace Piglings.Definitions
         [SerializeField] private int[] copyThresholds = { 10, 30, 60, 100, 150, 210, 280 };
         [Tooltip("The most copies of this type a player can own.")]
         [SerializeField, Min(1)] private int maxCopies = 8;
-        [Tooltip("Copy stages: owning this many copies adds +1 to every hour's peg-throw pool (shared across types). Rising.")]
-        [SerializeField] private int[] copyStages = { 4, 6, 8 };
+        [Tooltip("Owning this many copies earns the follow-up: in each hour's round, placing one of this type gives ONE more " +
+                 "throw, which must be this type (once per round; it never stacks). 0 = never.")]
+        [SerializeField, Min(0)] private int followUpAtCopies = 4;
 
         [Header("Splitter (whatever the level)")]
         [Tooltip("Most stones one throw can have flying at once, the original included. Splits beyond it are cut short.")]
@@ -87,7 +88,7 @@ namespace Piglings.Definitions
 
         public System.Collections.Generic.IReadOnlyList<int> CopyThresholds => copyThresholds;
         public int MaxCopies => maxCopies;
-        public System.Collections.Generic.IReadOnlyList<int> CopyStages => copyStages;
+        public int FollowUpAtCopies => followUpAtCopies;
 
         /// <summary>Peg mastery weight of one trigger at this level: the entry's Mastery Weight, or the level itself when it's 0.</summary>
         public float MasteryWeightAt(int level)
