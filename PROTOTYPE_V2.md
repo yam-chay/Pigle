@@ -109,7 +109,7 @@ Wall-slice effects, the chimney loss scene, onboarding triggers, a skill tree, s
 | A | Rules + Meta core: Dusk + Begin, per-hour stats, quality, peg triggers, Stone/Peg progression, CampaignPlan, save sections, profiles | ✔ merged (#30) |
 | B | Authored nights, campaign mode, the built tower | ✔ merged (#31) |
 | — | Debug: "Campaign/Go to Debug Night", "Campaign/Reset campaign", copies in the campaign log | this file's PR |
-| C | Phase flow + camera (CameraDirector, NightFlow, doors, reload on Retry/Next, moon hook) | next |
+| C | Phase flow + camera (CameraDirector, NightFlow, doors, reload on Retry/Next, moon hook) | ✔ code (this PR); editor steps in the PR |
 | D | Night scoreboard + popups by depth + tutorial cards + HUD toggle | after A (any time) |
 | E | Post-run screen | after C |
 | F | Barn room day phase + slice placement | after C |

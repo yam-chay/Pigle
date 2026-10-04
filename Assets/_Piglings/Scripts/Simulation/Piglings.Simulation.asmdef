@@ -1,7 +1,7 @@
 {
     "name": "Piglings.Simulation",
     "rootNamespace": "Piglings.Simulation",
-    "references": ["Piglings.Events", "Piglings.Runtime", "Piglings.Rules", "Piglings.Meta", "Piglings.Definitions", "Unity.InputSystem"],
+    "references": ["Piglings.Events", "Piglings.Runtime", "Piglings.Rules", "Piglings.Meta", "Piglings.Definitions", "Unity.InputSystem", "UnityEngine.UI"],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
