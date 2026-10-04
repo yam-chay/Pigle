@@ -119,8 +119,10 @@ namespace Piglings.Events
     /// <summary>
     /// "Hours until dawn" (GDD "שעות הלילה"): Running(hour) → PegPlacement → Running(hour+1) … → Ended (dawn, won),
     /// or Running → Ended (caught, lost). The hour is NightState.Hour; it isn't a phase of its own.
+    /// Dusk (campaign scene only): before the night begins — the day phase, the camera rising. Nothing spawns, nothing
+    /// can be thrown; NightReferee.Begin() starts the night (Dusk → Running). Last in the list so the others keep their values.
     /// </summary>
-    public enum NightPhase { Running, PegPlacement, Ended }
+    public enum NightPhase { Running, PegPlacement, Ended, Dusk }
     public enum NightResult { Won, Lost }
     // Caught: a robot breached while the pile was empty — the only way to lose. Dawn: the last threshold was reached.
     public enum NightEndReason { Caught, Dawn }
@@ -150,7 +152,9 @@ namespace Piglings.Events
     // BallKnocks / KnockedByBall → Lineage: this type's ball knocked another robot loose / this type was knocked loose
     // by a ball. Both sides are kept so the lineage design can pick later without losing data.
     // PegKnocks → Peg: robots this peg type knocked loose itself (a Bomb's explosion), whatever set it off.
-    public enum MasteryStat { Score, DirectHits, BallKnocks, KnockedByBall, PegKnocks }
+    // PegTriggers → Peg, per merged level (NightBanked.Level): times its effect fired — a Bouncy bonus granted, a Splitter
+    // split, a Bomb explosion. Peg mastery (copies owned) is derived from these, weighted by level.
+    public enum MasteryStat { Score, DirectHits, BallKnocks, KnockedByBall, PegKnocks, PegTriggers }
 
     /// <summary>
     /// Published by NightReferee on every phase change. Simulation pauses, resumes and sweeps the wall off this.
@@ -307,15 +311,17 @@ namespace Piglings.Events
     /// - Barn, Score: the banked score (the live score at dawn; the last threshold reached when caught). Id is null.
     /// - Weapon, DirectHits: Id = the weapon id ("stone"). Mastery from use, so a caught night banks its hits too.
     /// - Lineage, BallKnocks / KnockedByBall: Id = the robot type.
+    /// - Peg, PegKnocks / PegTriggers: Id = the peg id; Level = the merged level the triggers happened at (PegTriggers only).
     /// Meta's Progression applies these to the saved profile; the save itself happens at NightEnded.
     /// </summary>
     public readonly struct NightBanked
     {
         public readonly MasteryDestination Destination; public readonly string Id; public readonly MasteryStat Stat;
         public readonly int Amount; public readonly int Multiplier;
-        public NightBanked(MasteryDestination destination, string id, MasteryStat stat, int amount, int multiplier)
+        public readonly int Level;   // PegTriggers: the peg's merged level (1, 2, 3…); 0 = not per level
+        public NightBanked(MasteryDestination destination, string id, MasteryStat stat, int amount, int multiplier, int level = 0)
         {
-            Destination = destination; Id = id; Stat = stat; Amount = amount; Multiplier = multiplier;
+            Destination = destination; Id = id; Stat = stat; Amount = amount; Multiplier = multiplier; Level = level;
         }
     }
 

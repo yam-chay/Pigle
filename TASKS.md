@@ -1,6 +1,6 @@
 # TASKS — Piglings prototype
 
-> **Next up (2026-10-04):** M9 weapon mastery + save ✔, M8.5 peg effects ✔ (Bouncy, Splitter, Bomb — wired, numbers still placeholders). Next: M8.4 hour palettes → decide the empty-pile "dead time" → M5.2 (tune the night, and the pegs with it) — then the vertical slice goes to playtesters.
+> **Next up (2026-10-04):** M10 Prototype v2 — A (Rules + Meta core ☁ done) → B authored nights + campaign + built tower → C flow + camera → D scoreboard / E post-run / F barn day phase. Then decide the empty-pile "dead time" → M5.2 — then the vertical slice goes to playtesters.
 > Why: the hours change what a night is (no more Stay/Leave), so M5.2 tunes the new loop, not the old one. M5.2 still needs the theft (M7.3) and the stone (M6.3) readable.
 
 ☁ = cloud session OK (code/docs only) · 🖥 = local, needs the Unity editor (use Claude Code + unity-mcp)
@@ -87,6 +87,16 @@ Mastery from use: the stone levels up from the robots it knocks loose itself (50
   - [x] 🖥 M9.2b Editor: fill `Throwable_Stone` levels (lv1: stone_lv1, ×1; lv2: 50 hits, stone_lv2, ×~1.1, a trail colour); Stone prefab SpriteRenderer colour → white (the old grey tint darkens the art) and assign `Look`; play: the stone's size and collider match; Add 10 hits ×5 → night end swaps the pile; next night throws the bigger stone. Steps in the PR.
 - [x] ☁ M9.3 Juice + readability (closes M6.3): `StoneHitFx` (hit star + rising sparkle on each direct hit, at the robot); `StonePileMasteryView` (glints more often as progress rises — saved + tonight; gold pulse once tonight reaches the next level; burst ring at night end with a level earned, as `StonePile` swaps the stones); `StoneTrail` (TrailRenderer with fx_trail, flight only, colour per level, stone-wide). `FxSprites` shared effect runner. `NightSession.WeaponProgress` / `WeaponUpgradeReady` (`MasteryLevels.ProgressFrom`, CoreCheck). No progress bars. Every sprite optional.
   - [x] 🖥 M9.3b Editor: `StoneHitFx` in the scene (session, spawner, fx_hit_star, fx_sparkle); `StonePileMasteryView` on the pile (session, pile, fx_sparkle, fx_burst_ring); Stone prefab: `TrailRenderer` (material with fx_trail, width curve 1 → 0, time ~0.25 s) + `StoneTrail`. Tune glint rates / pulse in play. Steps in the PR.
+
+## M10 — Prototype v2: authored nights, campaign, day phase (new scene; Night.unity keeps working)
+Designed in chat; plan approved 2026-10-04. Everything new activates only when its components/data are present. Structure: ARCHITECTURE.md → "Campaign progression".
+- [x] ☁ M10.A Rules + Meta core, no visuals: `NightPhase.Dusk` + `NightReferee.Begin()` (`NightSession.startImmediately`, `BeginNight()`); per-hour score/breaches + best throw (`NightState.Hours`, `BestThrow*`); `NightGoal.HourGap` / `ThrowQuality`; peg triggers per id per level (MasteryTally → `NightBanked.Level` → profile); `StoneProgression` (10 → 20, evolve at 15, refill 1 → 2), `PegProgression` (weighted triggers → 1–4 copies), `CampaignPlan` (unlocks from dawns, next locked, next night, tower choice); profile `CurrentNight` / `Dawns` / `Towers` (save v1, additive); separate profiles (`NightSession.profileName`); `[Night]` log per hour. CoreCheck.
+  - [ ] 🖥 M10.A-b Editor: NightSession in Night.unity → Profile Name "dev" (the old `piglings_profile.json` is no longer read — rename it to `piglings_dev.json` to keep it); check the `[Night]` line. Steps in the PR.
+- [ ] ☁+🖥 M10.B Authored nights + campaign + the built tower (WallSliceDefinition, NightDefinition slices + camera frame, CampaignDefinition, HourPaletteDefinition, TowerBuilder + preview, campaign mode in NightSession, stone thresholds → stones/evolve). Scan Art/ first.
+- [ ] ☁+🖥 M10.C Phase flow + camera (CameraDirector frames, NightFlow: Doors → Barn room → Night → Doors, reload on Retry/Next, doors open, moon-rise hook).
+- [ ] ☁+🖥 M10.D Night scoreboard + depth-coloured popups + tutorial cards + debug-HUD toggle.
+- [ ] ☁+🖥 M10.E Post-run screen (night summary + progress).
+- [ ] ☁+🖥 M10.F Barn room day phase (wall pegboard, rug pile, materials pile → tower slice placement, sign + Start night).
 
 ## Open design questions (from the GDD — don't implement until decided)
 - One robot line per run vs. mixed swarm.

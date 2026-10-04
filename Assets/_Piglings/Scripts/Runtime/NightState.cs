@@ -37,6 +37,13 @@ namespace Piglings.Runtime
         public PegSocket[] Sockets = new PegSocket[0];        // index = socket id (one per Hold); max pegs = this length
         public List<PegStack> Shelf = new List<PegStack>();   // in loadout order; up to PegSetup.ShelfCapacity types
 
+        // Per hour (index 0 = hour 1), written by NightReferee: for the [Night] log and the post-run screen.
+        public List<HourStats> Hours = new List<HourStats>();
+
+        // The best closed chain tonight (most points), with the hour it was thrown in (its quality = points ÷ that hour's gap).
+        public int BestThrowPoints;
+        public int BestThrowHour;        // 0 = no throw has scored yet
+
         public int SweepScore;           // what the end-of-night sweep added (0 on a loss: there it's visual only)
         public int BankedScore;          // what the night keeps: the live score at dawn, the last threshold reached when caught
         public int BarnMastery;          // Σ Amount × Multiplier banked to the barn
@@ -48,6 +55,8 @@ namespace Piglings.Runtime
         public SortedDictionary<string, int> BallKnocks = new SortedDictionary<string, int>(System.StringComparer.Ordinal);    // robot type → robots its ball knocked loose
         public SortedDictionary<string, int> KnockedByBall = new SortedDictionary<string, int>(System.StringComparer.Ordinal); // robot type → times it was knocked loose by a ball
         public SortedDictionary<string, int> PegKnocks = new SortedDictionary<string, int>(System.StringComparer.Ordinal);     // peg id → robots its effect knocked loose (Bomb)
+        // peg id → times its effect fired, per merged level (index 0 = level 1): Bouncy bonus granted, Splitter split, Bomb explosion.
+        public SortedDictionary<string, List<int>> PegTriggers = new SortedDictionary<string, List<int>>(System.StringComparer.Ordinal);
 
         // Derived, not stored: Phase is the source of truth.
         public bool Ended => Phase == NightPhase.Ended;
@@ -55,6 +64,14 @@ namespace Piglings.Runtime
         // Robots climb and the spawner runs while the night is Running — including between a threshold crossing and
         // its round (the player keeps throwing then). The wall freezes only for the placement round itself.
         public bool WallMoving => Phase == NightPhase.Running;
+    }
+
+    /// <summary>What happened during one hour of the night (the hour a chain was thrown in, for its points).</summary>
+    [System.Serializable]
+    public sealed class HourStats
+    {
+        public int Score;      // points from chains thrown in this hour (not the end-of-night sweep)
+        public int Breaches;   // robots that reached the roof during this hour
     }
 
     /// <summary>One socket on the wall (a Hold). Empty = a plain hold.</summary>

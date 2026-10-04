@@ -18,10 +18,12 @@ namespace Piglings.Meta
     ///   "version": 1,
     ///   "weapons": { "stone":         { "directHits": 137 } },
     ///   "robots":  { "wolfbot_basic": { "ballKnocks": 412, "knockedByBall": 300 } },
-    ///   "pegs":    { "peg_bomb":      { "knocks": 12 } }
+    ///   "pegs":    { "peg_bomb":      { "knocks": 12, "triggers": [9, 2, 0] } },
+    ///   "campaign": { "night": 1, "dawns": { "night_01": 3 } },
+    ///   "towers":  { "night_02": ["slice_barn", "slice_wood", "slice_barn"] }
     /// }
-    /// ("pegs" came later, inside version 1: an older build reads the file fine and ignores it — but would drop it if it
-    /// then saved.)
+    /// ("pegs", "triggers", "campaign" and "towers" came later, inside version 1: an older build reads the file fine and
+    /// ignores them — but would drop them if it then saved.)
     /// </code>
     /// One object per id (not a bare number), so a later field (feats…) is an addition, not a new version.
     /// Reading is strict about what it does read — anything our writer can't produce means the file was damaged or
@@ -51,7 +53,13 @@ namespace Piglings.Meta
 
             var pegs = new JObject();
             foreach (var p in profile.Pegs)
-                pegs[p.Key] = new JObject { ["knocks"] = p.Value.Knocks };
+                pegs[p.Key] = new JObject { ["knocks"] = p.Value.Knocks, ["triggers"] = new JArray(p.Value.Triggers) };
+
+            var dawns = new JObject();
+            foreach (var d in profile.Dawns) dawns[d.Key] = d.Value;
+
+            var towers = new JObject();
+            foreach (var t in profile.Towers) towers[t.Key] = new JArray(t.Value);
 
             var root = new JObject
             {
@@ -59,6 +67,8 @@ namespace Piglings.Meta
                 ["weapons"] = weapons,
                 ["robots"] = robots,
                 ["pegs"] = pegs,
+                ["campaign"] = new JObject { ["night"] = profile.CurrentNight, ["dawns"] = dawns },
+                ["towers"] = towers,
             };
             return root.ToString(Formatting.Indented);
         }
@@ -113,6 +123,35 @@ namespace Piglings.Meta
                     if (!ReadEntry(entry, out var fields, ref problem)) return ProfileReadResult.Corrupt;
                     var p = result.Peg(entry.Name);
                     if (!ReadField(fields, entry.Name, "knocks", ref p.Knocks, ref problem)) return ProfileReadResult.Corrupt;
+                    if (!ReadCounts(fields, entry.Name, "triggers", p.Triggers, ref problem)) return ProfileReadResult.Corrupt;
+                }
+
+            if (!ReadSection(root, "campaign", out var campaign, ref problem)) return ProfileReadResult.Corrupt;
+            if (campaign != null)
+            {
+                if (!ReadField(campaign, "campaign", "night", ref result.CurrentNight, ref problem)) return ProfileReadResult.Corrupt;
+                if (!ReadSection(campaign, "dawns", out var dawns, ref problem)) return ProfileReadResult.Corrupt;
+                if (dawns != null)
+                    foreach (var entry in dawns.Properties())
+                    {
+                        if (entry.Name.Length == 0) { problem = "a dawn entry has an empty night id"; return ProfileReadResult.Corrupt; }
+                        if (!TryCount(entry.Value, out int n)) { problem = $"dawns.{entry.Name} isn't a whole number from 0 up"; return ProfileReadResult.Corrupt; }
+                        result.Dawns[entry.Name] = n;
+                    }
+            }
+
+            if (!ReadSection(root, "towers", out var towers, ref problem)) return ProfileReadResult.Corrupt;
+            if (towers != null)
+                foreach (var entry in towers.Properties())
+                {
+                    if (entry.Name.Length == 0 || !(entry.Value is JArray slices)) { problem = $"towers.\"{entry.Name}\" isn't a list"; return ProfileReadResult.Corrupt; }
+                    var list = new System.Collections.Generic.List<string>();
+                    foreach (var slice in slices)
+                    {
+                        if (slice.Type != JTokenType.String || ((string)slice).Length == 0) { problem = $"towers.{entry.Name} has a slice that isn't an id"; return ProfileReadResult.Corrupt; }
+                        list.Add((string)slice);
+                    }
+                    result.Towers[entry.Name] = list;
                 }
 
             profile = result;
@@ -146,6 +185,20 @@ namespace Piglings.Meta
             if (TryCount(token, out value)) return true;
             problem = $"{id}.{name} isn't a whole number from 0 up ({token.ToString(Formatting.None)})";
             return false;
+        }
+
+        // Missing = empty. Present = a list of whole numbers from 0 up, or the file is corrupt.
+        private static bool ReadCounts(JObject fields, string id, string name, System.Collections.Generic.List<int> into, ref string problem)
+        {
+            var token = fields[name];
+            if (token == null) return true;
+            if (!(token is JArray array)) { problem = $"{id}.{name} isn't a list"; return false; }
+            foreach (var item in array)
+            {
+                if (!TryCount(item, out int n)) { problem = $"{id}.{name} has an entry that isn't a whole number from 0 up"; return false; }
+                into.Add(n);
+            }
+            return true;
         }
 
         private static bool TryCount(JToken token, out int value)
