@@ -201,6 +201,16 @@ namespace Piglings.Events
         public PegMerged(int socket, string pegId, int level) { Socket = socket; PegId = pegId; Level = level; }
     }
 
+    /// <summary>
+    /// A follow-up throw (stage 2): a peg of a type that has reached its follow-up copies was just placed, so the round gives
+    /// ONE more throw, which must be the same type. Once per round. Views can celebrate it; the shelf brings that type up.
+    /// </summary>
+    public readonly struct PegFollowUpGranted
+    {
+        public readonly string PegId;
+        public PegFollowUpGranted(string pegId) { PegId = pegId; }
+    }
+
     /// <summary>What a placed peg does when something hits it. Plain = nothing (a hold with a look).</summary>
     public enum PegEffect { Plain, Bouncy, Splitter, Bomb }
 

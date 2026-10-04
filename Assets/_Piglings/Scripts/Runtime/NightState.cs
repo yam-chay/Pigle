@@ -32,6 +32,7 @@ namespace Piglings.Runtime
         public bool Dawn;                // the last threshold was crossed: won, ends once every chain settles
         public int PendingPegRounds;     // thresholds crossed whose placement round hasn't been played yet
         public int PegThrowsLeft;        // in the current placement round
+        public string PegFollowUp;       // set = the next throw is a same-type follow-up and must be this peg id; null = any type
 
         // The pegs. By string id, never a ScriptableObject: saves can store them, and Rules can't see Definitions.
         public PegSocket[] Sockets = new PegSocket[0];        // index = socket id (one per Hold); max pegs = this length
