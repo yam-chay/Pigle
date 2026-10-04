@@ -32,6 +32,9 @@ namespace Piglings.Presentation
         [SerializeField] private Graphic fill;
         [Tooltip("\"hour 3 gap: 500 → 1000\".")]
         [SerializeField] private TMP_Text gapText;
+        [Tooltip("How long the bar takes to glide to a new score (about; 0 = snap). At a threshold it fills up first, then " +
+                 "starts the new hour from empty — it never runs backwards.")]
+        [SerializeField, Min(0f)] private float barEaseSeconds = 0.35f;
 
         [Header("Throws")]
         [Tooltip("One LAST THROWS row, laid out once (label = \"9 wolves · depth 2\", detail = \"+620\", marker = the pill). " +
@@ -56,6 +59,10 @@ namespace Piglings.Presentation
         // What the texts show now, so they're only rebuilt when something changed (TMP rebuilds are not free).
         private int _shownScore = -1, _shownHour = -1, _shownReached = -1;
         private bool _shownDawn;
+
+        // The bar glides: where the score is (target) vs. what's drawn (shown), each with the hour it belongs to.
+        private float _barTarget, _barShown, _barVelocity;
+        private int _targetSegment = 1, _shownSegment = 1;
 
         private void Start()
         {
@@ -92,6 +99,7 @@ namespace Piglings.Presentation
         private void LateUpdate()
         {
             ShowHour();
+            GlideBar();
             // Quality colours can animate (pulse, rainbow): repainted every frame. Solid ones cost a colour set.
             for (int i = 0; i < _rows.Count && i < _last.Count; i++) PaintThrow(_rows[i], _last[i]);
             if (_best.Points > 0) PaintThrow(best, _best);
@@ -118,15 +126,32 @@ namespace Piglings.Presentation
             }
             if (scoreText != null) scoreText.text = s.Dawn ? $"{s.Score}" : $"{s.Score} / {to}";
             if (gapText != null) gapText.text = s.Dawn ? "" : $"hour {segment} gap: {from} → {to}";
-            if (fill != null)
+            // The bar's target; GlideBar moves it there.
+            _barTarget = s.Dawn ? 1f : Mathf.Clamp01((s.Score - from) / (float)Mathf.Max(1, to - from));
+            _targetSegment = segment;
+        }
+
+        // Eases the drawn fill toward the score. A new hour: finish filling the old one first, then start the new one
+        // from empty in its colour — so a threshold reads as "full!" and never as the bar dropping.
+        private void GlideBar()
+        {
+            if (fill == null) return;
+            bool newHour = _targetSegment > _shownSegment;
+            float goal = newHour ? 1f : _barTarget;
+            _barShown = barEaseSeconds > 0f ? Mathf.SmoothDamp(_barShown, goal, ref _barVelocity, barEaseSeconds) : goal;
+            if (newHour && _barShown >= 0.995f)
             {
-                float progress = s.Dawn ? 1f : Mathf.Clamp01((s.Score - from) / (float)Mathf.Max(1, to - from));
-                var rect = fill.rectTransform;
-                var max = rect.anchorMax;
-                max.x = Mathf.Max(rect.anchorMin.x, progress);
-                rect.anchorMax = max;
-                fill.color = session.HourColour(segment);
+                _shownSegment = _targetSegment;
+                _barShown = 0f;
+                _barVelocity = 0f;
             }
+            else if (_targetSegment < _shownSegment) _shownSegment = _targetSegment;   // never expected; just follow
+
+            var rect = fill.rectTransform;
+            var max = rect.anchorMax;
+            max.x = Mathf.Max(rect.anchorMin.x, _barShown);
+            rect.anchorMax = max;
+            fill.color = session.HourColour(_shownSegment);
         }
 
         // Texts change only when a throw comes in; colours are painted every frame (LateUpdate).

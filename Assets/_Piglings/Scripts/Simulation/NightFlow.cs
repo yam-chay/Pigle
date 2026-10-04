@@ -84,17 +84,23 @@ namespace Piglings.Simulation
 
         public void Retry()
         {
-            if (!CanRetry) return;
+            if (!CanRetry) { LogRefused("Retry"); return; }
+            Debug.Log($"NightFlow: Retry pressed — replaying night {session.NightIndex + 1}.", this);
             SetState(FlowState.Leaving);
             session.GoToNight(session.NightIndex, "Retry");
         }
 
         public void NextNight()
         {
-            if (!CanGoNext) return;
+            if (!CanGoNext) { LogRefused("Next night"); return; }
+            Debug.Log($"NightFlow: Next night pressed — saving night {session.NightIndex + 2} and reloading.", this);
             SetState(FlowState.Leaving);
             session.GoToNight(session.NightIndex + 1, "Next night");
         }
+
+        // A press the flow didn't take, with why — a button that "does nothing" says so in the console.
+        private void LogRefused(string what) =>
+            Debug.Log($"NightFlow: {what} pressed but refused — state {State}, camera moving {CameraMoving}, next earned {NextEarned}.", this);
 
         // ---------- the machine ----------
 

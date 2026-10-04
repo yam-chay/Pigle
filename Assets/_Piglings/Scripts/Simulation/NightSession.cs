@@ -79,10 +79,13 @@ namespace Piglings.Simulation
         {
             get
             {
-                if (scoreColours == null) scoreColours = ScriptableObject.CreateInstance<ScoreColoursDefinition>();
-                return scoreColours;
+                if (scoreColours != null) return scoreColours;
+                // The defaults live in a private instance, never in the serialized field (that would dirty the scene in edit mode).
+                if (_defaultColours == null) _defaultColours = ScriptableObject.CreateInstance<ScoreColoursDefinition>();
+                return _defaultColours;
             }
         }
+        private ScoreColoursDefinition _defaultColours;
 
         public EventBus Bus { get; private set; }
         public NightState State { get; private set; }
