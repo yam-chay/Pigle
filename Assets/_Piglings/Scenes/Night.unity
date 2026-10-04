@@ -2716,6 +2716,16 @@ MonoBehaviour:
   highlightColor: {r: 1, g: 1, b: 1, a: 0.9}
   highlightPulse: 2.5
   blockedOpacity: 0.3
+  popSeconds: 0.3
+  popAmount: 0.3
+  bonusRing: {fileID: 21300000, guid: a47aa05c22925d145a3deb34bad83512, type: 3}
+  bonusRingColour: {r: 1, g: 0.8, b: 0.25, a: 1}
+  bonusRingMotion:
+    seconds: 0.35
+    startScale: 0.2
+    endScale: 0.9
+    rise: 0
+    spin: 0
 --- !u!114 &1064185511
 MonoBehaviour:
   m_ObjectHideFlags: 0
