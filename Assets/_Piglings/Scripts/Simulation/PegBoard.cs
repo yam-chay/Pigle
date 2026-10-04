@@ -42,7 +42,11 @@ namespace Piglings.Simulation
         {
             _holds = null;
             if (_session != null) Bind(_session);
+            Rebuilt?.Invoke();
         }
+
+        /// <summary>The Holds were replaced (a slice changed in the day phase): views that drew on the old ones re-read them.</summary>
+        public event System.Action Rebuilt;
 
         /// <summary>Called once by NightSession in Awake: every Hold learns its socket and reports peg hits from now on.</summary>
         public void Bind(NightSession session)

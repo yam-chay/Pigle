@@ -54,6 +54,15 @@ namespace Piglings.Simulation
         public float TopY { get; private set; }
         public int SliceCount { get; private set; }
 
+        // The layout, for the day phase's slice picker and its view (TowerLayout does the maths).
+        public float SliceHeight => sliceHeight;
+        public float CentreX => container != null ? container.position.x : transform.position.x;
+        /// <summary>The bottom edge of slice i (world y).</summary>
+        public float SliceBottom(int index) => TowerLayout.SliceBottom(index, firstSliceY, sliceHeight);
+        /// <summary>The slice under a world point, within <paramref name="halfWidth"/> of the tower's centre; -1 = none.</summary>
+        public int SliceAt(Vector2 world, float halfWidth) =>
+            TowerLayout.SliceAt(world.x, world.y, CentreX, halfWidth, firstSliceY, sliceHeight, SliceCount);
+
         public void Build(IReadOnlyList<WallSliceDefinition> slices) => Build(slices, preview: false);
 
         private void Build(IReadOnlyList<WallSliceDefinition> slices, bool preview)

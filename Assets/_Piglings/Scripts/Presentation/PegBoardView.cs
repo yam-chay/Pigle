@@ -97,6 +97,21 @@ namespace Piglings.Presentation
         // Start, not Awake: the session's bus and state are created in its Awake.
         private void Start()
         {
+            BindSockets();
+            board.Rebuilt += BindSockets;
+            session.Bus.Subscribe<PegPlaced>(OnPegPlaced);
+            session.Bus.Subscribe<PegMerged>(OnPegMerged);
+            session.Bus.Subscribe<PegHit>(OnPegHit);
+            session.Bus.Subscribe<PegBounced>(OnPegBounced);
+            session.Bus.Subscribe<StoneSplit>(OnStoneSplit);
+            session.Bus.Subscribe<BombExploded>(OnBombExploded);
+            session.Bus.Subscribe<PegRecharged>(OnPegRecharged);
+        }
+
+        // One overlay set per Hold. Again after a rebuild (a slice swapped in the day phase): the old Holds are gone with
+        // their overlays, and nothing is placed yet before the night begins.
+        private void BindSockets()
+        {
             _sockets = new Socket[board.SocketCount];
             for (int i = 0; i < _sockets.Length; i++)
             {
@@ -115,17 +130,11 @@ namespace Piglings.Presentation
                 _sockets[i] = s;
                 Refresh(i);
             }
-            session.Bus.Subscribe<PegPlaced>(OnPegPlaced);
-            session.Bus.Subscribe<PegMerged>(OnPegMerged);
-            session.Bus.Subscribe<PegHit>(OnPegHit);
-            session.Bus.Subscribe<PegBounced>(OnPegBounced);
-            session.Bus.Subscribe<StoneSplit>(OnStoneSplit);
-            session.Bus.Subscribe<BombExploded>(OnBombExploded);
-            session.Bus.Subscribe<PegRecharged>(OnPegRecharged);
         }
 
         private void OnDestroy()
         {
+            if (board != null) board.Rebuilt -= BindSockets;
             if (session == null || session.Bus == null) return;
             session.Bus.Unsubscribe<PegPlaced>(OnPegPlaced);
             session.Bus.Unsubscribe<PegMerged>(OnPegMerged);
