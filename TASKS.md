@@ -1,6 +1,6 @@
 # TASKS — Piglings prototype
 
-> **Next up (2026-10-04):** M10 Prototype v2 — A ✔ → B ✔ → C ✔ → D ✔ (editor steps pending) → E post-run / F barn day phase. Then decide the empty-pile "dead time" → M5.2 — then the vertical slice goes to playtesters.
+> **Next up (2026-10-04):** M10 Prototype v2 — A ✔ → B ✔ → C ✔ → D ✔ → F barn day phase ✔ (editor steps pending) → E post-run. Then decide the empty-pile "dead time" → M5.2 — then the vertical slice goes to playtesters.
 > Why: the hours change what a night is (no more Stay/Leave), so M5.2 tunes the new loop, not the old one. M5.2 still needs the theft (M7.3) and the stone (M6.3) readable.
 
 ☁ = cloud session OK (code/docs only) · 🖥 = local, needs the Unity editor (use Claude Code + unity-mcp)
@@ -101,7 +101,8 @@ Mastery from use: the stone levels up from the robots it knocks loose itself (50
   - [x] ☁ M10.D fixes: Next night never advanced (PlayAgain, still in TestNight, reloaded on the press before the click could save) → PlayAgain / NightEndView stand down in campaign mode; Retry / Next log presses; the scoreboard bar glides (fills up at a threshold, then starts the new hour).
   - [ ] 🖥 M10.D-b Editor: Score Colours asset on NightSession (both scenes); lay out the chalkboard, the DEPTH and HOURS cards (world-space Canvas, templates, layout groups); Night_01–03 Camera Y / Size → 0; fix `Campaign.asset` night 2's unlock (Bouncy → Splitter). Steps in the PR.
 - [ ] ☁+🖥 M10.E Post-run screen (night summary + progress).
-- [ ] ☁+🖥 M10.F Barn room day phase (wall pegboard, rug pile, materials pile → tower slice placement, sign + Start night).
+- [x] ☁ M10.F Barn room day phase: slice placement (`SlicePicker` in the Tower state: click a slice → the next campaign slice with the same hold count, right-click → previous; `NightSession.CycleSlice` rebuilds the tower live — `PegBoard.Rebuilt` → `PegBoardView` re-binds — and saves the night's tower; Dusk only; `CampaignPlan.CycleSlice`, `TowerLayout`, CoreCheck); `SliceSlotsView`; `BarnInteraction` (hover / click the materials pile → Tower, camera nudge via `CameraDirector.Nudge`, `HoverStarted` sound hook); `MaterialsPileView` (lift, glow, sparkles); `BarnPegboardView` (owned copies on the 12 holes, locked types as ghosts under a lock); `RugStonesView` (tonight's stones + the refill stone with its badge); `NightSignView`.
+  - [ ] 🖥 M10.F-b Editor (TestNight): the room (pig rig in Idle, hole mask off; pegboard, rug, materials pile + glow), the components, Night sign + Start night ☾ top-right; tune. Steps in the PR.
 
 ## Open design questions (from the GDD — don't implement until decided)
 - One robot line per run vs. mixed swarm.

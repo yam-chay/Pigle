@@ -78,6 +78,22 @@ namespace Piglings.Meta
         }
 
         /// <summary>
+        /// Slice placement (the day phase): the slice after <paramref name="current"/> in <paramref name="available"/>
+        /// (step +1), or before it (step −1), wrapping round. A current slice that isn't available starts the cycle at the
+        /// first one (step +1) or the last (step −1). Null when nothing is available.
+        /// </summary>
+        public static string CycleSlice(IReadOnlyList<string> available, string current, int step)
+        {
+            var ids = new List<string>();
+            if (available != null) foreach (var id in available) if (!string.IsNullOrEmpty(id) && !ids.Contains(id)) ids.Add(id);
+            if (ids.Count == 0) return null;
+            int at = current != null ? ids.IndexOf(current) : -1;
+            int dir = step < 0 ? -1 : 1;
+            if (at < 0) return dir > 0 ? ids[0] : ids[ids.Count - 1];
+            return ids[((at + dir) % ids.Count + ids.Count) % ids.Count];
+        }
+
+        /// <summary>
         /// The slices for a night's tower: the player's saved choice, or the night's own (bottom → top). A saved choice
         /// with a different number of slices (the night was re-authored since) is ignored: the tower's height is the night's.
         /// </summary>

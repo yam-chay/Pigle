@@ -52,7 +52,14 @@ namespace Piglings.Simulation
         [Tooltip("Space kept around the tower on every side.")]
         [SerializeField, Min(0f)] private float towerMargin = 0.3f;
 
+        [Header("Nudge (hovering something in the barn)")]
+        [Tooltip("Seconds to ease into a nudge and back out of it.")]
+        [SerializeField, Min(0.01f)] private float nudgeSeconds = 0.25f;
+
         private float _x;
+        private CameraPose _rest;        // the frame's own pose, without the nudge
+        private Vector2 _nudge, _nudgeTarget, _nudgeVelocity;   // a small pan on top of the frame
+        private float _zoom, _zoomTarget, _zoomVelocity;        // a small zoom-in (0.05 = 5% closer)
         private bool _placed;            // a frame was set (by NightFlow, or Start's default)
         private CameraPose _from, _to;
         private float _seconds, _elapsed;
@@ -107,7 +114,21 @@ namespace Piglings.Simulation
             _placed = true;
             Target = frame;
             IsMoving = false;
-            Apply(PoseOf(frame));
+            _rest = PoseOf(frame);
+            _nudge = _nudgeTarget = _nudgeVelocity = Vector2.zero;
+            _zoom = _zoomTarget = _zoomVelocity = 0f;
+            Apply(_rest);
+        }
+
+        /// <summary>
+        /// A small, eased pan (<paramref name="pan"/>, world units) and zoom-in (<paramref name="zoom"/>, 0.05 = 5% closer)
+        /// on top of the frame the camera rests on — hovering the materials pile leans the camera toward it. (0, 0) eases
+        /// back. Ignored while moving: a move always lands on the plain frame.
+        /// </summary>
+        public void Nudge(Vector2 pan, float zoom)
+        {
+            _nudgeTarget = pan;
+            _zoomTarget = Mathf.Clamp(zoom, -0.5f, 0.5f);
         }
 
         /// <summary>
@@ -119,7 +140,9 @@ namespace Piglings.Simulation
             if (seconds <= 0f || cam == null) { SnapTo(frame); return; }
             _placed = true;
             Target = frame;
-            _from = Current();
+            _from = Current();   // the frame under any nudge; the nudge itself eases out during the move
+            _nudgeTarget = Vector2.zero;
+            _zoomTarget = 0f;
             _to = PoseOf(frame);
             _seconds = seconds;
             _elapsed = 0f;
@@ -128,11 +151,23 @@ namespace Piglings.Simulation
 
         private void Update()
         {
-            if (!IsMoving) return;
-            _elapsed += Time.deltaTime;
-            float t = _elapsed / _seconds;
-            Apply(CameraFraming.Between(_from, _to, CameraFraming.Ease(t)));
-            if (t >= 1f) IsMoving = false;
+            bool nudging = _nudge.sqrMagnitude > 1e-8f || _nudgeTarget.sqrMagnitude > 1e-8f
+                           || Mathf.Abs(_zoom) > 1e-5f || Mathf.Abs(_zoomTarget) > 1e-5f;
+            if (!IsMoving && !nudging) return;
+
+            var pose = _rest;
+            if (IsMoving)
+            {
+                _nudgeTarget = Vector2.zero;
+                _zoomTarget = 0f;
+                _elapsed += Time.deltaTime;
+                float t = _elapsed / _seconds;
+                pose = CameraFraming.Between(_from, _to, CameraFraming.Ease(t));
+                if (t >= 1f) { IsMoving = false; _rest = _to; }
+            }
+            _nudge = Vector2.SmoothDamp(_nudge, _nudgeTarget, ref _nudgeVelocity, nudgeSeconds);
+            _zoom = Mathf.SmoothDamp(_zoom, _zoomTarget, ref _zoomVelocity, nudgeSeconds);
+            Apply(pose);
         }
 
         private CameraPose TowerPose()
@@ -148,13 +183,15 @@ namespace Piglings.Simulation
             return PoseOf(CameraFrame.Night);
         }
 
-        private CameraPose Current() => new CameraPose(transform.position.y, cam.orthographicSize);
+        // The pose without the nudge (what a move starts from).
+        private CameraPose Current() => new CameraPose(transform.position.y - _nudge.y, cam.orthographicSize / Mathf.Max(0.01f, 1f - _zoom));
 
+        // The frame's pose, with the nudge on top (zero unless something in the barn is hovered).
         private void Apply(CameraPose pose)
         {
             if (cam == null) return;
-            transform.position = new Vector3(_x, pose.Y, transform.position.z);
-            cam.orthographicSize = pose.Size;
+            transform.position = new Vector3(_x + _nudge.x, pose.Y + _nudge.y, transform.position.z);
+            cam.orthographicSize = pose.Size * (1f - _zoom);
         }
 
         // Tuning in play mode: right-click the component's header, change a frame's numbers, show it again.

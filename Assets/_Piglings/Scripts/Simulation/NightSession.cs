@@ -100,6 +100,7 @@ namespace Piglings.Simulation
         private Progression _progression;
         private ProfileFile _profileFile;
         private NightDefinition _night;            // tonight's (see Night)
+        private readonly List<WallSliceDefinition> _tower = new List<WallSliceDefinition>();   // tonight's slices as built
         private readonly List<PegDefinition> _pegDefs = new List<PegDefinition>();   // tonight's shelf types, for FindPeg
         private StoneProgression _stones;          // the stone's progression rule (Night.Throwable), read once
         private int _savedHitsAtStart;             // the stone's saved hits when this night started (tonight's are in State)
@@ -290,11 +291,66 @@ namespace Piglings.Simulation
 
         private void BuildTower()
         {
+            _tower.Clear();
             if (tower == null) return;
             var slices = SlicesForTonight();
             if (slices.Count == 0) return;   // a night without slices keeps the scene's own tower
-            tower.Build(slices);
+            _tower.AddRange(slices);
+            tower.Build(_tower);
         }
+
+        // ---------- the day phase: slice placement (M10.F) ----------
+
+        /// <summary>Tonight's tower as built, bottom → top (empty without a TowerBuilder or slices).</summary>
+        public IReadOnlyList<WallSliceDefinition> TowerSlices => _tower;
+        /// <summary>The tower builder (the slice picker asks it where the slices are). Null in a scene without one.</summary>
+        public TowerBuilder Tower => tower;
+
+        /// <summary>Slices can be swapped: the campaign scene, a built tower, slices to choose from, and the night not begun.</summary>
+        public bool CanEditTower => IsCampaign && tower != null && _tower.Count > 0 && campaign.Slices.Count > 0
+                                    && State.Phase == NightPhase.Dusk;
+
+        /// <summary>
+        /// The day phase: slice <paramref name="index"/> becomes the next (+1) or previous (−1) of the campaign's slices with
+        /// the same hold count — the night's sockets were counted at load and can't change. The tower rebuilds now
+        /// (TowerBuilder → PegBoard re-binds its holds) and the choice is saved for this night. False = nothing changed.
+        /// </summary>
+        public bool CycleSlice(int index, int step)
+        {
+            if (!CanEditTower || index < 0 || index >= _tower.Count) return false;
+            var current = _tower[index];
+            var available = new List<string>();
+            foreach (var slice in campaign.Slices)
+                if (slice != null && slice.Holds.Length == current.Holds.Length) available.Add(slice.Id);
+            string next = CampaignPlan.CycleSlice(available, current.Id, step);
+            var picked = next != null ? campaign.FindSlice(next) : null;
+            if (picked == null || picked == current) return false;
+
+            _tower[index] = picked;
+            tower.Build(_tower);
+            var ids = new List<string>();
+            foreach (var slice in _tower) ids.Add(slice.Id);
+            _progression.SetTower(_night.Id, ids);
+            Save($"slice {index + 1} → {picked.Id} ({_night.Id}: {string.Join(", ", ids)})");
+            return true;
+        }
+
+        /// <summary>
+        /// Every peg type of the campaign in the order it's met: the starting ones, then each night's unlock. The barn's
+        /// pegboard has a group of holes per type, in this order. Empty outside campaign mode.
+        /// </summary>
+        public List<PegDefinition> CampaignPegTypes()
+        {
+            var types = new List<PegDefinition>();
+            if (campaign == null) return types;
+            foreach (var peg in campaign.StartingPegs) if (peg != null && !types.Contains(peg)) types.Add(peg);
+            foreach (var entry in campaign.Nights)
+                if (entry != null && entry.unlocksOnDawn != null && !types.Contains(entry.unlocksOnDawn)) types.Add(entry.unlocksOnDawn);
+            return types;
+        }
+
+        /// <summary>Is this peg type the player's (a starting type, or unlocked by a dawn)?</summary>
+        public bool IsPegUnlocked(PegDefinition peg) => peg != null && Plan != null && Plan.IsUnlocked(Profile, peg.Id);
 
         /// <summary>Tonight's slices, bottom → top: the player's saved choice (campaign), or the night's own.</summary>
         public List<WallSliceDefinition> SlicesForTonight()

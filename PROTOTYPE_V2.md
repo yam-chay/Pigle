@@ -113,9 +113,9 @@ Wall-slice effects, the chimney loss scene, onboarding triggers, a skill tree, s
 | B | Authored nights, campaign mode, the built tower | ✔ merged (#31) |
 | — | Debug: "Campaign/Go to Debug Night", "Campaign/Reset campaign", copies in the campaign log | this file's PR |
 | C | Phase flow + camera (CameraDirector, NightFlow, doors, reload on Retry/Next, moon hook) | ✔ merged (#33) |
-| D | Night scoreboard + popups by depth + tutorial cards + HUD toggle + the Night frame from the tower | ✔ code (this PR); editor steps in the PR |
+| D | Night scoreboard + popups by depth + tutorial cards + HUD toggle + the Night frame from the tower | ✔ merged (#34, #35) |
 | E | Post-run screen | after C |
-| F | Barn room day phase + slice placement | after C |
+| F | Barn room day phase + slice placement | ✔ code (this PR); editor steps in the PR |
 
 Every PR: updates ARCHITECTURE.md / TASKS.md, lists its editor steps, passes `dotnet run --project Tools/CoreCheck`,
 merges the latest Production first (CLAUDE.md).
