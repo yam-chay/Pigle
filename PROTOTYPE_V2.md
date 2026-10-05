@@ -270,7 +270,9 @@ the dim overlay); TASKS.md ticked.
 7. **Peg row wording**: the old "6 = +1 throw per hour" is the replaced pool rule. → **The follow-up rule**:
    `PegStatus.NextFollowUpAt` → "6 copies → 3 in a row" (1 + its follow-ups); at the max: "max".
 8. **Wolves dropped "any cause"** — *decided (Yam):* every robot knocked off the wall during the night, whatever the reason:
-   direct hit, ball, bomb **and the end-of-night sweep**. Old saves have none: the all-time total starts from this build. `NightState.RobotsDropped` only
+   direct hit, ball, bomb **and the end-of-night sweep**. Old saves have none: the all-time total starts from this build.
+   *Follow-up (Yam):* the sweep's share is also saved on its own per robot type (`robots.{type}.swept`; knocked in play =
+   dropped − swept), so later lineage progression can choose what counts. The screen shows only the total. `NightState.RobotsDropped` only
    counts knocks inside an open chain; the new per-type count counts them all.
 9. **"kept X (hour n)"** → n = **the last hour finished** (the one whose threshold the score is kept at); "kept 0" before
    the first. The hour dots / BEST THROW rows go up to the hour being played (reached).

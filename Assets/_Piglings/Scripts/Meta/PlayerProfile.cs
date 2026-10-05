@@ -71,7 +71,7 @@ namespace Piglings.Meta
         {
             var parts = new List<string>();
             foreach (var w in Weapons) parts.Add($"{w.Key} {w.Value.DirectHits} hits");
-            foreach (var r in Robots) parts.Add($"{r.Key} {r.Value.BallKnocks} ball knocks / {r.Value.KnockedByBall} knocked by a ball / {r.Value.Dropped} dropped");
+            foreach (var r in Robots) parts.Add($"{r.Key} {r.Value.BallKnocks} ball knocks / {r.Value.KnockedByBall} knocked by a ball / {r.Value.Dropped} dropped ({r.Value.Swept} swept)");
             foreach (var p in Pegs) parts.Add($"{p.Key} {p.Value.Knocks} knocks, triggers [{string.Join(", ", p.Value.Triggers)}]");
             if (CurrentNight > 0 || Dawns.Count > 0)
             {
@@ -108,6 +108,10 @@ namespace Piglings.Meta
         public int BallKnocks;      // robots this type's ball knocked loose
         public int KnockedByBall;   // times this type was knocked loose by a ball
         public int Dropped;         // robots of this type knocked off the wall, whatever did it (the sweep too) — M10.E
+        public int Swept;           // the part of Dropped the end-of-night sweep took
+
+        /// <summary>Knocked loose by play (a stone, a ball, a bomb): Dropped without the sweep's share.</summary>
+        public int KnockedInPlay => Dropped > Swept ? Dropped - Swept : 0;
     }
 
     /// <summary>The all-time records (M10.E): the best of every banked night. Written only by Progression.RecordNight.</summary>

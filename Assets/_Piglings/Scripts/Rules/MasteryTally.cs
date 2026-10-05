@@ -15,7 +15,8 @@ namespace Piglings.Rules
     /// - The end-of-night sweep isn't a RobotLostGrip (it's RobotSwept), so it never counts for mastery.
     /// - Dropped (M10.E, per robot type): every robot knocked off the wall tonight, whatever did it — a RobotLostGrip of any
     ///   cause (stone, ball, bomb, or none we know) and the end-of-night sweep (RobotSwept while the night ends, before it's
-    ///   banked). For the post-run's "wolves dropped" and later lineage progression.
+    ///   banked). For the post-run's "wolves dropped" and later lineage progression. The sweep's share is also counted on
+    ///   its own (Swept), so a later rule can tell knocked-in-play (Dropped − Swept) from swept.
     ///
     /// - A Bomb's victims (CauseKind.Peg) count for the peg type that exploded (PegKnocks), whatever set it off — and as
     ///   stone hits only when the stone itself (or a piece that counts) set it off by hitting it. A ball-triggered
@@ -138,7 +139,9 @@ namespace Piglings.Rules
         private void OnSwept(RobotSwept e)
         {
             if (_state.Phase != NightPhase.Ended || _banked) return;
-            if (_robotTypes.TryGetValue(e.Robot, out var type)) Add(_state.Dropped, type, 1);
+            if (!_robotTypes.TryGetValue(e.Robot, out var type)) return;
+            Add(_state.Dropped, type, 1);
+            Add(_state.Swept, type, 1);
         }
 
         // A robot's own removal comes after anything its ball could knock, so its type isn't needed past this point.

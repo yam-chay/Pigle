@@ -110,6 +110,10 @@ namespace Piglings.Meta
                     var robot = Profile.Robot(e.Id);
                     robot.Dropped = AddClamped(robot.Dropped, gained);
                     break;
+                case MasteryStat.Swept:
+                    var sweptRobot = Profile.Robot(e.Id);
+                    sweptRobot.Swept = AddClamped(sweptRobot.Swept, gained);
+                    break;
                 case MasteryStat.PegKnocks:
                     var peg = Profile.Peg(e.Id);
                     peg.Knocks = AddClamped(peg.Knocks, gained);

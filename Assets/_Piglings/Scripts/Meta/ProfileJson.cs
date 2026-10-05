@@ -17,13 +17,13 @@ namespace Piglings.Meta
     /// {
     ///   "version": 1,
     ///   "weapons": { "stone":         { "directHits": 137 } },
-    ///   "robots":  { "wolfbot_basic": { "ballKnocks": 412, "knockedByBall": 300, "dropped": 950 } },
+    ///   "robots":  { "wolfbot_basic": { "ballKnocks": 412, "knockedByBall": 300, "dropped": 950, "swept": 210 } },
     ///   "pegs":    { "peg_bomb":      { "knocks": 12, "triggers": [9, 2, 0] } },
     ///   "campaign": { "night": 1, "dawns": { "night_01": 3 }, "startInNight": false },
     ///   "towers":  { "night_02": ["slice_barn", "slice_wood", "slice_barn"] },
     ///   "records": { "bestThrow": 620, "longestChain": 9, "deepestChain": 3, "bestNightScore": 4100 }
     /// }
-    /// ("pegs", "triggers", "campaign", "towers", and M10.E's "dropped", "startInNight" and "records" came later, inside
+    /// ("pegs", "triggers", "campaign", "towers", and M10.E's "dropped", "swept", "startInNight" and "records" came later, inside
     /// version 1: an older build reads the file fine and ignores them — but would drop them if it then saved.)
     /// </code>
     /// One object per id (not a bare number), so a later field (feats…) is an addition, not a new version.
@@ -53,6 +53,7 @@ namespace Piglings.Meta
                 robots[r.Key] = new JObject
                 {
                     ["ballKnocks"] = r.Value.BallKnocks, ["knockedByBall"] = r.Value.KnockedByBall, ["dropped"] = r.Value.Dropped,
+                    ["swept"] = r.Value.Swept,
                 };
 
             var pegs = new JObject();
@@ -124,6 +125,7 @@ namespace Piglings.Meta
                     if (!ReadField(fields, entry.Name, "ballKnocks", ref r.BallKnocks, ref problem)) return ProfileReadResult.Corrupt;
                     if (!ReadField(fields, entry.Name, "knockedByBall", ref r.KnockedByBall, ref problem)) return ProfileReadResult.Corrupt;
                     if (!ReadField(fields, entry.Name, "dropped", ref r.Dropped, ref problem)) return ProfileReadResult.Corrupt;
+                    if (!ReadField(fields, entry.Name, "swept", ref r.Swept, ref problem)) return ProfileReadResult.Corrupt;
                 }
 
             if (!ReadSection(root, "pegs", out var pegs, ref problem)) return ProfileReadResult.Corrupt;

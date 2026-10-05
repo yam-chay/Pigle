@@ -62,6 +62,7 @@ namespace Piglings.Runtime
         public SortedDictionary<string, int> BallKnocks = new SortedDictionary<string, int>(System.StringComparer.Ordinal);    // robot type → robots its ball knocked loose
         public SortedDictionary<string, int> KnockedByBall = new SortedDictionary<string, int>(System.StringComparer.Ordinal); // robot type → times it was knocked loose by a ball
         public SortedDictionary<string, int> Dropped = new SortedDictionary<string, int>(System.StringComparer.Ordinal);       // robot type → robots of it knocked off the wall (any cause, the sweep too)
+        public SortedDictionary<string, int> Swept = new SortedDictionary<string, int>(System.StringComparer.Ordinal);         // robot type → the part of Dropped the end-of-night sweep took
         public SortedDictionary<string, int> PegKnocks = new SortedDictionary<string, int>(System.StringComparer.Ordinal);     // peg id → robots its effect knocked loose (Bomb)
         // peg id → times its effect fired, per merged level (index 0 = level 1): Bouncy bonus granted, Splitter split, Bomb explosion.
         public SortedDictionary<string, List<int>> PegTriggers = new SortedDictionary<string, List<int>>(System.StringComparer.Ordinal);

@@ -157,7 +157,9 @@ namespace Piglings.Events
     // split, a Bomb explosion. Peg mastery (copies owned) is derived from these, weighted by level.
     // Dropped → Lineage (M10.E): robots of this type knocked off the wall tonight, whatever did it — a stone, a ball, a bomb,
     // or the end-of-night sweep. For the post-run's "wolves dropped" and later lineage progression.
-    public enum MasteryStat { Score, DirectHits, BallKnocks, KnockedByBall, PegKnocks, PegTriggers, Dropped }
+    // Swept → Lineage: the part of Dropped the end-of-night sweep took (knocked in play = Dropped − Swept), kept apart so a
+    // later progression rule can choose what counts.
+    public enum MasteryStat { Score, DirectHits, BallKnocks, KnockedByBall, PegKnocks, PegTriggers, Dropped, Swept }
 
     /// <summary>
     /// Published by NightReferee on every phase change. Simulation pauses, resumes and sweeps the wall off this.
@@ -324,7 +326,7 @@ namespace Piglings.Events
     /// Published by NightReferee just before NightEnded (on both outcomes), one per target, only for non-zero amounts.
     /// - Barn, Score: the banked score (the live score at dawn; the last threshold reached when out of stones). Id is null.
     /// - Weapon, DirectHits: Id = the weapon id ("stone"). Mastery from use, so a lost night banks its hits too.
-    /// - Lineage, BallKnocks / KnockedByBall / Dropped: Id = the robot type.
+    /// - Lineage, BallKnocks / KnockedByBall / Dropped / Swept: Id = the robot type.
     /// - Peg, PegKnocks / PegTriggers: Id = the peg id; Level = the merged level the triggers happened at (PegTriggers only).
     /// Meta's Progression applies these to the saved profile; the save itself happens at NightEnded.
     /// </summary>

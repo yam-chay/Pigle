@@ -425,6 +425,7 @@ namespace Piglings.Rules
             foreach (var knocks in _state.BallKnocks) Bank(MasteryDestination.Lineage, knocks.Key, MasteryStat.BallKnocks, knocks.Value, 1);
             foreach (var knocked in _state.KnockedByBall) Bank(MasteryDestination.Lineage, knocked.Key, MasteryStat.KnockedByBall, knocked.Value, 1);
             foreach (var dropped in _state.Dropped) Bank(MasteryDestination.Lineage, dropped.Key, MasteryStat.Dropped, dropped.Value, 1);
+            foreach (var swept in _state.Swept) Bank(MasteryDestination.Lineage, swept.Key, MasteryStat.Swept, swept.Value, 1);
             foreach (var peg in _state.PegKnocks) Bank(MasteryDestination.Peg, peg.Key, MasteryStat.PegKnocks, peg.Value, 1);
             foreach (var peg in _state.PegTriggers)
                 for (int i = 0; i < peg.Value.Count; i++)

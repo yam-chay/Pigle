@@ -41,19 +41,24 @@ static void PostRunChecks(){
    n.Bus.Publish(new ThrowableRemoved(stone,chain));
    foreach(var r in new[]{a,b,c}) n.Bus.Publish(new RobotRemoved(r,chain,RemovalReason.HitGround));   // 10+20x1.5+... crosses 30: dawn
    Check(n.Ends.Count==1 && n.St.Dropped["wolf"]==3,"dawn: the end-of-night sweep's robots count as dropped (wolf 3)");
+   Check(n.St.Swept.Count==1 && n.St.Swept["wolf"]==1,"...and the sweep's share is counted apart (wolf: 1 swept; fox: none)");
    Check(n.Banked.Exists(e=>e.Destination==MasteryDestination.Lineage && e.Id=="wolf" && e.Stat==MasteryStat.Dropped && e.Amount==3)
       && n.Banked.Exists(e=>e.Destination==MasteryDestination.Lineage && e.Id=="fox" && e.Stat==MasteryStat.Dropped && e.Amount==1),
       "banked as NightBanked(Lineage, type, Dropped)");
+   Check(n.Banked.Exists(e=>e.Destination==MasteryDestination.Lineage && e.Id=="wolf" && e.Stat==MasteryStat.Swept && e.Amount==1)
+      && !n.Banked.Exists(e=>e.Id=="fox" && e.Stat==MasteryStat.Swept),"the sweep's share banks as NightBanked(Lineage, type, Swept), only when non-zero");
+   Check(prog.Profile.Robots["wolf"].Swept==1 && prog.Profile.Robots["wolf"].KnockedInPlay==2 && prog.Profile.Robots["fox"].KnockedInPlay==1,
+      "the profile keeps swept per type: wolf 3 dropped = 2 knocked in play + 1 swept");
    Check(prog.Profile.Robots["wolf"].Dropped==3 && prog.Profile.Robots["fox"].Dropped==1 && prog.Profile.TotalDropped()==4,
       "the profile keeps dropped per type; the all-time total adds them (4)");
    n.Bus.Publish(new RobotSwept(Spawn("wolf")));
    n.Bus.Publish(new RobotLostGrip(Spawn("wolf"),chain,Attribution.FromThrowable(stone)));
-   Check(n.St.Dropped["wolf"]==3,"after the night is banked nothing counts (a late sweep or knock)");
+   Check(n.St.Dropped["wolf"]==3 && n.St.Swept["wolf"]==1,"after the night is banked nothing counts (a late sweep or knock)");
    t.Dispose(); prog.Dispose(); }
  { var n=new Night(new NightGoal(new[]{5000},1,0)); var t=new MasteryTally(n.Bus,n.St);
    var w=n.Ids.Next(); n.Bus.Publish(new RobotSpawned(w,"wolf")); n.Wall.Add(w);
    n.Play(0);   // out of stones: the loss sweeps too
-   Check(n.Ends.Count==1 && n.St.Dropped["wolf"]==1,"a lost night's sweep counts as dropped too (it scores nothing)");
+   Check(n.Ends.Count==1 && n.St.Dropped["wolf"]==1 && n.St.Swept["wolf"]==1,"a lost night's sweep counts as dropped (and swept) too (it scores nothing)");
    t.Dispose(); }
 
  // --- The all-time records ---
@@ -68,14 +73,14 @@ static void PostRunChecks(){
    prog.Dispose(); }
 
  // --- The save: dropped, records, startInNight (additive, v1) ---
- { var p=new PlayerProfile(); p.Robot("wolf").Dropped=950; p.Records.BestThrow=620; p.Records.LongestChain=9; p.Records.DeepestChain=3;
+ { var p=new PlayerProfile(); p.Robot("wolf").Dropped=950; p.Robot("wolf").Swept=210; p.Records.BestThrow=620; p.Records.LongestChain=9; p.Records.DeepestChain=3;
    p.Records.BestNightScore=4100; p.StartInNight=true;
    var text=ProfileJson.Write(p);
    var ok=ProfileJson.Read(text,out var back,out var problem)==ProfileReadResult.Ok;
-   Check(ok && back.Robots["wolf"].Dropped==950 && back.Records.BestThrow==620 && back.Records.LongestChain==9 && back.Records.DeepestChain==3
-         && back.Records.BestNightScore==4100 && back.StartInNight,"save round trip: dropped, the four records and startInNight come back");
+   Check(ok && back.Robots["wolf"].Dropped==950 && back.Robots["wolf"].Swept==210 && back.Records.BestThrow==620 && back.Records.LongestChain==9 && back.Records.DeepestChain==3
+         && back.Records.BestNightScore==4100 && back.StartInNight,"save round trip: dropped, swept, the four records and startInNight come back");
    ok=ProfileJson.Read("{\"version\":1,\"robots\":{\"wolf\":{\"ballKnocks\":3}},\"campaign\":{\"night\":1}}",out var old,out problem)==ProfileReadResult.Ok;
-   Check(ok && old.Robots["wolf"].Dropped==0 && !old.Records.Any && !old.StartInNight,"an older save (no dropped / records / startInNight) reads as 0 / none / false");
+   Check(ok && old.Robots["wolf"].Dropped==0 && old.Robots["wolf"].Swept==0 && !old.Records.Any && !old.StartInNight,"an older save (no dropped / records / startInNight) reads as 0 / none / false");
    Check(ProfileJson.Read("{\"version\":1,\"records\":{\"bestThrow\":-5}}",out _,out problem)==ProfileReadResult.Corrupt,"a negative record is corrupt");
    Check(ProfileJson.Read("{\"version\":1,\"records\":[]}",out _,out problem)==ProfileReadResult.Corrupt,"records that aren't an object are corrupt");
    Check(ProfileJson.Read("{\"version\":1,\"campaign\":{\"startInNight\":1}}",out _,out problem)==ProfileReadResult.Corrupt,"startInNight that isn't true/false is corrupt");
@@ -135,6 +140,12 @@ static void PostRunChecks(){
    Check(ready.After==1f && Math.Abs(ready.Gain-0.7f)<1e-5f,"READY = full"); }
 
  // --- The buttons: "To the barn" and "Next night" never together ---
+ { // End to end on a 3-night campaign: the inputs NightFlow feeds PostRunChoices (a dawn, CampaignPlan.CanGoNext).
+   var plan=new CampaignPlan(new[]{"n1","n2","n3"}); var prof=new PlayerProfile(); prof.Dawns["n2"]=1; prof.Dawns["n3"]=1;
+   PostRunChoices.For(true,plan.CanGoNext(prof,1),out var mid,out var midSecond);
+   PostRunChoices.For(true,plan.CanGoNext(prof,2),out var last,out var lastSecond);
+   Check(mid==PostRunAction.NextNight && midSecond==PostRunAction.Retry,"campaign: a dawn on night 2 of 3 → Next night + Retry");
+   Check(last==PostRunAction.ToBarn && lastSecond==PostRunAction.Retry,"campaign: a dawn on the LAST night (3 of 3) → To the barn + Retry, no Next night"); }
  { PostRunChoices.For(false,false,out var p1,out var s1); PostRunChoices.For(false,true,out var p2,out var s2);
    PostRunChoices.For(true,true,out var p3,out var s3); PostRunChoices.For(true,false,out var p4,out var s4);
    Check(p1==PostRunAction.Retry && s1==PostRunAction.ToBarn && p2==PostRunAction.Retry && s2==PostRunAction.ToBarn,"a loss: Retry (primary) + To the barn");
