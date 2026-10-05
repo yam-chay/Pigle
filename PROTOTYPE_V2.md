@@ -225,13 +225,12 @@ the dim overlay); TASKS.md ticked.
   nothing and ends nothing. `NightEndReason.Caught` is **replaced** by `OutOfStones` (same slot; nothing else needs it).
   New per-night facts: `HourStats.BestThrow`, `NightState.StonesStolen`, `BiggestChainWolves` / `BiggestChainDepth` (one
   chain's wolves and its own depth — `LongestChain` / `DeepestChain` can come from two chains).
-- *The delay is presentation*: `NightSession` (both scenes; it already keeps the refill-pause clock) has **Wolf Seconds**
-  (Inspector). On an out-of-stones end it raises `WolfClimbStarts(seconds)` (the hook) and the wall stays frozen (Ended);
-  after the delay `RobotSpawner` sweeps (on a loss the sweep scores nothing, so it can wait; on a dawn it stays inside
-  the end, where it's scored). `NightFlow` waits for that + the wall to settle, then shows the post-run.
+- *The delay is presentation*: the sweep happens as the night ends, as before (Yam: the robots are swept while the wolf
+  climbs). `NightFlow` has **Wolf Seconds** (Inspector): on an out-of-stones end it raises `WolfClimbStarts(seconds)` (the
+  hook), then waits for that long and for the sweep to land before the post-run shows. Dawn: no wolf wait.
 - *Meta*: the save gets `"records": {bestThrow, longestChain, deepestChain, bestNightScore}` and
   `"robots".{type}.dropped` (both additive, v1). `Progression.RecordNight` updates the records and returns which broke.
-  `MasteryTally` counts `Dropped[type]` on every `RobotLostGrip` (any cause; never the sweep) → `NightBanked(Lineage,
+  `MasteryTally` counts `Dropped[type]` on every `RobotLostGrip` (any cause) **and** every swept robot → `NightBanked(Lineage,
   type, Dropped)`. `PostRunProgress` (engine-free) builds the PROGRESS rows from the profile **before** tonight (a copy
   taken at load) and **after** it (banked): the stone row, a peg row per type whose saved triggers changed or that was
   unlocked tonight, the wolves row.
@@ -256,23 +255,22 @@ the dim overlay); TASKS.md ticked.
    3 banks 100" (now at the landing), "caught before the first threshold", "a threshold doesn't protect you" (now: the
    round, then the loss), "3 breaches take 3 stones — still not lost" (now: lost at the 3rd), "Caught at Breaching entry",
    the mastery and flow cases built on Caught.
-3. **The wall during the wolf's delay.** Ending at once freezes the wall (Ended = not moving). → **Freeze**: it reads as
-   the wolf taking the remote, and matches the GDD loss-sequence proposal (wolf climbs → remote off → sweep). The
-   alternative (robots keep climbing, breaches do nothing) needs a second "moving" rule outside the Rules. *Yam?*
-4. **Retry vs To the barn on a loss** both end in the same night's barn room — identical buttons. → **Retry = fast:
-   reload straight into the night** (boot at the Night frame, doors closed, begin at once — the post-run was at the Night
-   frame, so the cut is invisible); To the barn = the full day phase. Needs a one-shot "start in the night" flag in the
-   save (navigation, like the night index). *Yam to decide.*
+3. **The wall during the wolf's delay.** *Decided (Yam):* the sweep happens as the delay starts — the robots are swept
+   while the wolf climbs to the pig. So the sweep stays inside the end (unchanged); the delay only holds the post-run.
+4. **Retry vs To the barn on a loss** both end in the same night's barn room — identical buttons. *Decided (Yam):*
+   **Retry = fast: reload straight into the night** (boot at the Night frame, doors closed, begin at once — the post-run
+   was at the Night frame, so the cut is invisible); To the barn = the full day phase. A one-shot "start in the night"
+   flag in the save (`campaign.startInNight`, navigation like the night index), cleared and saved as the scene boots.
 5. **Restart = reload, and the scene boots at the Doors.** With the post-run at the Night frame, To the barn / Next night
    first ease Night → Doors (doors open), then save + reload — else the cut shows. (Fast Retry, if chosen, needs no move.)
 6. **Records are results, not causes** — against "the save stores causes only". They can't be derived (no per-night
    history is saved), so they're the exception, in their own section. A scoring retune doesn't rewrite them. Best night
-   score = **the banked score** (what the night keeps). NEW = tonight beat the record from before tonight (strictly); the
+   score = *decided (Yam):* **the live score** when the night ended (dawn: with the sweep). NEW = tonight beat the record from before tonight (strictly); the
    first night ever sets every non-zero record → all NEW.
 7. **Peg row wording**: the old "6 = +1 throw per hour" is the replaced pool rule. → **The follow-up rule**:
    `PegStatus.NextFollowUpAt` → "6 copies → 3 in a row" (1 + its follow-ups); at the max: "max".
-8. **Wolves dropped "any cause"** → **every `RobotLostGrip`** (stone, ball, bomb), **not** the end-of-night sweep (nobody
-   knocked those loose). Old saves have none: the all-time total starts from this build. `NightState.RobotsDropped` only
+8. **Wolves dropped "any cause"** — *decided (Yam):* every robot knocked off the wall during the night, whatever the reason:
+   direct hit, ball, bomb **and the end-of-night sweep**. Old saves have none: the all-time total starts from this build. `NightState.RobotsDropped` only
    counts knocks inside an open chain; the new per-type count counts them all.
 9. **"kept X (hour n)"** → n = **the last hour finished** (the one whose threshold the score is kept at); "kept 0" before
    the first. The hour dots / BEST THROW rows go up to the hour being played (reached).
@@ -281,7 +279,7 @@ the dim overlay); TASKS.md ticked.
     copy dots. Kept out unless Yam wants them back.
 12. **The placeholder post-run goes**: FlowButtons' Retry / Next and the Doors-frame post-run. The post-run log line stays
     (now at the Night frame). PlayAgain / NightEndView already stand down in campaign mode; NightEndView says OUT OF
-    STONES and waits for the wolf delay too (Night.unity has the same delay).
+    STONES (Night.unity has no wolf delay: no flow there).
 13. **The stone bar when a stone was earned tonight**: before = progress from the last +1 (dim), gain to full → READY;
     two stones earned still show one full bar + "a → b".
 

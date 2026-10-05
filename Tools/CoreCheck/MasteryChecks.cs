@@ -66,16 +66,16 @@ static void MasteryChecks(){
    var rec=prog.Profile.Robots["wolf"];
    Check(rec.BallKnocks==1 && rec.KnockedByBall==1,"the profile keeps both lineage stats");
    t.Dispose(); prog.Dispose(); }
- { // Caught: one stone, it knocks two, then a breach on the empty pile. Score 30 < 1000: banks no score, but the hits.
+ { // Out of stones: one stone, it knocks two, and lands. Score 30 < 1000: banks no score, but the hits.
    var n=new Night(new NightGoal(new[]{1000},1,0)); var t=new MasteryTally(n.Bus,n.St); var prog=new Progression(n.Bus,null);
-   n.Play(2); n.Breach();
-   Check(n.Ends.Count==1 && n.Ends[0].Reason==NightEndReason.Caught,"caught night ends");
-   Check(n.BankedTo(MasteryDestination.Barn)==0 && n.BankedTo(MasteryDestination.Weapon)==2,"caught: no score banked, but the 2 weapon hits are (mastery from use)");
-   Check(prog.Profile.DirectHits("stone")==2,"caught: the profile gets the hits");
+   n.Play(2);
+   Check(n.Ends.Count==1 && n.Ends[0].Reason==NightEndReason.OutOfStones,"out of stones: the night ends as the last chain lands");
+   Check(n.BankedTo(MasteryDestination.Barn)==0 && n.BankedTo(MasteryDestination.Weapon)==2,"lost: no score banked, but the 2 weapon hits are (mastery from use)");
+   Check(prog.Profile.DirectHits("stone")==2,"lost: the profile gets the hits");
    t.Dispose(); prog.Dispose(); }
  { // A night with no hits banks nothing to any weapon
    var n=new Night(new NightGoal(new[]{1000},1,0)); var t=new MasteryTally(n.Bus,n.St);
-   n.Play(0); n.Breach();
+   n.Play(0);
    Check(n.Ends.Count==1 && !n.Banked.Exists(b=>b.Destination==MasteryDestination.Weapon),"0 hits: no Weapon NightBanked");
    t.Dispose(); }
 

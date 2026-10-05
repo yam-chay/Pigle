@@ -32,7 +32,7 @@ namespace Piglings.Rules
             StonesPerThreshold = stonesPerThreshold < 0 ? 0 : stonesPerThreshold;
         }
 
-        /// <summary>The score a night keeps when caught after crossing this many thresholds (0 before the first).</summary>
+        /// <summary>The score a night keeps when lost (out of stones) after crossing this many thresholds (0 before the first).</summary>
         public int ScoreAtThreshold(int reached) => reached <= 0 ? 0 : _thresholds[System.Math.Min(reached, _thresholds.Length) - 1];
 
         /// <summary>

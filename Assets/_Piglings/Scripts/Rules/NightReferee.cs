@@ -8,13 +8,15 @@ namespace Piglings.Rules
     /// transitions only through SetPhase → EnterPhase, and NightState.Phase is the source of truth.
     ///
     ///   Running(hour 1) ──threshold──▶ PegPlacement ──▶ Running(hour 2) ──▶ … ──last threshold──▶ Ended (dawn, won)
-    ///      └──a robot breaches with no stones left (caught, lost)─────────────────────────────▶ Ended
+    ///      └──out of stones: none left, nothing in flight, no round to refill (lost)─────────▶ Ended
     ///
     /// - Dusk (campaign scene only, before all of the above): the night hasn't begun — nothing climbs, nothing is thrown.
     ///   Begin() → Running. Night.unity starts straight in Running.
-    /// - Running: the normal night. The stones are the pig's life. A robot that breaches takes the top stone;
-    ///   a robot that breaches while the pile is empty catches the pigs — the ONLY loss, possible until dawn.
-    ///   Throwing your last stone isn't a loss: the night goes on, and a chain still in flight can cross a threshold.
+    /// - Running: the normal night. The stones are the pig's life. A robot that breaches takes the top stone (on an empty
+    ///   pile it takes nothing). OUT OF STONES is the ONLY loss (M10.E), possible until dawn: no stone left, no chain in
+    ///   flight and no placement round waiting (its refill would add stones). Throwing your last stone isn't the loss yet:
+    ///   its chain can still cross a threshold. The night ends the moment it holds — Rules can't keep time; the wolf's
+    ///   climb before the post-run is a delay in the campaign flow.
     /// - Crossing a threshold (not the last): play goes on — the wall keeps climbing and the pig keeps throwing, still
     ///   at the current hour's multiplier. The new hour (HourReached, its multiplier) starts inside the freeze, when
     ///   the placement round starts — that's the moment its visuals belong to. The placement round starts once the chains
@@ -29,7 +31,7 @@ namespace Piglings.Rules
     /// - Crossing the last threshold: DawnReached. The night is won from here (no more catches); throwing stops, and
     ///   it ends once every chain has settled. No placement round at dawn, so no refill either.
     /// - Ended: Simulation sweeps the wall (every climbing robot falls). Won: each scores its own value, flat, with the
-    ///   same robot-value function chains use. Lost: visual only. Then the score and tonight's mastery tallies are banked,
+    ///   same robot-value function chains use. Lost: no score (the robots still count as dropped). Then the score and tonight's mastery tallies are banked,
     ///   and NightEnded published.
     ///
     /// Owns Phase, StonesLeft, CanThrow, the hours, the peg board and shelf, the breach count and the end-of-night
@@ -92,6 +94,14 @@ namespace Piglings.Rules
             _bus.Unsubscribe<ChainScored>(OnChainScored);
             _bus.Unsubscribe<RobotSwept>(OnRobotSwept);
         }
+
+        /// <summary>
+        /// No stone left, nothing in flight, no round waiting to refill, not dawn, the night Running: the night is lost.
+        /// (A pending round is checked even though, with no chain open, it would already have started: it's the reason
+        /// 0 stones isn't the end yet, so it's stated.)
+        /// </summary>
+        public bool OutOfStones => _state.Phase == NightPhase.Running && !_state.Dawn && _state.StonesLeft == 0
+                                   && _chains.OpenChainCount == 0 && _state.PendingPegRounds == 0;
 
         /// <summary>The night begins: Dusk → Running (the wall starts climbing, the pig may throw). Ignored in any other phase.</summary>
         public void Begin()
@@ -286,10 +296,13 @@ namespace Piglings.Rules
             // starts; after dawn the night is already won.)
             if (_state.Phase != NightPhase.Running || _state.Dawn) return;
 
-            // The robots are clearing the way for the wolf: disarming the pig is part of it.
-            // Stones left: the robot takes the top one and leaves. None left: the pigs are caught.
-            if (_state.StonesLeft > 0) ChangeStones(-1, StoneChange.Stolen, e.Robot);
-            else End(NightResult.Lost, NightEndReason.Caught);
+            // The robots are clearing the way for the wolf: disarming the pig is part of it — the robot takes the top
+            // stone and leaves. On an empty pile there's nothing to take: the breach changes nothing (a chain still in
+            // flight decides the night). Taking the last stone with nothing in flight is the loss.
+            if (_state.StonesLeft <= 0) return;
+            _state.StonesStolen++;
+            ChangeStones(-1, StoneChange.Stolen, e.Robot);
+            CheckSettled();
         }
 
         // ChainTracker publishes this after it has closed the chain, so OpenChainCount is current.
@@ -300,6 +313,12 @@ namespace Piglings.Rules
             {
                 _state.BestThrowPoints = e.Total;
                 _state.BestThrowHour = e.Hour;
+            }
+            // And per hour (the post-run's BEST THROW EACH HOUR), by the hour it was thrown in. Misses add no row.
+            if (e.Total > 0)
+            {
+                var hour = HourStatsFor(e.Hour);
+                if (e.Total > hour.BestThrow) hour.BestThrow = e.Total;
             }
             foreach (var waiting in _roundWaitsFor) waiting.Remove(e.Chain.Id);
             CheckSettled();
@@ -315,8 +334,9 @@ namespace Piglings.Rules
             _state.SweepScore = ScoreMath.AddClamped(_state.SweepScore, points);
         }
 
-        // Called whenever a chain closes: is it time for dawn, or for a placement round?
-        // Dawn waits for every chain (the night ends once all is still); a round only for those open at its crossing.
+        // Called whenever a chain closes, a theft takes a stone, or a round ends: is it time for dawn, for a placement
+        // round, or is the pig out of stones? Dawn waits for every chain (the night ends once all is still); a round only
+        // for those open at its crossing; the loss for every chain AND the round (its refill comes first).
         private void CheckSettled()
         {
             if (_state.Phase != NightPhase.Running) return;
@@ -325,6 +345,7 @@ namespace Piglings.Rules
                 if (_chains.OpenChainCount == 0) End(NightResult.Won, NightEndReason.Dawn);
             }
             else if (RoundReady) SetPhase(NightPhase.PegPlacement);
+            else if (OutOfStones) End(NightResult.Lost, NightEndReason.OutOfStones);
         }
 
         // Hour n's stats (1-based), the list grown as hours are reached.
@@ -392,17 +413,18 @@ namespace Piglings.Rules
         // After the sweep: bank (Meta's Progression applies NightBanked to the saved profile), then announce the result.
         private void FinishNight()
         {
-            // Dawn keeps the full live score (sweep included). Caught keeps only the last threshold reached:
+            // Dawn keeps the full live score (sweep included). Out of stones keeps only the last threshold reached:
             // the hour you finished is yours, the one you were in is lost.
             _state.BankedScore = _state.Result == NightResult.Won
                 ? _state.Score
                 : _goal.ScoreAtThreshold(_state.ThresholdsReached);
             Bank(MasteryDestination.Barn, null, MasteryStat.Score, _state.BankedScore, 1);
 
-            // Mastery from use: banked in full on BOTH outcomes — unlike the score, being caught takes none of it away.
+            // Mastery from use: banked in full on BOTH outcomes — unlike the score, a loss takes none of it away.
             foreach (var hits in _state.WeaponHits) Bank(MasteryDestination.Weapon, hits.Key, MasteryStat.DirectHits, hits.Value, 1);
             foreach (var knocks in _state.BallKnocks) Bank(MasteryDestination.Lineage, knocks.Key, MasteryStat.BallKnocks, knocks.Value, 1);
             foreach (var knocked in _state.KnockedByBall) Bank(MasteryDestination.Lineage, knocked.Key, MasteryStat.KnockedByBall, knocked.Value, 1);
+            foreach (var dropped in _state.Dropped) Bank(MasteryDestination.Lineage, dropped.Key, MasteryStat.Dropped, dropped.Value, 1);
             foreach (var peg in _state.PegKnocks) Bank(MasteryDestination.Peg, peg.Key, MasteryStat.PegKnocks, peg.Value, 1);
             foreach (var peg in _state.PegTriggers)
                 for (int i = 0; i < peg.Value.Count; i++)

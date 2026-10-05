@@ -22,6 +22,10 @@
     <Compile Include="../../Assets/_Piglings/Scripts/Simulation/CameraFraming.cs" />
     <!-- And where the tower's slices are (M10.F): the day phase's slice picker. -->
     <Compile Include="../../Assets/_Piglings/Scripts/Simulation/TowerLayout.cs" />
+    <!-- And which two buttons the post-run shows (M10.E). -->
+    <Compile Include="../../Assets/_Piglings/Scripts/Simulation/PostRunChoices.cs" />
+    <!-- And one engine-free file from Definitions: where an hour falls in the night's palette (M10.E). -->
+    <Compile Include="../../Assets/_Piglings/Scripts/Definitions/PaletteSampling.cs" />
     <!-- And the drag-and-drop rules + the hover jiggle (M10.F). -->
     <Compile Include="../../Assets/_Piglings/Scripts/Simulation/SliceDrag.cs" />
   </ItemGroup>

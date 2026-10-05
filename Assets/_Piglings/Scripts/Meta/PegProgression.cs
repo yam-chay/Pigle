@@ -21,8 +21,11 @@ namespace Piglings.Meta
         public bool AtMax => NextThreshold < 0;
 
         /// <summary>0..1 from the last copy toward the next (1 at the max).</summary>
-        public float Progress =>
-            AtMax ? 1f : Clamp01((Mastery - PreviousThreshold) / (NextThreshold - PreviousThreshold));
+        public float Progress => ProgressAt(Mastery);
+
+        /// <summary>Where another mastery total (e.g. after tonight) falls in this status's span to the next copy (1 at the max).</summary>
+        public float ProgressAt(float mastery) =>
+            AtMax ? 1f : Clamp01((mastery - PreviousThreshold) / (NextThreshold - PreviousThreshold));
 
         private static float Clamp01(float v) => v < 0f ? 0f : v > 1f ? 1f : v;
     }

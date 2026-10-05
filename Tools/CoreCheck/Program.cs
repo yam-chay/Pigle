@@ -32,6 +32,7 @@ static void Main(){
  ResetCampaignChecks();
  FlowChecks();
  BarnChecks();
+ PostRunChecks();
 }
 // Scoring: value flows down the chain. A hitter (stone or ball) carries a value; the robot it knocks
 // scores value x (1 + 0.5 x depth); the hitter grows +10 per hit; the robot then carries 10 + what it received.
@@ -302,49 +303,71 @@ static void NightChecks(){
    Check(n.Ends.Count==1 && n.St.SweepScore==20 && n.Ends[0].Score==80 && n.Ends[0].BankedScore==80 && n.BankedTo(MasteryDestination.Barn)==80,
      "dawn: the sweep scores flat (2 x 10) and the full live score is banked (60 + 20 = 80)");
    Check(!n.AnyWeapon(),"nothing banks to the weapon any more"); }
- // --- Losing: a breach on an empty pile, any hour before dawn ---
+ // --- Losing (M10.E): out of stones — none left, nothing in flight, no round waiting to refill — any hour before dawn ---
  { var n=new Night(new NightGoal(new[]{500},2,0));
    var a=n.Throw(0); var b=n.Throw(1);
-   Check(n.St.StonesLeft==0 && !n.St.CanThrow,"all stones thrown -> can't throw");
-   n.Settle(a); n.Settle(b);
-   Check(n.Ends.Count==0 && n.St.Phase==NightPhase.Running,"last stone thrown and landed -> NOT a loss, the night goes on");
-   n.Breach();
-   Check(n.Ends.Count==1 && n.Ends[0].Result==NightResult.Lost && n.Ends[0].Reason==NightEndReason.Caught,"then a robot breaches on the empty pile -> Lost, caught"); }
+   Check(n.St.StonesLeft==0 && !n.St.CanThrow && n.Ends.Count==0,"all stones thrown -> can't throw, but two chains still fly: not lost yet");
+   n.Settle(a);
+   Check(n.Ends.Count==0 && n.St.Phase==NightPhase.Running && !n.Ref.OutOfStones,"one chain landed, the other still flies: not lost");
+   n.Settle(b);
+   Check(n.Ends.Count==1 && n.Ends[0].Result==NightResult.Lost && n.Ends[0].Reason==NightEndReason.OutOfStones,
+     "the last chain lands with the pile empty -> Lost, out of stones — at once, no breach needed"); }
  { var n=new Night(new NightGoal(new[]{50,100,5000},3,0));
    n.Play(3); n.Ref.EndPlacement();   // 60: threshold 50
    n.Play(3); n.Ref.EndPlacement();   // 150 (90 in hour 2): threshold 100
    n.Wall.Add(n.Ids.Next());
-   n.Play(1);                         // 150 + 10x2 = 170; 0 stones left
-   n.Breach();
+   n.Play(1);                         // 150 + 10x2 = 170; 0 stones left, it lands
    Check(n.Ends.Count==1 && n.Ends[0].Result==NightResult.Lost && n.Ends[0].Score==170 && n.Ends[0].BankedScore==100 && n.BankedTo(MasteryDestination.Barn)==100,
-     "caught in hour 3 at 170: banks the last threshold reached (100), not the live score");
-   Check(n.St.SweepScore==0 && n.St.Score==170,"a lost night's sweep is visual only: nothing scored"); }
- { var n=new Night(new NightGoal(new[]{500},1,0)); n.Play(1); n.Breach();
-   Check(n.Ends[0].BankedScore==0 && n.Banked.Count==0,"caught before the first threshold: banks nothing"); }
- { var n=new Night(new NightGoal(new[]{50,5000},1,0));
+     "out of stones in hour 3 at 170: banks the last threshold reached (100), not the live score");
+   Check(n.St.SweepScore==0 && n.St.Score==170,"a lost night's sweep scores nothing"); }
+ { var n=new Night(new NightGoal(new[]{500},1,0)); n.Play(1);
+   Check(n.Ends[0].BankedScore==0 && n.Banked.Count==0,"out of stones before the first threshold: banks nothing"); }
+ { // A pending round's refill comes first: the chain that crossed with the last stone lands -> the round, not the loss.
+   var n=new Night(new NightGoal(new[]{50,5000},1,2));
    var t=n.Throw(3);   // crosses 50 with the last stone; 0 stones, round pending
-   n.Breach();
-   Check(n.Ends.Count==1 && n.Ends[0].Reason==NightEndReason.Caught && n.Ends[0].BankedScore==50,
-     "a threshold (not dawn) doesn't protect you: caught while its chain still falls, banks that threshold (50)"); }
+   n.Settle(t);
+   Check(n.Ends.Count==0 && n.St.Phase==NightPhase.PegPlacement && n.St.StonesLeft==2,"0 stones + a pending round: the round starts and refills (0 -> 2), no loss");
+   n.Ref.EndPlacement();
+   Check(n.Ends.Count==0 && n.St.CanThrow,"after the round: stones to throw, the night goes on"); }
+ { // A round with no refill can't save you: the loss comes as it ends, banked at the threshold it crossed.
+   var n=new Night(new NightGoal(new[]{50,5000},1,0));
+   n.Play(3);
+   Check(n.Ends.Count==0 && n.St.Phase==NightPhase.PegPlacement && n.St.StonesLeft==0,"0 stones, the crossing chain landed: the round first (no loss inside it)");
+   n.Ref.EndPlacement();
+   Check(n.Ends.Count==1 && n.Ends[0].Reason==NightEndReason.OutOfStones && n.Ends[0].BankedScore==50,
+     "the round ends with an empty pile -> out of stones, banks that threshold (50)"); }
+ { // A round waiting on a chain thrown with the last stone: a breach on the empty pile meanwhile changes nothing.
+   var n=new Night(new NightGoal(new[]{50,5000},1,0));
+   var t=n.Throw(3); n.Breach();
+   Check(n.Ends.Count==0 && n.St.RobotsReachedTop==1 && n.St.StonesStolen==0,"a breach on an empty pile while a chain flies: counted as a breach, takes nothing, ends nothing");
+   n.Settle(t);
+   Check(n.St.Phase==NightPhase.PegPlacement && n.Ends.Count==0,"the chain lands: its round, still no loss"); }
  { var n=new Night(new NightGoal(new[]{500},3,0));
    var thief=n.Spawn(); n.Breach(thief);
-   Check(n.St.StonesLeft==2 && n.Ends.Count==0 && n.Stones[0].Cause==StoneChange.Stolen && n.Stones[0].Robot==thief,"breach with stones left: the robot takes the top stone, no loss");
-   n.Breach(); n.Breach();
-   Check(n.St.StonesLeft==0 && n.Ends.Count==0 && n.St.RobotsReachedTop==3,"three breaches take all three stones — still not lost");
+   Check(n.St.StonesLeft==2 && n.Ends.Count==0 && n.Stones[0].Cause==StoneChange.Stolen && n.Stones[0].Robot==thief && n.St.StonesStolen==1,
+     "breach with stones left: the robot takes the top stone (stolen 1), no loss");
    n.Breach();
-   Check(n.Ends.Count==1 && n.Ends[0].Breaches==4,"4th breach on the empty pile -> caught");
+   Check(n.St.StonesLeft==1 && n.Ends.Count==0,"a second theft: 1 left");
    n.Breach();
-   Check(n.Ends.Count==1 && n.St.RobotsReachedTop==4,"NightEnded fires once; nothing counts after the end"); }
+   Check(n.St.StonesLeft==0 && n.Ends.Count==1 && n.Ends[0].Reason==NightEndReason.OutOfStones && n.Ends[0].Breaches==3 && n.St.StonesStolen==3,
+     "the 3rd theft takes the last stone with nothing in flight -> out of stones at once (3 stolen)");
+   n.Breach();
+   Check(n.Ends.Count==1 && n.St.RobotsReachedTop==3,"NightEnded fires once; nothing counts after the end"); }
+ { // A theft of the last stone while a chain still flies: not lost until it lands.
+   var n=new Night(new NightGoal(new[]{500},2,0));
+   var t=n.Throw(1); n.Breach();
+   Check(n.St.StonesLeft==0 && n.Ends.Count==0,"the last stone stolen while a chain flies: not lost yet");
+   n.Settle(t);
+   Check(n.Ends.Count==1 && n.Ends[0].Reason==NightEndReason.OutOfStones,"...lost when it lands"); }
+ { // Dawn with an empty pile is still dawn.
+   var n=new Night(new NightGoal(new[]{50},1,0)); n.Play(3);
+   Check(n.Ends.Count==1 && n.Ends[0].Reason==NightEndReason.Dawn && n.Ends[0].Result==NightResult.Won,"the last stone reaches dawn: won, not out of stones"); }
  // --- Breaches count when they start (M7.3), and never during a placement round ---
  { var n=new Night(new NightGoal(new[]{500},3,0));
    var thief=n.Spawn(); n.BreachStart(thief);
    Check(n.Stones.Count==1 && n.Stones[0].Cause==StoneChange.Stolen && n.St.StonesLeft==2 && n.St.RobotsReachedTop==1,"one Stolen at Breaching entry (3 -> 2)");
    n.BreachEnd(thief);
    Check(n.Stones.Count==1 && n.St.RobotsReachedTop==1,"...the removal at the end of the sequence counts nothing"); }
- { var n=new Night(new NightGoal(new[]{500},1,0)); n.Play(0);
-   var r=n.Spawn(); n.BreachStart(r);
-   Check(n.Ends.Count==1 && n.Ends[0].Reason==NightEndReason.Caught,"empty pile: Caught at Breaching entry");
-   n.BreachEnd(r); Check(n.Ends.Count==1,"...the removal afterwards changes nothing"); }
  { var n=new Night(new NightGoal(new[]{60,5000},2,0));
    var thief=n.Spawn(); n.BreachStart(thief);   // 2 -> 1
    var t=n.Throw(3);                            // the last stone's chain crosses 60 while the thief is still breaching

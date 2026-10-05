@@ -25,6 +25,22 @@ namespace Piglings.Meta
         public readonly SortedDictionary<string, int> Dawns = new SortedDictionary<string, int>(StringComparer.Ordinal);
         public readonly SortedDictionary<string, List<string>> Towers = new SortedDictionary<string, List<string>>(StringComparer.Ordinal);
 
+        // Fast Retry (M10.E): the next scene load starts straight in the night — no barn room. Navigation like CurrentNight,
+        // one-shot: the scene that reads it clears it (and saves) as it boots.
+        public bool StartInNight;
+
+        // The all-time records (M10.E). Results, not causes — the exception to the rule above: they can't be derived from
+        // anything saved (no per-night history is kept). A scoring retune doesn't rewrite them.
+        public readonly NightRecords Records = new NightRecords();
+
+        /// <summary>Robots knocked off the wall over every banked night, all types together (the post-run's all-time total).</summary>
+        public int TotalDropped()
+        {
+            long sum = 0;
+            foreach (var r in Robots) sum += r.Value.Dropped;
+            return sum > int.MaxValue ? int.MaxValue : (int)sum;
+        }
+
         /// <summary>How many times this night was won (reached dawn). 0 = never.</summary>
         public int DawnsOn(string nightId) => nightId != null && Dawns.TryGetValue(nightId, out int n) ? n : 0;
 
@@ -55,7 +71,7 @@ namespace Piglings.Meta
         {
             var parts = new List<string>();
             foreach (var w in Weapons) parts.Add($"{w.Key} {w.Value.DirectHits} hits");
-            foreach (var r in Robots) parts.Add($"{r.Key} {r.Value.BallKnocks} ball knocks / {r.Value.KnockedByBall} knocked by a ball");
+            foreach (var r in Robots) parts.Add($"{r.Key} {r.Value.BallKnocks} ball knocks / {r.Value.KnockedByBall} knocked by a ball / {r.Value.Dropped} dropped");
             foreach (var p in Pegs) parts.Add($"{p.Key} {p.Value.Knocks} knocks, triggers [{string.Join(", ", p.Value.Triggers)}]");
             if (CurrentNight > 0 || Dawns.Count > 0)
             {
@@ -63,6 +79,7 @@ namespace Piglings.Meta
                 foreach (var d in Dawns) dawns.Add($"{d.Key}×{d.Value}");
                 parts.Add($"campaign night {CurrentNight + 1}, dawns {(dawns.Count == 0 ? "none" : string.Join(" ", dawns))}");
             }
+            if (Records.Any) parts.Add($"records: throw {Records.BestThrow}, chain {Records.LongestChain} wolves, depth {Records.DeepestChain}, night {Records.BestNightScore}");
             return parts.Count == 0 ? "empty (no banked nights)" : string.Join(" · ", parts);
         }
     }
@@ -90,5 +107,22 @@ namespace Piglings.Meta
     {
         public int BallKnocks;      // robots this type's ball knocked loose
         public int KnockedByBall;   // times this type was knocked loose by a ball
+        public int Dropped;         // robots of this type knocked off the wall, whatever did it (the sweep too) — M10.E
+    }
+
+    /// <summary>The all-time records (M10.E): the best of every banked night. Written only by Progression.RecordNight.</summary>
+    public sealed class NightRecords
+    {
+        public int BestThrow;        // the most points one throw (a closed chain) scored
+        public int LongestChain;     // the most robots one throw dropped
+        public int DeepestChain;     // the deepest depth one chain reached
+        public int BestNightScore;   // the highest score a night ended with (the live score: dawn with its sweep)
+
+        public bool Any => BestThrow > 0 || LongestChain > 0 || DeepestChain > 0 || BestNightScore > 0;
+
+        public NightRecords Copy() => new NightRecords
+        {
+            BestThrow = BestThrow, LongestChain = LongestChain, DeepestChain = DeepestChain, BestNightScore = BestNightScore,
+        };
     }
 }

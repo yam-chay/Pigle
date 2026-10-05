@@ -15,8 +15,9 @@ namespace Piglings.Simulation
     /// objects that reference it. Scene objects get it through a serialized field, never through a lookup.
     ///
     /// Persistence: the disk is the home of everything that outlives a night. This owner loads the player's profile in
-    /// Awake and saves it at NightEnded (after the referee has banked the night into it) — and again when the campaign's
-    /// Retry / Next night writes where to go (GoToNight). Play Again / Retry / Next reload the scene, so the next night
+    /// Awake and saves it at NightEnded (after the referee has banked the night into it, and tonight's bests went into the
+    /// records) — and again when the campaign's buttons write where to go (GoToNight, RetryNight), and when a fast Retry's
+    /// one-shot "start in the night" is used up at load. Play Again / Retry / Next reload the scene, so the next night
     /// loads it again from disk. Quitting mid-night saves nothing: that night's hits are lost.
     ///
     /// Campaign mode (M10, the v2 scene: a Campaign is assigned): the profile decides tonight's night (its saved index),
@@ -41,7 +42,7 @@ namespace Piglings.Simulation
         [SerializeField] private CampaignDefinition campaign;
         [Tooltip("Builds the night's tower from its slices (and moves the tower top and walls). Empty = the scene's own tower.")]
         [SerializeField] private TowerBuilder tower;
-        [Tooltip("One colour per hour (scoreboard, hour dots). Optional; a night with more hours than colours logs a warning.")]
+        [Tooltip("The night's colours, first → last (dawn gold), spread over each night's hours (scoreboard, hour dots, post-run). Optional.")]
         [SerializeField] private HourPaletteDefinition hourPalette;
 
         [Header("Look (both scenes)")]
@@ -71,8 +72,21 @@ namespace Piglings.Simulation
         /// <summary>The player's progress, for views (post-run, barn). Read only: Progression writes it.</summary>
         public PlayerProfile Profile => _progression.Profile;
 
-        /// <summary>Hour n's colour from the palette (white without one).</summary>
-        public Color HourColour(int hour) => hourPalette != null ? hourPalette.ColourFor(hour) : Color.white;
+        /// <summary>The profile as it was when this scene loaded — before tonight (a copy). The post-run's "before".</summary>
+        public PlayerProfile ProfileBeforeTonight { get; private set; }
+
+        /// <summary>
+        /// A fast Retry brought us here (M10.E): the campaign flow skips the barn room and starts the night at once. Read from
+        /// the save at load (a one-shot flag, cleared and saved right away).
+        /// </summary>
+        public bool StartsInNight { get; private set; }
+
+        /// <summary>
+        /// Hour n's colour: the palette sampled over tonight's hours, first → last (white without a palette). The last hour
+        /// is the palette's last colour (dawn gold) on every night.
+        /// </summary>
+        public Color HourColour(int hour) =>
+            hourPalette != null ? hourPalette.ColourAt(hour, _referee != null ? ThresholdCount : hour) : Color.white;
 
         /// <summary>The score colours (depth, throw quality) every view shares; the defaults when none is assigned.</summary>
         public ScoreColoursDefinition ScoreColours
@@ -178,19 +192,43 @@ namespace Piglings.Simulation
         public bool WallSettled => _settle.Settled;
 
         /// <summary>
-        /// Leave this night for another one (the campaign's Retry / Next night): saves where the player is and reloads the
-        /// scene, which then starts that night clean. Outside campaign mode it just reloads.
+        /// Leave this night for another one (the campaign's To the barn / Next night): saves where the player is and reloads
+        /// the scene, which then starts that night clean, in the barn room. Outside campaign mode it just reloads.
         /// Tonight's hits are only in the save if the night already ended (banked) — a jump mid-night loses them.
         /// </summary>
-        public void GoToNight(int index, string why)
+        public void GoToNight(int index, string why) => GoToNight(index, why, false);
+
+        /// <summary>
+        /// The campaign's fast Retry (M10.E): this same night again, straight into the night — the reloaded scene skips the
+        /// barn room (the one-shot flag in the save). Outside campaign mode it just reloads.
+        /// </summary>
+        public void RetryNight(string why) => GoToNight(NightIndex, why, true);
+
+        private void GoToNight(int index, string why, bool startInNight)
         {
             if (IsCampaign && Plan != null && Plan.NightCount > 0)
             {
                 index = Mathf.Clamp(index, 0, Plan.NightCount - 1);
                 _progression.SetCurrentNight(index);
-                Save($"{why} (to night {index + 1})");
+                _progression.SetStartInNight(startInNight);
+                Save($"{why} (to night {index + 1}{(startInNight ? ", straight into the night" : "")})");
             }
             ReloadScene();
+        }
+
+        /// <summary>
+        /// What the post-run's PROGRESS and ALL-TIME RECORDS show (M10.E): the profile before tonight against the profile now.
+        /// Call it after NightEnded (tonight banked); before that, "now" is still "before". Built on each call — call once.
+        /// </summary>
+        public PostRunReport BuildPostRunReport()
+        {
+            var types = new List<string>();
+            foreach (var peg in CampaignPegTypes()) types.Add(peg.Id);
+            return PostRunProgress.Build(ProfileBeforeTonight, Profile, _night.Throwable.Id, _stones, Plan, types, id =>
+            {
+                var peg = campaign != null ? campaign.FindPeg(id) : null;
+                return peg != null ? ProgressionFor(peg) : null;
+            });
         }
 
         /// <summary>
@@ -214,8 +252,10 @@ namespace Piglings.Simulation
             Ids = new IdAllocator();
             // The profile first: in campaign mode it decides tonight's night, its tower, the stones and the pegs.
             _progression = new Progression(Bus, LoadProfile());
+            ProfileBeforeTonight = ProfileJson.Copy(_progression.Profile);
             ChooseNight();
             FixStone();
+            UseStartInNight();
             // The tower before anything counts the sockets (BuildPegs, the board's Bind).
             BuildTower();
             _chains = new ChainTracker(Bus, State, BuildCurve());
@@ -285,6 +325,16 @@ namespace Piglings.Simulation
                       (s.AtCap ? ", at the cap" : $", +1 stone at {s.NextThreshold}") +
                       (s.NextEvolutionStones < 0 ? ")" : $"; level {s.NextEvolutionLevel} at {s.NextEvolutionStones} stones)") +
                       (IsCampaign ? "" : $"; this night's own pile ({_night.ThrowsAvailable}) and refill ({_night.StonesPerThreshold}) apply"), this);
+        }
+
+        // A fast Retry left a one-shot flag in the save: this load starts straight in the night. Cleared and saved now, so a
+        // later launch (after quitting mid-night) boots in the barn as usual.
+        private void UseStartInNight()
+        {
+            if (!_progression.Profile.StartInNight) return;
+            _progression.SetStartInNight(false);
+            StartsInNight = IsCampaign;
+            Save("fast Retry: straight into the night (flag used)");
         }
 
         // Stones and refill: the stone's progression in the campaign, the night's own numbers in Night.unity.
@@ -400,11 +450,11 @@ namespace Piglings.Simulation
             return result;
         }
 
+        // Any number of colours fits any night now (sampled over its hours); only an empty palette is worth a word.
         private void CheckPalette()
         {
-            if (hourPalette != null && hourPalette.Count < _night.Thresholds.Count)
-                Debug.LogWarning($"{_night.name} has {_night.Thresholds.Count} hours but {hourPalette.name} only {hourPalette.Count} " +
-                                 "colours: the last colour repeats.", hourPalette);
+            if (hourPalette != null && hourPalette.Count == 0)
+                Debug.LogWarning($"{hourPalette.name} has no colours: every hour is white.", hourPalette);
         }
 
         // ---------- the save ----------
@@ -427,11 +477,13 @@ namespace Piglings.Simulation
         }
 
         // NightBanked (applied by Progression) comes just before NightEnded, so the profile is complete here.
-        // A dawn in the campaign is recorded too (the cause behind unlocks and "Next night").
+        // A dawn in the campaign is recorded too (the cause behind unlocks and "Next night"), and tonight's bests go into the
+        // all-time records (best night = the live score the night ended with — Yam's call).
         private void OnNightEnded(NightEnded e)
         {
             if (IsCampaign) _progression.RecordNightResult(_night.Id, e.Result == NightResult.Won);
-            Save($"night banked ({e.Reason}, {Tonight()})");
+            var broken = _progression.RecordNight(State.BestThrowPoints, State.LongestChain, State.DeepestChain, e.Score);
+            Save($"night banked ({e.Reason}, {Tonight()}{(broken.Any ? ", a record broken" : "")})");
         }
 
         private void Save(string why)

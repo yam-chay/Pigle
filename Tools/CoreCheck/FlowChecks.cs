@@ -29,19 +29,19 @@ static void FlowChecks(){
    Check(settle.RobotsInMotion==0,"settle: Dispose unsubscribes");
    tr.Dispose(); }
 
- // --- On a real night: caught with a chain still falling → ended, but not settled until it lands ---
+ // --- On a real night: out of stones with a thief still breaching → ended, but not settled until it's gone ---
  { var bus=new EventBus(); var st=new NightState(); var ids=new IdAllocator(); var tr=new ChainTracker(bus,st);
    var rf=new NightReferee(bus,st,tr,new NightGoal(new[]{1000},1,0)); var settle=new SettleTracker(bus,tr);
    var chain=new ChainId(ids.Next()); var stone=ids.Next(); var a=ids.Next(); var thief=ids.Next();
    bus.Publish(new ThrowReleased(chain,stone,"stone"));
    bus.Publish(new RobotLostGrip(a,chain,Attribution.FromThrowable(stone)));
    bus.Publish(new RobotBreached(thief));
-   Check(st.Ended && st.StonesLeft==0,$"setup: a breach on an empty pile ends the night (ended {st.Ended}, stones {st.StonesLeft})");
-   Check(!settle.Settled,"caught: ended, but the chain and the thief are still in play — the flow waits");
+   Check(!st.Ended && st.StonesLeft==0,$"a breach on an empty pile with a chain in flight takes nothing and ends nothing (ended {st.Ended})");
    bus.Publish(new ThrowableRemoved(stone,chain)); bus.Publish(new RobotRemoved(a,chain,RemovalReason.HitGround));
-   Check(!settle.Settled,"caught: the chain closed, the thief's sequence still plays");
+   Check(st.Ended && st.EndReason==NightEndReason.OutOfStones,"the chain lands: out of stones, the night ends");
+   Check(!settle.Settled,"out of stones: ended, but the thief's sequence still plays — the flow waits");
    bus.Publish(new RobotRemoved(thief,ChainId.None,RemovalReason.EnteredBarn));
-   Check(settle.Settled,"caught: everything landed — settled, the camera may go down");
+   Check(settle.Settled,"out of stones: everything landed — settled, the post-run may show");
    settle.Dispose(); rf.Dispose(); tr.Dispose(); }
 
  // --- CameraFraming: the ease and the move ---
