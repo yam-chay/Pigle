@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Peg_Bouncy
   m_EditorClassIdentifier: Piglings.Definitions::Piglings.Definitions.PegDefinition
   id: peg_bouncy
+  displayName: Bouncy
   maxLevel: 3
   mergeable: 1
   sprite: {fileID: 21300000, guid: c7110a1d893275b479d2bb3920a9733b, type: 3}
@@ -21,29 +22,26 @@ MonoBehaviour:
   effect: 1
   levels:
   - masteryWeight: 0
-    scoreMultiplier: 2
+    multBonus: 1
     bounciness: 0.8
     pieces: 2
     fanAngle: 30
-    valueShare: 1
     bombRadius: 1
     cooldownSeconds: 8
     impulse: 0.5
   - masteryWeight: 0
-    scoreMultiplier: 3
+    multBonus: 2
     bounciness: 1
     pieces: 2
     fanAngle: 30
-    valueShare: 1
     bombRadius: 1
     cooldownSeconds: 8
     impulse: 0.5
   - masteryWeight: 0
-    scoreMultiplier: 4
+    multBonus: 3
     bounciness: 1.2
     pieces: 2
     fanAngle: 30
-    valueShare: 1
     bombRadius: 1
     cooldownSeconds: 8
     impulse: 0.5
