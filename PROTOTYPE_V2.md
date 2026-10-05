@@ -416,6 +416,16 @@ Inspector); Yam rebalances after it lands. Keeps PR P's follow-up rule as it is.
 - *Interpretations*: the robot popup's look uses the chain's worth so far (score × mult × hour) for its quality band; "×H1"
   in the close popup is the hour label, the sum uses its multiplier; a miss leaves no row (its live row goes at the close).
 
+### PR S follow-up 2 (Yam's playtest of S2)
+- Plain holds show a small "+1" popup at the hold.
+- The chain-close popup above the pig shows only "120 ×3 ×H1 = 360" (no wolves / depth line); smaller by default.
+- BEST TONIGHT shows the best throw's breakdown: "84 × 3 × H2 =" and its result.
+- LAST THROWS' float: Row Glide is now seconds (Row Glide Seconds) — the old field read 0.25 as a speed, so rows barely
+  moved and piled up.
+- Colours back to the Score Colours asset's quality bands for every score (popups, rows, BEST): the hour-palette base made
+  every solid band the same hour colour, so only pulse / rainbow differed. Quality = worth so far (live) or the result ÷
+  its hour's gap.
+
 ### PR G — HUD reshape (replaces the world-space chalkboard and the HOURS card)
 - **Night track** (screen space, across the top): a thin line, one circle per hour (equal segments, not proportional to
   score), the moon riding it. Inside a segment the moon moves by progress through that hour's gap. Reaching a circle = the
