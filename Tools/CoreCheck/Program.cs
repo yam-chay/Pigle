@@ -12,7 +12,7 @@ static void Main(){
  Check(!closed.HasValue,"chain open while b falls");
  bus.Publish(new RobotRemoved(b,chain,RemovalReason.HitGround));
  Check(closed.HasValue && closed.Value.RobotsDropped==2 && closed.Value.MaxDepth==1,"closed 2/depth1");
- Check(st.Score==40,$"score: 10x1 + 20x1.5 = 40 (got {st.Score})");
+ Check(st.Score==60,$"score: (base 10 + 2 wolves × 10) × mult 2 (depth 1 reached) = 60 (got {st.Score})");
  Action<ChainClosed> h=e=>{}; bus.Subscribe(h); bus.Unsubscribe(h); Check(true,"unsubscribe ok");
  tr.Dispose(); Check(tr.OpenChainCount==0,"dispose");
  ScoreChecks();
@@ -34,85 +34,70 @@ static void Main(){
  BarnChecks();
  PostRunChecks();
 }
-// Scoring: value flows down the chain. A hitter (stone or ball) carries a value; the robot it knocks
-// scores value x (1 + 0.5 x depth); the hitter grows +10 per hit; the robot then carries 10 + what it received.
+// Scoring (M10.S): each chain keeps SCORE (stone base + wolves + plain holds) and MULT (1 + one per new depth + special
+// pegs); the result = SCORE × MULT × the hour, rounded once. The raw score reaches the night's score as it comes; the
+// remainder at the close.
 static void ScoreChecks(){
- var bus=new EventBus(); var st=new NightState(); var ids=new IdAllocator(); var tr=new ChainTracker(bus,st);
- var hits=new System.Collections.Generic.List<RobotScored>(); ChainScored? scored=null; int scoreSeenAtClose=-1; bool closedFirst=false;
- bus.Subscribe<RobotScored>(e=>hits.Add(e));
+ var bus=new EventBus(); var st=new NightState(); var ids=new IdAllocator(); var tr=new ChainTracker(bus,st);   // base 10, wolves 10
+ var gains=new System.Collections.Generic.List<ChainGained>(); ChainScored? scored=null; int scoreSeenAtClose=-1; bool closedFirst=false;
+ bus.Subscribe<ChainGained>(e=>gains.Add(e));
  bus.Subscribe<ChainClosed>(e=>{ scoreSeenAtClose=st.Score; closedFirst=!scored.HasValue; });
  bus.Subscribe<ChainScored>(e=>scored=e);
- // Line: stone -> a -> b -> c
+ // Line: stone -> a -> b -> c (depths 0, 1, 2)
  var chain=new ChainId(ids.Next()); var stone=ids.Next(); var a=ids.Next(); var b=ids.Next(); var c=ids.Next();
  bus.Publish(new ThrowReleased(chain,stone,"stone"));
+ Check(gains.Count==1 && gains[0].Cause==ChainGainCause.Stone && gains[0].ScoreAdded==10 && gains[0].Score==10 && gains[0].Mult==1f && st.Score==10,
+   "the throw: + the stone's base (10) to the chain AND the night's score at once (raw); mult starts at 1");
  bus.Publish(new RobotLostGrip(a,chain,Attribution.FromThrowable(stone)));
+ Check(gains[1].Cause==ChainGainCause.Wolf && gains[1].ScoreAdded==10 && gains[1].MultAdded==0f && gains[1].Score==20 && st.Score==20,
+   "the stone's own victim (depth 0): + its wolf value (10), no mult");
  bus.Publish(new RobotLostGrip(b,chain,Attribution.FromRobotBall(a,0)));
  bus.Publish(new RobotLostGrip(c,chain,Attribution.FromRobotBall(b,1)));
- Check(hits.Count==3 && hits[0].Received==10 && hits[1].Received==20 && hits[2].Received==30,"line: received 10, 20, 30");
- Check(MathF.Abs(hits[1].Multiplier-1.5f)<1e-5f && MathF.Abs(hits[2].Multiplier-2f)<1e-5f,"multiplier by depth x1, x1.5, x2");
- Check(hits[0].Total==10 && hits[1].Total==30 && hits[2].Total==60,"line: 10, 20x1.5=30, 30x2=60");
- Check(hits[0].Carries==20 && hits[1].Carries==30 && hits[2].Carries==40,"carries = wolf 10 + what it received: 20, 30, 40");
- Check(st.Score==100 && !scored.HasValue,"paid immediately (100), no ChainScored while open");
+ Check(gains[2].MultAdded==1f && gains[3].MultAdded==1f && gains[3].Score==40 && gains[3].Mult==3f && st.Score==40,
+   "each NEW depth adds +1 mult (depth 1, depth 2): score 40, mult 3 — the night has only the raw 40 so far");
+ Check(!scored.HasValue,"no ChainScored while the chain is open");
  bus.Publish(new ThrowableRemoved(stone,chain));
  foreach(var r in new[]{a,b,c}) bus.Publish(new RobotRemoved(r,chain,RemovalReason.HitGround));
- Check(scored.HasValue && scored.Value.RobotsDropped==3 && scored.Value.MaxDepth==2 && scored.Value.Total==100,"ChainScored = sum 100");
- Check(closedFirst && scoreSeenAtClose==100,"ChainClosed before ChainScored, nothing added at close");
- // Stone hits three directly: it grows 10 -> 20 -> 30 (all x1)
- hits.Clear(); scored=null; int before=st.Score;
+ Check(scored.HasValue && scored.Value.Total==120 && scored.Value.Score==40 && scored.Value.Mult==3f && scored.Value.Remainder==80 && st.Score==120,
+   "the close: 40 × 3 × 1 = 120; the remainder (80) lands as one jump");
+ Check(closedFirst && scoreSeenAtClose==120,"the remainder is in the score by ChainClosed; ChainClosed comes before ChainScored");
+ // Wide, not deep: a stone knocks 3, the 2nd one's ball knocks 2 (all depth 0 / 1): one level of depth = +1 mult, once.
+ gains.Clear(); scored=null; int before=st.Score;
  var ch2=new ChainId(ids.Next()); var s2=ids.Next(); var w=new[]{ids.Next(),ids.Next(),ids.Next()};
  bus.Publish(new ThrowReleased(ch2,s2,"stone"));
  foreach(var r in w) bus.Publish(new RobotLostGrip(r,ch2,Attribution.FromThrowable(s2)));
- Check(hits[0].Total==10 && hits[1].Total==20 && hits[2].Total==30,"stone multi-hit: 10, 20, 30");
- // ...then the 2nd robot's ball (carries 10 + 20 = 30) knocks two more: 30x1.5, then (grown) 40x1.5
  var d=ids.Next(); var e2=ids.Next();
  bus.Publish(new RobotLostGrip(d,ch2,Attribution.FromRobotBall(w[1],0)));
  bus.Publish(new RobotLostGrip(e2,ch2,Attribution.FromRobotBall(w[1],0)));
- Check(hits[3].Received==30 && hits[3].Total==45 && hits[4].Received==40 && hits[4].Total==60,"ball multi-hit: 30x1.5=45, 40x1.5=60");
+ Check(gains[gains.Count-1].Score==60 && gains[gains.Count-1].Mult==2f,"wide: 5 wolves add 50 score, but depth 1 only once (+1): score 60, mult 2");
  bus.Publish(new ThrowableRemoved(s2,ch2)); foreach(var r in new[]{w[0],w[1],w[2],d,e2}) bus.Publish(new RobotRemoved(r,ch2,RemovalReason.HitGround));
- Check(scored.HasValue && scored.Value.Total==165 && st.Score==before+165,"mixed chain: 10+20+30+45+60 = 165");
- // Values belong to one chain: a new throw starts at 10 again
- hits.Clear(); var ch3=new ChainId(ids.Next()); var s3=ids.Next(); var f=ids.Next();
- bus.Publish(new ThrowReleased(ch3,s3,"stone")); bus.Publish(new RobotLostGrip(f,ch3,Attribution.FromThrowable(s3)));
- Check(hits.Count==1 && hits[0].Received==10 && hits[0].Order==1,"new chain starts fresh at 10");
- bus.Publish(new ThrowableRemoved(s3,ch3)); bus.Publish(new RobotRemoved(f,ch3,RemovalReason.HitGround));
- // A miss still publishes ChainScored, with zeros
+ Check(scored.HasValue && scored.Value.Total==120 && st.Score==before+120,"wide chain: 60 × 2 = 120");
+ // A miss still has the stone's base (Yam's spec: + base when thrown).
  scored=null; before=st.Score; var miss=new ChainId(ids.Next()); var s4=ids.Next();
  bus.Publish(new ThrowReleased(miss,s4,"stone")); bus.Publish(new ThrowableRemoved(s4,miss));
- Check(scored.HasValue && scored.Value.RobotsDropped==0 && scored.Value.Total==0 && st.Score==before,"miss -> ChainScored 0, score unchanged");
+ Check(scored.HasValue && scored.Value.RobotsDropped==0 && scored.Value.Total==10 && st.Score==before+10,"a miss -> ChainScored 10 (the base × 1)");
+ // Plain holds: + 1 once per hold per hitter; a robot outside the chain or a closed chain adds nothing.
+ { gains.Clear(); var ch=new ChainId(ids.Next()); var s=ids.Next(); var r=ids.Next();
+   bus.Publish(new ThrowReleased(ch,s,"stone"));
+   Check(tr.TouchPlain(ch,4,s) && !tr.TouchPlain(ch,4,s) && tr.TouchPlain(ch,5,s),"plain hold: +1 per hold per stone (the same hold twice counts once)");
+   bus.Publish(new RobotLostGrip(r,ch,Attribution.FromThrowable(s)));
+   Check(tr.TouchPlain(ch,4,r),"...a ball touching the same hold is a new hitter: +1 again");
+   Check(gains[gains.Count-1].Cause==ChainGainCause.PlainPeg && gains[gains.Count-1].Socket==4 && gains[gains.Count-1].Score==10+1+1+10+1,
+     "plain-hold gains carry the socket; the chain's score: 10 base + 3 holds + 10 wolf = 23");
+   bus.Publish(new ThrowableRemoved(s,ch)); bus.Publish(new RobotRemoved(r,ch,RemovalReason.HitGround));
+   Check(!tr.TouchPlain(ch,7,s) && !tr.TouchPlain(ChainId.None,7,s),"a closed chain (or none — the sweep) gains nothing"); }
+ // A special peg's mult bonus.
+ { var ch=new ChainId(ids.Next()); var s=ids.Next(); bus.Publish(new ThrowReleased(ch,s,"stone"));
+   Check(tr.AddPegMult(ch,3,s,2f)==3f && tr.AddPegMult(ch,3,s,0f)==3f,"a peg bonus adds to the mult (1 + 2 = 3); 0 adds nothing");
+   bus.Publish(new ThrowableRemoved(s,ch)); Check(scored.Value.Total==30,"base 10 × mult 3 = 30"); }
  tr.Dispose();
- // Each setting pulls its own lever: stone 20, no growth, wolf 5, x1 per depth
- { var t=Totals(new ScoreCurve(20,0,5,1f,false), ids, out var carries);
-   Check(t[0]==20 && t[1]==20 && carries[0]==25 && t[2]==50,"separate levers: stone 20, 20 (no growth); wolf adds 5 -> 25x2 = 50"); }
- // Compounding switch (Yam's first rule) still available: line 10, 40, 150
- { var bus2=new EventBus(); var st2=new NightState(); var tr2=new ChainTracker(bus2,st2,new ScoreCurve(10,10,10,1f,true)); var totals=new System.Collections.Generic.List<int>();
-   bus2.Subscribe<RobotScored>(x=>totals.Add(x.Total));
-   var ch=new ChainId(ids.Next()); var st0=ids.Next(); var r1=ids.Next(); var r2=ids.Next(); var r3=ids.Next();
-   bus2.Publish(new ThrowReleased(ch,st0,"stone"));
-   bus2.Publish(new RobotLostGrip(r1,ch,Attribution.FromThrowable(st0)));
-   bus2.Publish(new RobotLostGrip(r2,ch,Attribution.FromRobotBall(r1,0)));
-   bus2.Publish(new RobotLostGrip(r3,ch,Attribution.FromRobotBall(r2,1)));
-   Check(totals.Count==3 && totals[0]==10 && totals[1]==40 && totals[2]==150,"carryScoredTotal on: line 10, 40, 150"); tr2.Dispose(); }
- // A very deep compounding line never wraps negative
- { var bus3=new EventBus(); var st3=new NightState(); var tr3=new ChainTracker(bus3,st3,new ScoreCurve(10,10,10,1f,true));
-   var ch=new ChainId(ids.Next()); var s0=ids.Next(); bus3.Publish(new ThrowReleased(ch,s0,"stone"));
-   var prev=ids.Next(); bus3.Publish(new RobotLostGrip(prev,ch,Attribution.FromThrowable(s0)));
-   for(int dd=0;dd<20;dd++){ var next=ids.Next(); bus3.Publish(new RobotLostGrip(next,ch,Attribution.FromRobotBall(prev,dd))); prev=next; }
-   Check(st3.Score==int.MaxValue,"depth-20 compounding line saturates at int.MaxValue instead of going negative"); tr3.Dispose(); }
- // The curve on its own
- Check(new ScoreCurve(5,5,5,0.5f).RobotTotal(5,1)==8,"7.5 rounds to 8");
- Check(new ScoreCurve(10,10,10,-1f).Multiplier(3)==1f,"negative multiplierPerDepth clamped to 0");
-}
-// Stone hits x, then y; x's ball hits z. Returns the three totals, and what x carries.
-static int[] Totals(ScoreCurve curve, IdAllocator ids, out int[] carries){
- var bus=new EventBus(); var st=new NightState(); var tr=new ChainTracker(bus,st,curve);
- var t=new System.Collections.Generic.List<int>(); var cs=new System.Collections.Generic.List<int>();
- bus.Subscribe<RobotScored>(e=>{ t.Add(e.Total); cs.Add(e.Carries); });
- var ch=new ChainId(ids.Next()); var s=ids.Next(); var x=ids.Next(); var y=ids.Next(); var z=ids.Next();
- bus.Publish(new ThrowReleased(ch,s,"stone"));
- bus.Publish(new RobotLostGrip(x,ch,Attribution.FromThrowable(s)));
- bus.Publish(new RobotLostGrip(y,ch,Attribution.FromThrowable(s)));
- bus.Publish(new RobotLostGrip(z,ch,Attribution.FromRobotBall(x,0)));
- tr.Dispose(); carries=cs.ToArray(); return t.ToArray();
+ // The hour applies at the close, after score × mult; rounded once.
+ { var curve=new ScoreCurve(15,10,1,1f,0.5f);
+   Check(curve.Result(25,3f,1.5f)==113 && curve.Result(25,1f,1f)==25 && curve.Result(7,1f,1.5f)==11,"result: 25 × 3 × 1.5 = 112.5 -> 113; 7 × 1.5 = 10.5 -> 11 (rounded once)");
+   Check(curve.Result(10,0f,0f)==10,"a mult / hour below 1 never shrinks the score");
+   Check(Math.Abs(curve.Multiplier(2)-3f)<1e-5f && curve.HourMultiplier(2)==2f,"the DEPTH card's mult at depth 2: 1 + 2 = 3; hour 3 ×2"); }
+ Check(new ScoreCurve(10,10,1,-1f,-1f).Multiplier(3)==1f && new ScoreCurve(-5).StoneBase==0,"negative settings clamped to 0");
+ Check(new ScoreCurve(10,10,1,1f).Result(int.MaxValue,5f,3f)==int.MaxValue,"a huge result saturates at int.MaxValue instead of going negative");
 }
 // NightReferee: the hours until dawn. Running(hour) -> PegPlacement -> Running(hour+1) ... -> Ended (dawn), or out of stones.
 class Night{
@@ -124,16 +109,19 @@ class Night{
  public System.Collections.Generic.List<HourReached> Hours=new System.Collections.Generic.List<HourReached>();
  public System.Collections.Generic.List<DawnReached> Dawns=new System.Collections.Generic.List<DawnReached>();
  public System.Collections.Generic.List<StonesChanged> Stones=new System.Collections.Generic.List<StonesChanged>();
- public System.Collections.Generic.List<RobotScored> Scored=new System.Collections.Generic.List<RobotScored>();
+ public System.Collections.Generic.List<ChainGained> Gains=new System.Collections.Generic.List<ChainGained>();
  public System.Collections.Generic.List<ChainScored> Chains=new System.Collections.Generic.List<ChainScored>();
  public System.Collections.Generic.List<ThrowReleased> Throws=new System.Collections.Generic.List<ThrowReleased>();
  public System.Collections.Generic.List<PegPlaced> Placed=new System.Collections.Generic.List<PegPlaced>();
  public System.Collections.Generic.List<PegMerged> Merged=new System.Collections.Generic.List<PegMerged>();
  // Robots still climbing: what Simulation's RobotSpawner would sweep when the night ends.
  public System.Collections.Generic.List<GameId> Wall=new System.Collections.Generic.List<GameId>();
+ // The test curve (M10.S): no stone base, wolves 20 — so a throw knocking n robots directly is worth 20n (Throw(3) = 60,
+ // as the old checks' numbers), and only depth / pegs / the hour add mult. Pass a curve to test the real defaults.
+ public static readonly ScoreCurve TestCurve=new ScoreCurve(0,20,1,1f,0.5f);
  public Night(NightGoal g, ScoreCurve curve=null, PegSetup pegs=null){
-  Tr=new ChainTracker(Bus,St,curve); Ref=new NightReferee(Bus,St,Tr,g,pegs);
-  Bus.Subscribe<NightEnded>(e=>Ends.Add(e)); Bus.Subscribe<NightBanked>(e=>Banked.Add(e)); Bus.Subscribe<RobotScored>(e=>Scored.Add(e));
+  Tr=new ChainTracker(Bus,St,curve??TestCurve); Ref=new NightReferee(Bus,St,Tr,g,pegs);
+  Bus.Subscribe<NightEnded>(e=>Ends.Add(e)); Bus.Subscribe<NightBanked>(e=>Banked.Add(e)); Bus.Subscribe<ChainGained>(e=>Gains.Add(e));
   Bus.Subscribe<HourReached>(e=>Hours.Add(e)); Bus.Subscribe<DawnReached>(e=>Dawns.Add(e)); Bus.Subscribe<StonesChanged>(e=>Stones.Add(e));
   Bus.Subscribe<ChainScored>(e=>Chains.Add(e)); Bus.Subscribe<ThrowReleased>(e=>Throws.Add(e));
   Bus.Subscribe<PegPlaced>(e=>Placed.Add(e)); Bus.Subscribe<PegMerged>(e=>Merged.Add(e));
@@ -183,10 +171,10 @@ static void NightChecks(){
    Check(new NightGoal(null).ThresholdCount==1 && new NightGoal(new int[0]).ThresholdCount==1,"no thresholds -> one (the night must be winnable)");
    Check(g.ScoreAtThreshold(0)==0 && g.ScoreAtThreshold(2)==500 && g.ScoreAtThreshold(9)==1500,"score kept at k thresholds: 0 before the first, else the k-th"); }
  // --- Hour multiplier ---
- { var c=new ScoreCurve(10,10,10,0.5f,false,0.5f);
+ { var c=new ScoreCurve(10,10,1,1f,0.5f);
    Check(c.HourMultiplier(0)==1f && c.HourMultiplier(1)==1.5f && c.HourMultiplier(2)==2f && c.HourMultiplier(4)==3f,"hour multiplier: x1, x1.5, x2 ... x3 in hour 5 (step 0.5)");
-   Check(c.RobotTotal(25,1,1.5f)==56 && c.RobotTotal(15,1,1f)==23,"rounded once: 25 x1.5 x1.5 = 56.25 -> 56; hour 1 unchanged (22.5 -> 23)");
-   Check(new ScoreCurve(10,10,10,0.5f,false,-1f).HourMultiplier(3)==1f,"a negative step is clamped to 0"); }
+   Check(c.Result(25,1.5f,1.5f)==56 && c.Result(15,1.5f,1f)==23,"rounded once: 25 x1.5 x1.5 = 56.25 -> 56; 22.5 -> 23");
+   Check(new ScoreCurve(10,10,1,1f,-1f).HourMultiplier(3)==1f,"a negative step is clamped to 0"); }
  // --- Running -> threshold -> PegPlacement -> Running(next hour) ---
  { var n=new Night(Hours(50,500,1000));
    Check(n.St.Phase==NightPhase.Running && n.St.Hour==1 && n.St.CanThrow && n.Ref.NextThreshold==50,"night starts Running, hour 1, can throw, next threshold 50");
@@ -207,7 +195,7 @@ static void NightChecks(){
    Check(n.St.WallMoving,"hour 1: the wall moves");
    var t=n.Throw(3);                  // crosses 50
    var late=n.Throw(2);               // thrown after the crossing: hour 2 already
-   Check(n.Scored[3].Hour==1 && n.Scored[3].HourMultiplier==1f && n.Scored[3].Total==10,"a throw between the crossing and the freeze still scores at the old hour (10 x1)");
+   Check(n.Gains[n.Gains.Count-1].Hour==1 && n.Gains[n.Gains.Count-1].HourMultiplier==1f,"a throw between the crossing and the freeze still scores at the old hour (×1)");
    n.Settle(t);
    Check(n.St.Phase==NightPhase.PegPlacement && !n.St.WallMoving && !n.St.CanThrow,
      "the crossing's chain lands -> the round starts, though a later chain is still falling (it doesn't hold the round off)");
@@ -243,21 +231,33 @@ static void NightChecks(){
    Check(n.St.Phase==NightPhase.Running,"one chain still open -> no round yet");
    n.Settle(a);
    Check(n.St.Phase==NightPhase.PegPlacement,"last chain settles -> PegPlacement"); }
- // --- Multiplier fixed at throw time, applies to what a robot scores, never to what it carries ---
- { var curve=new ScoreCurve(15,10,10,0.5f,false,0.5f);
+ // --- The hour multiplier: fixed at the throw, applied once at the close (after score × mult) ---
+ { var curve=new ScoreCurve(15,10,1,1f,0.5f);
    var n=new Night(Hours(50,100000),curve);
-   var r1=n.ThrowLine(3); n.Settle(r1); var run=n.Scored.ToArray(); n.Scored.Clear();
-   Check(run[0].Total==15 && run[1].Total==38 && run[2].Total==70 && run[0].HourMultiplier==1f && run[0].Hour==1,"hour 1 line: 15, 37.5->38, 70 (x1)");
+   var r1=n.ThrowLine(3); n.Settle(r1);
+   Check(n.Chains[0].Total==135 && n.Chains[0].HourMultiplier==1f && n.Chains[0].Hour==1,"hour 1 line: (15 + 30) × 3 × 1 = 135");
    n.Ref.EndPlacement();
-   var r2=n.ThrowLine(3); n.Settle(r2); var h2=n.Scored.ToArray();
-   Check(h2[0].Hour==2 && h2[0].HourMultiplier==1.5f && h2[0].Total==23 && h2[1].Total==56 && h2[2].Total==105,"hour 2 line: 15x1.5=22.5->23, 25x1.5x1.5=56.25->56, 35x2x1.5=105");
-   Check(h2[1].Received==run[1].Received && h2[2].Received==run[2].Received && h2[1].Carries==run[1].Carries,"what robots carry isn't multiplied by the hour (never compounds)");
-   Check(n.Chains[0].Hour==1 && n.Chains[n.Chains.Count-1].Hour==2,"ChainScored.Hour: 1, then 2"); }
- { var curve=new ScoreCurve(10,10,10,1f,true,0.5f);   // compounding switch on: the hour still applies once
-   var n=new Night(Hours(10,100000),curve);
-   n.Play(1); n.Ref.EndPlacement(); n.Scored.Clear();
-   var t=n.ThrowLine(3); n.Settle(t);
-   Check(n.Scored[0].Total==15 && n.Scored[1].Total==60 && n.Scored[2].Total==225,"carryScoredTotal on, hour 2: 10x1.5, 40x1.5, 150x1.5 (the hour doesn't compound)"); }
+   var r2=n.ThrowLine(3);
+   Check(n.Gains[n.Gains.Count-1].Hour==2 && n.Gains[n.Gains.Count-1].HourMultiplier==1.5f && n.Gains[n.Gains.Count-1].Score==45,
+     "hour 2: gains are raw (score 45, no hour yet) and say the chain's hour (2, ×1.5)");
+   n.Settle(r2);
+   Check(n.Chains[1].Total==203 && n.Chains[1].Remainder==203-45,"hour 2 line: 45 × 3 × 1.5 = 202.5 -> 203; the remainder 158 at the close");
+   Check(n.Chains[0].Hour==1 && n.Chains[1].Hour==2,"ChainScored.Hour: 1, then 2"); }
+ // --- Raw then the remainder: the bar moves as the chain falls, the mult lands at the close (M10.S) ---
+ { var n=new Night(Hours(50,5000));
+   var t=n.ThrowLine(2);              // raw 40 (2 wolves × 20), mult 2 (depth 1)
+   Check(n.St.Score==40 && n.St.ThresholdsReached==0,"raw: the night has 40 while the chain falls — below 50");
+   n.Settle(t);
+   Check(n.St.Score==80 && n.Chains[0].Remainder==40 && n.St.ThresholdsReached==1 && n.St.Phase==NightPhase.PegPlacement,
+     "the close: the remainder (40) crosses 50 — and the chain is closed, so its round starts at once");
+   Check(n.St.Hours[0].Score==80,"the hour's score = raw + remainder (80)"); }
+ { var n=new Night(Hours(30,5000));
+   var other=n.Throw(0); var t=n.ThrowLine(2);   // another chain in the air; then raw 40 crosses 30 mid-flight
+   Check(n.St.ThresholdsReached==1 && n.St.Phase==NightPhase.Running,"raw crossing mid-flight: counted at once; the round waits");
+   n.Settle(t);
+   Check(n.St.Phase==NightPhase.Running,"...for every chain open at the crossing (the other is still flying)");
+   n.Settle(other);
+   Check(n.St.Phase==NightPhase.PegPlacement,"both landed: the round"); }
  // --- One chain crossing several thresholds: one round each, back to back ---
  { var n=new Night(Hours(20,40,1000));
    var t=n.Throw(3);   // 10, 30, 60: crosses 20 and 40
@@ -276,8 +276,8 @@ static void NightChecks(){
    Check(n.St.StonesLeft==6 && n.Stones[n.Stones.Count-1].Cause==StoneChange.Added && n.Stones[n.Stones.Count-1].Delta==2,
      "placement round: +2 stones (StonesChanged Added), 4 -> 6");
    var refills=0; foreach(var c in n.Stones) if(c.Cause==StoneChange.Added) refills++;
-   n.Ref.EndPlacement(); n.Play(4); n.Ref.EndPlacement();   // hour 2: (10+20+30+40) x1.5 = 150 -> 210, threshold 200
-   n.Play(4);   // hour 3: 100 x2 = 200 -> 410, dawn
+   n.Ref.EndPlacement(); n.Play(5); n.Ref.EndPlacement();   // hour 2: 5 × 20 = 100, ×1.5 = 150 -> 210, threshold 200
+   n.Play(5);   // hour 3: 100 ×2 = 200 -> 410, dawn
    int refillsAfter=0; foreach(var c in n.Stones) if(c.Cause==StoneChange.Added) refillsAfter++;
    Check(refills==1 && refillsAfter==2 && n.Ends.Count==1 && n.Ends[0].Reason==NightEndReason.Dawn,"refill each hour (2), none at dawn"); }
  { var n=new Night(new NightGoal(new[]{50,1000},5,0));
@@ -300,8 +300,8 @@ static void NightChecks(){
  { var n=new Night(Hours(50));
    n.Wall.Add(n.Ids.Next()); n.Wall.Add(n.Ids.Next());
    n.Play(3);
-   Check(n.Ends.Count==1 && n.St.SweepScore==20 && n.Ends[0].Score==80 && n.Ends[0].BankedScore==80 && n.BankedTo(MasteryDestination.Barn)==80,
-     "dawn: the sweep scores flat (2 x 10) and the full live score is banked (60 + 20 = 80)");
+   Check(n.Ends.Count==1 && n.St.SweepScore==40 && n.Ends[0].Score==100 && n.Ends[0].BankedScore==100 && n.BankedTo(MasteryDestination.Barn)==100,
+     "dawn: the sweep scores flat (2 × the wolf value 20) and the full live score is banked (60 + 40 = 100)");
    Check(!n.AnyWeapon(),"nothing banks to the weapon any more"); }
  // --- Losing (M10.E): out of stones — none left, nothing in flight, no round waiting to refill — any hour before dawn ---
  { var n=new Night(new NightGoal(new[]{500},2,0));
@@ -316,10 +316,10 @@ static void NightChecks(){
    n.Play(3); n.Ref.EndPlacement();   // 60: threshold 50
    n.Play(3); n.Ref.EndPlacement();   // 150 (90 in hour 2): threshold 100
    n.Wall.Add(n.Ids.Next());
-   n.Play(1);                         // 150 + 10x2 = 170; 0 stones left, it lands
-   Check(n.Ends.Count==1 && n.Ends[0].Result==NightResult.Lost && n.Ends[0].Score==170 && n.Ends[0].BankedScore==100 && n.BankedTo(MasteryDestination.Barn)==100,
-     "out of stones in hour 3 at 170: banks the last threshold reached (100), not the live score");
-   Check(n.St.SweepScore==0 && n.St.Score==170,"a lost night's sweep scores nothing"); }
+   n.Play(1);                         // 150 + 20 ×2 = 190; 0 stones left, it lands
+   Check(n.Ends.Count==1 && n.Ends[0].Result==NightResult.Lost && n.Ends[0].Score==190 && n.Ends[0].BankedScore==100 && n.BankedTo(MasteryDestination.Barn)==100,
+     "out of stones in hour 3 at 190: banks the last threshold reached (100), not the live score");
+   Check(n.St.SweepScore==0 && n.St.Score==190,"a lost night's sweep scores nothing"); }
  { var n=new Night(new NightGoal(new[]{500},1,0)); n.Play(1);
    Check(n.Ends[0].BankedScore==0 && n.Banked.Count==0,"out of stones before the first threshold: banks nothing"); }
  { // A pending round's refill comes first: the chain that crossed with the last stone lands -> the round, not the loss.

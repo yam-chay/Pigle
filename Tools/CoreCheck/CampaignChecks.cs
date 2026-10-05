@@ -26,14 +26,14 @@ static void CampaignChecks(){
 
  // --- Per-hour stats and the best throw ---
  { var n=new Night(Hours(30,1000));
-   n.Play(1);                 // hour 1: 10 points — not the threshold yet
+   n.Play(1);                 // hour 1: 20 points — not the threshold yet
    n.Breach();                // hour 1: a breach (takes a stone)
-   n.Play(2);                 // hour 1: 10 + 20 = 30 → crosses 30; the round starts when it lands
+   n.Play(2);                 // hour 1: + 40 = 60 → crosses 30; the round starts when it lands
    Check(n.St.Phase==NightPhase.PegPlacement,"setup: the first threshold's round");
    n.Ref.EndPlacement();      // hour 2
-   n.Play(3);                 // hour 2: (10 + 20 + 30) × 1.5 = 90
+   n.Play(3);                 // hour 2: 60 × 1.5 = 90 (60 raw as it falls, the remainder 30 at the close)
    n.Breach();
-   Check(n.St.Hours.Count==2 && n.St.Hours[0].Score==40 && n.St.Hours[1].Score==90,$"score per hour, by the hour the chain was thrown in (40, 90; got {n.St.Hours[0].Score}, {(n.St.Hours.Count>1?n.St.Hours[1].Score:-1)})");
+   Check(n.St.Hours.Count==2 && n.St.Hours[0].Score==60 && n.St.Hours[1].Score==90,$"score per hour, by the hour the chain was thrown in, raw + remainder (60, 90; got {n.St.Hours[0].Score}, {(n.St.Hours.Count>1?n.St.Hours[1].Score:-1)})");
    Check(n.St.Hours[0].Breaches==1 && n.St.Hours[1].Breaches==1,"breaches per hour (1, 1)");
    Check(n.St.BestThrowPoints==90 && n.St.BestThrowHour==2,"best throw tonight: 90 points, thrown in hour 2"); }
 
@@ -45,8 +45,8 @@ static void CampaignChecks(){
          "quality = points ÷ the gap of the hour it was thrown in (150 in hour 2 = 1.0; 15 in hour 1 = 0.15; 0 → 0)"); }
 
  // --- Peg triggers: per peg id, per merged level, banked and applied ---
- { var bouncy=new PegType("peg_bouncy",3,true,PegEffect.Bouncy,new[]{2f,3f});
-   var splitter=new PegType("peg_splitter",3,true,PegEffect.Splitter,null,new[]{2,3},new[]{1f,1f},4,true);
+ { var bouncy=new PegType("peg_bouncy",3,true,PegEffect.Bouncy,new[]{1f,2f});
+   var splitter=new PegType("peg_splitter",3,true,PegEffect.Splitter,null,new[]{2,3},4,true);
    var bomb=new PegType("peg_bomb",3,true,PegEffect.Bomb,cooldowns:new[]{5f});
    var pegs=new PegSetup(new[]{(bouncy,2),(splitter,2),(bomb,1)},1,4);
    var n=new Night(new NightGoal(new[]{100000},1,0),null,pegs); var fx=new PegEffects(n.Bus,n.St,n.Tr,pegs,n.Ids);
@@ -57,18 +57,18 @@ static void CampaignChecks(){
    var r=n.Ids.Next(); n.Bus.Publish(new RobotLostGrip(r,c,Attribution.FromThrowable(s)));
    fx.Hit(0,PegHitter.Ball,r,c); fx.Hit(0,PegHitter.Ball,r,c);   // once per peg per ball: 1 trigger
    fx.Hit(1,PegHitter.Ball,r,c);                                   // a level-2 Bouncy
-   fx.Hit(0,PegHitter.Stone,s,c);                                  // a stone on Bouncy: no bonus, no trigger
+   fx.Hit(0,PegHitter.Stone,s,c);                                  // a stone on Bouncy: a trigger too (M10.S)
    fx.Hit(2,PegHitter.Stone,s,c);                                  // a level-2 split
    fx.Hit(3,PegHitter.Stone,s,c);                                  // an explosion
    fx.Hit(3,PegHitter.Stone,s,c);                                  // spent: no trigger
    var trig=n.St.PegTriggers;
-   Check(trig["peg_bouncy"].Count==2 && trig["peg_bouncy"][0]==1 && trig["peg_bouncy"][1]==1,"Bouncy triggers per level: L1 1 (once per ball), L2 1; a stone's hit isn't one");
+   Check(trig["peg_bouncy"].Count==2 && trig["peg_bouncy"][0]==2 && trig["peg_bouncy"][1]==1,"Bouncy triggers per level: L1 2 (once per ball + once for the stone), L2 1");
    Check(trig["peg_splitter"].Count==2 && trig["peg_splitter"][0]==0 && trig["peg_splitter"][1]==1,"a split at level 2 counts at level 2");
    Check(trig["peg_bomb"].Count==1 && trig["peg_bomb"][0]==1,"an explosion counts once; a spent bomb's hit doesn't");
    n.Bus.Publish(new ThrowableRemoved(s,c)); n.Bus.Publish(new RobotRemoved(r,c,RemovalReason.HitGround));
    Check(n.Banked.Exists(b=>b.Destination==MasteryDestination.Peg && b.Id=="peg_bouncy" && b.Stat==MasteryStat.PegTriggers && b.Level==2 && b.Amount==1),
          "banked per level: NightBanked(Peg, peg_bouncy, PegTriggers, 1, level 2) — on a lost night too");
-   Check(prog.Profile.Pegs["peg_bouncy"].TriggersAt(1)==1 && prog.Profile.Pegs["peg_bouncy"].TriggersAt(2)==1 && prog.Profile.Pegs["peg_splitter"].TriggersAt(2)==1,
+   Check(prog.Profile.Pegs["peg_bouncy"].TriggersAt(1)==2 && prog.Profile.Pegs["peg_bouncy"].TriggersAt(2)==1 && prog.Profile.Pegs["peg_splitter"].TriggersAt(2)==1,
          "the profile keeps triggers per level");
    fx.Dispose(); t.Dispose(); prog.Dispose(); }
 

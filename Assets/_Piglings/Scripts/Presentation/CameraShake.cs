@@ -43,7 +43,7 @@ namespace Piglings.Presentation
 
         private void Start()
         {
-            session.Bus.Subscribe<RobotScored>(OnRobotScored);
+            session.Bus.Subscribe<RobotLostGrip>(OnLostGrip);
             session.Bus.Subscribe<ChainScored>(OnChainScored);
             session.Bus.Subscribe<BombExploded>(OnBombExploded);
         }
@@ -51,14 +51,16 @@ namespace Piglings.Presentation
         private void OnDestroy()
         {
             if (session == null || session.Bus == null) return;
-            session.Bus.Unsubscribe<RobotScored>(OnRobotScored);
+            session.Bus.Unsubscribe<RobotLostGrip>(OnLostGrip);
             session.Bus.Unsubscribe<ChainScored>(OnChainScored);
             session.Bus.Unsubscribe<BombExploded>(OnBombExploded);
         }
 
-        private void OnRobotScored(RobotScored e)
+        // A deep knock shakes (M10.S: there are no per-robot points any more; the depth is the knock's own).
+        private void OnLostGrip(RobotLostGrip e)
         {
-            if (e.Depth >= minDepth) AddTrauma(traumaPerDepth * (e.Depth - minDepth + 1));
+            int depth = e.Cause.Depth;
+            if (depth >= minDepth) AddTrauma(traumaPerDepth * (depth - minDepth + 1));
         }
 
         private void OnChainScored(ChainScored e) => AddTrauma(chainTrauma * Mathf.Clamp01(e.Total / (float)bigChainTotal));

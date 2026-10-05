@@ -24,6 +24,8 @@
     <Compile Include="../../Assets/_Piglings/Scripts/Simulation/TowerLayout.cs" />
     <!-- And which two buttons the post-run shows (M10.E). -->
     <Compile Include="../../Assets/_Piglings/Scripts/Simulation/PostRunChoices.cs" />
+    <!-- And the post-run's hour dots: one per hour + dawn (M10.E fix). -->
+    <Compile Include="../../Assets/_Piglings/Scripts/Simulation/HourDots.cs" />
     <!-- And one engine-free file from Definitions: where an hour falls in the night's palette (M10.E). -->
     <Compile Include="../../Assets/_Piglings/Scripts/Definitions/PaletteSampling.cs" />
     <!-- And the drag-and-drop rules + the hover jiggle (M10.F). -->

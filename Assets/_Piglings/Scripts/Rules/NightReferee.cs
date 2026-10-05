@@ -80,7 +80,7 @@ namespace Piglings.Rules
             UpdateCanThrow();
 
             _bus.Subscribe<ThrowReleased>(OnThrow);
-            _bus.Subscribe<RobotScored>(OnRobotScored);
+            _bus.Subscribe<ChainGained>(OnChainGained);
             _bus.Subscribe<RobotBreached>(OnRobotBreached);
             _bus.Subscribe<ChainScored>(OnChainScored);
             _bus.Subscribe<RobotSwept>(OnRobotSwept);
@@ -89,7 +89,7 @@ namespace Piglings.Rules
         public void Dispose()
         {
             _bus.Unsubscribe<ThrowReleased>(OnThrow);
-            _bus.Unsubscribe<RobotScored>(OnRobotScored);
+            _bus.Unsubscribe<ChainGained>(OnChainGained);
             _bus.Unsubscribe<RobotBreached>(OnRobotBreached);
             _bus.Unsubscribe<ChainScored>(OnChainScored);
             _bus.Unsubscribe<RobotSwept>(OnRobotSwept);
@@ -257,15 +257,22 @@ namespace Piglings.Rules
 
         // ---------- the hours ----------
 
-        // ChainTracker has already added this robot's points to the score. One chain can cross several thresholds:
-        // each one counts (its own HourReached and, before dawn, its own placement round).
-        // Also during a placement round: a chain thrown after a crossing keeps falling and scoring through it.
-        private void OnRobotScored(RobotScored e)
+        // ChainTracker has already added this gain's raw score to the night's score (M10.S: raw as it comes, the mult's
+        // remainder at the close — OnChainScored). Thresholds are checked on those real totals, so a chain can cross one
+        // mid-flight or with its remainder. Also during a placement round: a chain thrown after a crossing keeps falling
+        // and scoring through it.
+        private void OnChainGained(ChainGained e)
         {
-            if (_state.Phase == NightPhase.Ended) return;
-            // Per hour by the hour the chain was thrown in (the hour its multiplier came from), not when the points landed.
-            var hour = HourStatsFor(e.Hour);
-            hour.Score = ScoreMath.AddClamped(hour.Score, e.Total);
+            if (_state.Phase == NightPhase.Ended || e.ScoreAdded <= 0) return;
+            AddToHour(e.Hour, e.ScoreAdded);
+        }
+
+        // Per hour by the hour the chain was thrown in (the hour its multiplier came from), not when the points landed.
+        // One chain can cross several thresholds: each one counts (its own HourReached and, before dawn, its own round).
+        private void AddToHour(int chainHour, int points)
+        {
+            var hour = HourStatsFor(chainHour);
+            hour.Score = ScoreMath.AddClamped(hour.Score, points);
             while (!_state.Dawn && _state.Score >= _goal.Thresholds[_state.ThresholdsReached])
             {
                 _state.ThresholdsReached++;
@@ -305,9 +312,11 @@ namespace Piglings.Rules
             CheckSettled();
         }
 
-        // ChainTracker publishes this after it has closed the chain, so OpenChainCount is current.
+        // ChainTracker publishes this after it has closed the chain (so OpenChainCount is current) and added the remainder
+        // to the score. The remainder can cross thresholds too: their rounds wait for the chains still open (not this one).
         private void OnChainScored(ChainScored e)
         {
+            if (_state.Phase != NightPhase.Ended && e.Remainder > 0) AddToHour(e.Hour, e.Remainder);
             // The best throw tonight: most points (its quality, points ÷ its hour's gap, is for the views).
             if (e.Total > _state.BestThrowPoints)
             {
@@ -324,8 +333,7 @@ namespace Piglings.Rules
             CheckSettled();
         }
 
-        // Won: flat, the robot's own value, no order escalation, no depth or hour multiplier — the same function chains
-        // use. Lost: the robots still fall (Simulation), but nothing is scored: the bank stays at the last threshold.
+        // Won: flat, the robot's own value (the wolf value a chain adds for it), no mult, no hour multiplier. Lost: the robots still fall (Simulation), but nothing is scored: the bank stays at the last threshold.
         private void OnRobotSwept(RobotSwept e)
         {
             if (!_sweeping || _state.Result != NightResult.Won) return;

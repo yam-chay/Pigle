@@ -7,8 +7,8 @@ namespace Piglings.Rules
     /// <summary>What a peg hit did, for the Simulation to act on (the physics part). The Rules have already published the facts.</summary>
     public enum PegOutcome
     {
-        None,      // empty socket, plain peg, a stone on a Bouncy peg, a ball already boosted by this peg, night over
-        Bounced,   // a Bouncy peg gave a falling ball its bonus
+        None,      // a plain hold or peg (it may have added to the chain's score), a stone / ball already boosted here, night over
+        Bounced,   // a Bouncy peg gave the chain its mult bonus
         Split,     // a Splitter needle splits the stone: launch NewPieces more from it (StoneSplit published)
         Exploded,  // a Bomb went off: knock the climbing robots in its radius loose (BombExploded published)
     }
@@ -29,21 +29,22 @@ namespace Piglings.Rules
     }
 
     /// <summary>
-    /// What placed pegs do when something hits them. The Simulation reports every hit on an occupied socket
-    /// (NightSession.HitPeg, called by the Hold) and gets back what to do physically; everything that touches score or
-    /// state is decided here, and published as facts.
+    /// What holds and placed pegs do when something hits them. The Simulation reports every hit of a flying stone or a
+    /// falling ball on a hold (NightSession.HitPeg, called by the Hold) and gets back what to do physically; everything that
+    /// touches score or state is decided here, and published as facts.
     ///
-    /// - PegHit: every hit on an occupied socket (plain pegs too — views may react; nothing else does).
-    /// - Bouncy: a falling ball gets the peg's multiplier on what its victims score from now on (ChainTracker.AddPegExtra),
-    ///   once per peg per ball. Pegs add on the extra part (two ×2 = ×3). Stones bounce off physically, no bonus.
+    /// - A plain hold (an empty socket) or a Plain peg: + the plain-peg score to the hitter's chain, once per hold per
+    ///   stone / ball (ChainTracker.TouchPlain, M10.S). A placed peg also publishes PegHit (views may react).
+    /// - Every special peg adds its level's mult bonus to the chain when it triggers (PegType.MultBonusAt; 0 = none):
+    /// - Bouncy: a stone or a falling ball bouncing off it triggers it, once per peg per stone / ball (Bouncy +1 by level).
     /// - Splitter: a thrown stone (or piece) becomes PiecesAt(level) stones — it keeps flying and the Simulation launches
     ///   the rest from it, in the same chain. Once per needle per stone (a new piece counts as already split at its
-    ///   needle), and never more than MaxStonesPerThrow of one throw in flight: a split is cut short to fit. Every stone
-    ///   (the original too) carries the value × ValueShareAt(level). Robot balls never split.
+    ///   needle), and never more than MaxStonesPerThrow of one throw in flight: a split is cut short to fit. Robot balls
+    ///   never split.
     /// - Bomb: a stone or a falling ball sets it off — if it's charged, the night is Running (during PegPlacement it's a
-    ///   plain hold and keeps its charge) and the trigger is in an open chain. The explosion is its own hitter
-    ///   (ChainTracker.StartExplosion), its victims 1 deep from a stone, the ball's depth + 1 from a ball. Then it's spent
-    ///   for CooldownAt(level) seconds of Running time (Advance), a plain hold until PegRecharged.
+    ///   plain hold and keeps its charge) and the trigger is in an open chain. The explosion is its own hitter (a new
+    ///   GameId), its victims 1 deep from a stone, the ball's depth + 1 from a ball. Then it's spent for CooldownAt(level)
+    ///   seconds of Running time (Advance), a plain hold until PegRecharged.
     ///
     /// The peg's type and level come from NightState.Sockets (the board, written by NightReferee), never from the caller.
     /// Construct after ChainTracker and NightReferee.
@@ -56,8 +57,8 @@ namespace Piglings.Rules
         private readonly PegSetup _pegs;
         private readonly IdAllocator _ids;   // the night's, shared with the Simulation: an explosion is a hitter like any other
 
-        // Bouncy: (socket, ball) pairs that already got their bonus. A ball can't be boosted twice by the same peg.
-        private readonly HashSet<(int socket, GameId ball)> _bounced = new HashSet<(int, GameId)>();
+        // Bouncy: (socket, stone / ball) pairs that already gave their bonus. The same peg can't boost a hitter twice.
+        private readonly HashSet<(int socket, GameId hitter)> _bounced = new HashSet<(int, GameId)>();
 
         // Splitter: (socket, stone) pairs that already split there (and new pieces at their needle). Once per needle.
         private readonly HashSet<(int socket, GameId stone)> _split = new HashSet<(int, GameId)>();
@@ -77,18 +78,20 @@ namespace Piglings.Rules
             _bus.Unsubscribe<ThrowableRemoved>(OnThrowableRemoved);
         }
 
-        /// <summary>Something hit the peg in this socket. Returns what the Simulation should do about it.</summary>
+        /// <summary>Something hit the hold / peg in this socket. Returns what the Simulation should do about it.</summary>
         public PegHitResult Hit(int socket, PegHitter hitter, GameId hitterId, ChainId chain)
         {
             if (_state.Ended || socket < 0 || socket >= _state.Sockets.Length) return PegHitResult.None;
             var placed = _state.Sockets[socket];
-            if (placed.IsEmpty) return PegHitResult.None;
+            // A plain hold: only its score (no PegHit — balls rattle through holds all night).
+            if (placed.IsEmpty) { _chains.TouchPlain(chain, socket, hitterId); return PegHitResult.None; }
             var type = _pegs.Find(placed.PegId);
             var effect = type != null ? type.Effect : PegEffect.Plain;
 
             _bus.Publish(new PegHit(socket, placed.PegId, placed.Level, effect, hitter, hitterId, chain));
 
-            if (effect == PegEffect.Bouncy && hitter == PegHitter.Ball) return Bounce(socket, type, placed.Level, hitterId, chain);
+            if (effect == PegEffect.Plain) { _chains.TouchPlain(chain, socket, hitterId); return PegHitResult.None; }
+            if (effect == PegEffect.Bouncy) return Bounce(socket, type, placed.Level, hitterId, chain);
             if (effect == PegEffect.Splitter && hitter == PegHitter.Stone) return Split(socket, type, placed.Level, hitterId, chain);
             if (effect == PegEffect.Bomb) return Explode(socket, placed, hitter, hitterId, chain, type);
             return PegHitResult.None;
@@ -128,8 +131,8 @@ namespace Piglings.Rules
             }
 
             var explosion = _ids.Next();
-            _chains.StartExplosion(chain, explosion, trigger);
             placed.Recharge = type.CooldownAt(placed.Level);
+            _chains.AddPegMult(chain, socket, trigger, type.MultBonusAt(placed.Level));
             _bus.Publish(new BombExploded(socket, placed.PegId, placed.Level, chain, explosion, hitter, trigger, depth));
             return new PegHitResult(PegOutcome.Exploded, explosion: explosion, victimDepth: depth);
         }
@@ -143,19 +146,18 @@ namespace Piglings.Rules
             if (newPieces <= 0) return PegHitResult.None;
 
             _split.Add((socket, stone));
-            float share = type.ValueShareAt(level);
-            _chains.ShareStoneValue(chain, stone, share);   // before the pieces launch: they copy it
-            _bus.Publish(new StoneSplit(socket, chain, stone, newPieces, share, type.SplitHitsCountForMastery));
+            _chains.AddPegMult(chain, socket, stone, type.MultBonusAt(level));
+            _bus.Publish(new StoneSplit(socket, chain, stone, newPieces, type.SplitHitsCountForMastery));
             return new PegHitResult(PegOutcome.Split, newPieces);
         }
 
-        private PegHitResult Bounce(int socket, PegType type, int level, GameId ball, ChainId chain)
+        private PegHitResult Bounce(int socket, PegType type, int level, GameId hitter, ChainId chain)
         {
             // A ball outside an open chain (the end-of-night sweep) has nothing to score into.
-            if (!_chains.IsOpen(chain) || !_bounced.Add((socket, ball))) return PegHitResult.None;
-            float multiplier = type.ScoreMultiplierAt(level);
-            float ballMultiplier = _chains.AddPegExtra(chain, ball, multiplier - 1f);
-            _bus.Publish(new PegBounced(socket, ball, chain, multiplier, ballMultiplier));
+            if (!_chains.IsOpen(chain) || !_bounced.Add((socket, hitter))) return PegHitResult.None;
+            float bonus = type.MultBonusAt(level);
+            float chainMult = _chains.AddPegMult(chain, socket, hitter, bonus);
+            _bus.Publish(new PegBounced(socket, hitter, chain, bonus, chainMult));
             return new PegHitResult(PegOutcome.Bounced);
         }
 
@@ -163,7 +165,11 @@ namespace Piglings.Rules
         private void OnPieceLaunched(StonePieceLaunched e) => _split.Add((e.Socket, e.Piece));
 
         // A removed ball or stone can't hit anything again: forget it, so the sets don't grow all night.
-        private void OnRobotRemoved(RobotRemoved e) => _bounced.RemoveWhere(b => b.ball == e.Robot);
-        private void OnThrowableRemoved(ThrowableRemoved e) => _split.RemoveWhere(s => s.stone == e.Throwable);
+        private void OnRobotRemoved(RobotRemoved e) => _bounced.RemoveWhere(b => b.hitter == e.Robot);
+        private void OnThrowableRemoved(ThrowableRemoved e)
+        {
+            _split.RemoveWhere(s => s.stone == e.Throwable);
+            _bounced.RemoveWhere(b => b.hitter == e.Throwable);
+        }
     }
 }

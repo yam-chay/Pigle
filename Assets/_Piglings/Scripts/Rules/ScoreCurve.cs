@@ -3,75 +3,54 @@ using System;
 namespace Piglings.Rules
 {
     /// <summary>
-    /// Value flows down the chain. Every "hitter" — the stone, or a robot's falling ball — carries a
-    /// value, and whatever it knocks loose scores that value times its depth multiplier:
+    /// How a chain scores (M10.S, Balatro-style): two running numbers per chain, both additive, multiplied once at the close.
     ///
-    ///  - The stone starts carrying StoneValue.
-    ///  - A robot knocked loose scores  received × (1 + MultiplierPerDepth × its depth),  paid now.
-    ///  - The hitter grows by GrowthPerHit with every hit, so a stone or ball that knocks several
-    ///    robots makes each next one worth more. Extra hits are never wasted.
-    ///  - The knocked robot becomes a hitter itself, carrying WolfValue (its own worth) plus what it
-    ///    received — or plus what it SCORED when CarryScoredTotal is on, which compounds hard.
+    ///  - SCORE ("width"): + StoneBase when the stone is thrown (by the stone's evolution level); + WolfValue for each robot
+    ///    knocked loose, whatever knocked it (stone, ball, bomb, a split piece); + PlainPegScore for each plain hold touched
+    ///    (once per hold per stone / ball).
+    ///  - MULT ("depth"): starts at 1; + MultPerNewDepth each time the chain reaches a new depth (1, 2, 3… — once per
+    ///    level, never per robot, so a wide chain doesn't gain mult); + a special peg's bonus when it triggers.
+    ///  - Result = SCORE × MULT × the hour multiplier of the hour the chain was thrown in, rounded once.
     ///
-    /// Example, a line stone → A → B → C with default values (10 / 10 / 10 / ×0.5, compounding off):
-    ///   A 10 × 1 = 10, carries 10 + 10 = 20 · B 20 × 1.5 = 30, carries 10 + 20 = 30 · C 30 × 2 = 60.
+    /// Example, a line stone → A → B → C (base 10, wolves 10): score 10 + 3 × 10 = 40, mult 1 + 2 (depths 1 and 2) = 3 →
+    /// 120 in hour 1; a stone that knocks 3 directly: 40 × 1 = 40. Depth multiplies, width adds.
     ///
-    /// Why these are separate numbers: each is the lever a future upgrade family will pull —
-    /// stone upgrades (StoneValue, GrowthPerHit), wolf upgrades (WolfValue), pegs and slices
-    /// (MultiplierPerDepth). The defaults start low on purpose, so upgrades have room to matter.
-    /// Immutable: built once per night by NightSession from the ScoringDefinition asset.
+    /// Each number is a lever an upgrade family will pull (stone level → base; wolves → value; pegs → mult). Immutable:
+    /// built once per night by NightSession from the ScoringDefinition asset and the stone's level.
     /// </summary>
     public sealed class ScoreCurve
     {
-        public int StoneValue { get; }
-        public int GrowthPerHit { get; }
+        public int StoneBase { get; }
         public int WolfValue { get; }
-        public float MultiplierPerDepth { get; }
-        public bool CarryScoredTotal { get; }
+        public int PlainPegScore { get; }
+        public float MultPerNewDepth { get; }
         public float HourMultiplierStep { get; }  // each hour reached adds this to what chains score: ×1, ×1.5, ×2…
 
-        public ScoreCurve(int stoneValue = 10, int growthPerHit = 10, int wolfValue = 10,
-                          float multiplierPerDepth = 0.5f, bool carryScoredTotal = false, float hourMultiplierStep = 0.5f)
+        public ScoreCurve(int stoneBase = 10, int wolfValue = 10, int plainPegScore = 1, float multPerNewDepth = 1f,
+                          float hourMultiplierStep = 0.5f)
         {
-            StoneValue = stoneValue;
-            GrowthPerHit = growthPerHit;
-            WolfValue = wolfValue;
-            MultiplierPerDepth = Math.Max(0f, multiplierPerDepth);
-            CarryScoredTotal = carryScoredTotal;
+            StoneBase = Math.Max(0, stoneBase);
+            WolfValue = Math.Max(0, wolfValue);
+            PlainPegScore = Math.Max(0, plainPegScore);
+            MultPerNewDepth = Math.Max(0f, multPerNewDepth);
             HourMultiplierStep = Math.Max(0f, hourMultiplierStep);
         }
 
-        /// <summary>
-        /// A robot's own worth. The one robot-value function: chains add it when a robot passes value on
-        /// (CarriedBy), and the end-of-night sweep scores each robot left on the wall with it, flat.
-        /// </summary>
+        /// <summary>A robot's own worth: what a chain adds when one is knocked loose, and what the dawn sweep scores each, flat.</summary>
         public int RobotValue() => WolfValue;
 
-        public float Multiplier(int depth) => 1f + MultiplierPerDepth * depth;
+        /// <summary>A chain's mult at this depth with no pegs: 1 + MultPerNewDepth × depth (the DEPTH card shows it).</summary>
+        public float Multiplier(int depth) => 1f + MultPerNewDepth * Math.Max(0, depth);
 
         /// <summary>The score multiplier after this many hours have passed: hour 1 (0 passed) ×1, hour 2 ×1.5, hour 3 ×2…</summary>
         public float HourMultiplier(int hoursPassed) => 1f + HourMultiplierStep * Math.Max(0, hoursPassed);
 
-        /// <summary>
-        /// What a robot knocked loose scores: received × depth multiplier × hour multiplier × peg multiplier, rounded once.
-        /// The one place chain points are multiplied. ChainTracker passes the hour multiplier its chain was thrown
-        /// with, and the Bouncy pegs its hitter bounced off. Rounded once at the end (not per factor), so ×1.5 hours
-        /// don't stack rounding errors.
-        /// </summary>
-        public int RobotTotal(int received, int depth, float hourMultiplier = 1f, float pegMultiplier = 1f)
+        /// <summary>A chain's result: score × mult × hour multiplier, rounded once (never below the score itself).</summary>
+        public int Result(int score, float mult, float hourMultiplier)
         {
-            double total = received * (double)Multiplier(depth) * Math.Max(1f, hourMultiplier) * Math.Max(1f, pegMultiplier);
-            return ClampToInt(Math.Round(total, MidpointRounding.AwayFromZero));
+            double total = Math.Max(0, score) * (double)Math.Max(1f, mult) * Math.Max(1f, hourMultiplier);
+            double rounded = Math.Round(total, MidpointRounding.AwayFromZero);
+            return rounded >= int.MaxValue ? int.MaxValue : (int)rounded;
         }
-
-        /// <summary>A stone or ball after it knocked one more robot loose.</summary>
-        public int HitterAfterHit(int value) => ClampToInt((long)value + GrowthPerHit);
-
-        /// <summary>What a freshly knocked robot carries into its own hits.</summary>
-        public int CarriedBy(int received, int total) => ClampToInt((long)RobotValue() + (CarryScoredTotal ? total : received));
-
-        // With CarryScoredTotal on, value grows faster than factorially down a line (depth ~12
-        // passes int.MaxValue). Clamp instead of wrapping into a negative score.
-        private static int ClampToInt(double v) => v >= int.MaxValue ? int.MaxValue : (int)v;
     }
 }

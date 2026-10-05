@@ -19,14 +19,13 @@ namespace Piglings.Rules
         public bool SplitHitsCountForMastery { get; } // pieces' direct hits count as stone hits
 
         // Per level (index 0 = level 1). A level past the list uses the last entry.
-        private readonly float[] _scoreMultipliers;   // Bouncy
+        private readonly float[] _multBonuses;        // any effect: + the chain's mult when it triggers (M10.S)
         private readonly int[] _pieces;               // Splitter: stones after a split, the original included
-        private readonly float[] _valueShares;        // Splitter: × the stone's value each stone carries after it
         private readonly float[] _cooldowns;          // Bomb: seconds spent after it goes off (wall time)
 
         public PegType(string id, int maxLevel = 3, bool mergeable = true, PegEffect effect = PegEffect.Plain,
-                       IReadOnlyList<float> scoreMultipliers = null, IReadOnlyList<int> pieces = null,
-                       IReadOnlyList<float> valueShares = null, int maxStonesPerThrow = 4, bool splitHitsCountForMastery = true,
+                       IReadOnlyList<float> multBonuses = null, IReadOnlyList<int> pieces = null,
+                       int maxStonesPerThrow = 4, bool splitHitsCountForMastery = true,
                        IReadOnlyList<float> cooldowns = null, int followUps = 0)
         {
             FollowUps = followUps < 0 ? 0 : followUps;
@@ -34,22 +33,18 @@ namespace Piglings.Rules
             MaxLevel = maxLevel < 1 ? 1 : maxLevel;
             Mergeable = mergeable;
             Effect = effect;
-            _scoreMultipliers = Copy(scoreMultipliers);
+            _multBonuses = Copy(multBonuses);
             _pieces = Copy(pieces);
-            _valueShares = Copy(valueShares);
             _cooldowns = Copy(cooldowns);
             MaxStonesPerThrow = maxStonesPerThrow < 1 ? 1 : maxStonesPerThrow;
             SplitHitsCountForMastery = splitHitsCountForMastery;
         }
 
-        /// <summary>Bouncy: the score multiplier at this level. Never below 1 (a 0 from an unfilled Inspector entry = no bonus).</summary>
-        public float ScoreMultiplierAt(int level) => System.Math.Max(1f, At(_scoreMultipliers, level, 1f));
+        /// <summary>What it adds to its chain's mult when it triggers at this level (Bouncy +1 / +2…; M10.S). Never negative; none = 0.</summary>
+        public float MultBonusAt(int level) => System.Math.Max(0f, At(_multBonuses, level, 0f));
 
         /// <summary>Splitter: stones after a split at this level, the original included. At least 1 (1 = no split).</summary>
         public int PiecesAt(int level) => System.Math.Max(1, At(_pieces, level, 1));
-
-        /// <summary>Splitter: × the stone's value each stone carries after a split at this level. Never negative.</summary>
-        public float ValueShareAt(int level) => System.Math.Max(0f, At(_valueShares, level, 1f));
 
         /// <summary>Bomb: seconds it stays spent after going off at this level (counted only while the wall moves).</summary>
         public float CooldownAt(int level) => System.Math.Max(0f, At(_cooldowns, level, 0f));

@@ -79,8 +79,8 @@ namespace Piglings.Definitions
         /// <summary>This level's numbers; a level past the list uses the last entry. Null when the list is empty.</summary>
         public PegLevel Level(int level) => levels.Count == 0 ? null : levels[Mathf.Clamp(level - 1, 0, levels.Count - 1)];
 
-        /// <summary>Bouncy: × what a ball's victims score after bouncing off it, per level (1 = no bonus).</summary>
-        public float ScoreMultiplierAt(int level) => Level(level)?.scoreMultiplier ?? 1f;
+        /// <summary>What it adds to its chain's mult when it triggers at this level (M10.S; 0 = none).</summary>
+        public float MultBonusAt(int level) => Level(level)?.multBonus ?? 0f;
 
         /// <summary>Bouncy: the peg's physical bounciness at this level (0 = the hold's own material).</summary>
         public float BouncinessAt(int level) => Level(level)?.bounciness ?? 0f;
@@ -90,9 +90,6 @@ namespace Piglings.Definitions
 
         /// <summary>Splitter: degrees between the outermost pieces' directions.</summary>
         public float FanAngleAt(int level) => Level(level)?.fanAngle ?? 0f;
-
-        /// <summary>Splitter: × the stone's value each stone carries after the split (1 = each carries it in full).</summary>
-        public float ValueShareAt(int level) => Level(level)?.valueShare ?? 1f;
 
         /// <summary>Bomb: climbing robots within this many world units of it are knocked loose.</summary>
         public float BombRadiusAt(int level) => Level(level)?.bombRadius ?? 0f;
@@ -130,10 +127,11 @@ namespace Piglings.Definitions
                  "(level 2 counts double).")]
         [Min(0f)] public float masteryWeight = 0f;
 
+        [Tooltip("M10.S: what this peg adds to its chain's MULT when it triggers at this level (Bouncy: a stone or ball bouncing " +
+                 "off it, once per peg per stone / ball; Splitter: a split; Bomb: an explosion). Bouncy +1 / +2…; 0 = none.")]
+        [Min(0f)] public float multBonus = 0f;
+
         [Header("Bouncy")]
-        [Tooltip("× what a falling ball's victims score after it bounces off this peg (2 = double). Not what they carry on. " +
-                 "Several Bouncy pegs add their extra part: two ×2 pegs = ×3.")]
-        [Min(1f)] public float scoreMultiplier = 2f;
         [Tooltip("Physical bounciness of the peg (0..1+). Balls and stones visibly pop off it. 0 = the hold's own material.")]
         [Min(0f)] public float bounciness = 0.8f;
 
@@ -142,8 +140,6 @@ namespace Piglings.Definitions
         [Min(1)] public int pieces = 2;
         [Tooltip("Degrees between the outermost pieces, fanned around the stone's direction after the bounce. Same speed.")]
         [Range(0f, 180f)] public float fanAngle = 30f;
-        [Tooltip("Each stone (the original too) carries the stone's value × this. 1 = every piece carries it in full.")]
-        [Min(0f)] public float valueShare = 1f;
 
         [Header("Bomb")]
         [Tooltip("A stone or falling ball that hits it knocks every CLIMBING robot within this radius (world units) loose.")]

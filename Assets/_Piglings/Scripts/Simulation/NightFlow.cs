@@ -43,15 +43,17 @@ namespace Piglings.Simulation
         [SerializeField] private NightSession session;
         [SerializeField] private CameraDirector director;
 
-        [Header("Camera moves (seconds)")]
-        [Tooltip("Boot: from the Doors into the barn room.")]
-        [SerializeField, Min(0f)] private float bootSeconds = 1.2f;
-        [Tooltip("Barn room ⇄ Tower.")]
+        [Header("Camera moves")]
+        [Tooltip("Barn room ⇄ Tower (seconds).")]
         [SerializeField, Min(0f)] private float towerSeconds = 1f;
-        [Tooltip("Start night: the barn room up to the Night frame (the moon rises meanwhile).")]
+        [Tooltip("Start night: the doors close first, for this beat (seconds) — then the camera rises.")]
+        [SerializeField, Min(0f)] private float doorsCloseSeconds = 0.3f;
+        [Tooltip("Start night: the barn room up to the Night frame (seconds; the moon rises meanwhile).")]
         [SerializeField, Min(0f)] private float riseSeconds = 2.5f;
-        [Tooltip("To the barn / Next night: from the Night frame down to the Doors.")]
-        [SerializeField, Min(0f)] private float descendSeconds = 1.5f;
+        [Tooltip("To the barn / Next night (M10.S): ONE move — down to the doors, speeding up, the reload, then on into the barn " +
+                 "room, slowing down. Both halves meet at this speed (world units / s), so the reload sits inside the move. " +
+                 "Higher = quicker.")]
+        [SerializeField, Min(0.1f)] private float transitSpeed = 8f;
 
         [Header("After the night")]
         [Tooltip("Out of stones: the wolf's chimney climb — how long after the night is lost before the post-run shows (the " +
@@ -76,6 +78,33 @@ namespace Piglings.Simulation
 
         /// <summary>Start night pressed: the camera starts rising, for this many seconds. The moon-rise hook (no moon art yet).</summary>
         public event System.Action<float> MoonRises;
+
+        /// <summary>To the barn / Next night: the camera goes down to the doors, for this many seconds. The moon-set hook.</summary>
+        public event System.Action<float> MoonSets;
+
+        /// <summary>
+        /// How much it's day, 0..1 (M10.S), for the background: day in the barn (boot, barn room, tower), night from the rise
+        /// on; the rise crossfades day → night and the descent night → day, with the camera's move. The post-run is at night.
+        /// </summary>
+        public float Daylight
+        {
+            get
+            {
+                float moved = director != null ? director.Progress : 1f;
+                switch (State)
+                {
+                    case FlowState.Boot: case FlowState.BarnRoom: case FlowState.Tower: return 1f;
+                    case FlowState.Rising: return _riseStarted ? 1f - moved : 1f;
+                    case FlowState.Descending: return moved;
+                    case FlowState.Leaving: return _leavingToDay ? 1f : 0f;
+                    default: return 0f;
+                }
+            }
+        }
+
+        private bool _riseStarted;     // Rising: the doors' beat is over, the camera is moving
+        private float _risingSince;
+        private bool _leavingToDay;    // Leaving after the descent (the barn) vs a fast Retry (still night)
 
         /// <summary>
         /// Out of stones: the wolf starts his climb to the chimney, and the post-run waits this many seconds (Wolf Seconds) for
@@ -187,7 +216,14 @@ namespace Piglings.Simulation
             {
                 case FlowState.Boot:
                     DoorsOpen = true;
-                    if (director != null) { director.SnapTo(CameraFrame.Doors); director.MoveTo(CameraFrame.BarnRoom, bootSeconds); }
+                    // The second half of To the barn / Next night (the reload sits in the middle): from the doors, already at
+                    // transit speed, slowing into the barn room — the same speed the descent arrived with.
+                    if (director != null)
+                    {
+                        director.SnapTo(CameraFrame.Doors);
+                        director.MoveTo(CameraFrame.BarnRoom, CameraFraming.SecondsAtPeakSpeed(director.DistanceTo(CameraFrame.BarnRoom), transitSpeed),
+                                        CameraEase.Out);
+                    }
                     break;
                 case FlowState.BarnRoom:
                     // From Boot the camera is already there; from the Tower it comes back.
@@ -197,11 +233,13 @@ namespace Piglings.Simulation
                     if (director != null) director.MoveTo(CameraFrame.Tower, towerSeconds);
                     break;
                 case FlowState.Rising:
-                    if (director != null) director.MoveTo(CameraFrame.Night, riseSeconds);
-                    MoonRises?.Invoke(riseSeconds);
+                    // The doors close as the camera leaves the barn room; after their beat, the rise (Update).
+                    DoorsOpen = false;
+                    _riseStarted = false;
+                    _risingSince = Time.time;
                     break;
                 case FlowState.Night:
-                    // The doors close out of view (the Night frame doesn't reach the barn's bottom).
+                    // Closed since Start night (Rising); a fast Retry boots straight here, so close them here too.
                     DoorsOpen = false;
                     if (session.State.Phase == NightPhase.Dusk) session.BeginNight();
                     break;
@@ -217,7 +255,12 @@ namespace Piglings.Simulation
                     LogPostRun();
                     break;
                 case FlowState.Descending:
-                    if (director != null) director.MoveTo(CameraFrame.Doors, descendSeconds);
+                    // The first half of one continuous move: speeding up into the doors (the boot after the reload carries
+                    // on at the same speed). The background turns to day and the moon sets meanwhile (Daylight).
+                    float seconds = director != null
+                        ? CameraFraming.SecondsAtPeakSpeed(director.DistanceTo(CameraFrame.Doors), transitSpeed) : 0f;
+                    if (director != null) director.MoveTo(CameraFrame.Doors, seconds, CameraEase.In);
+                    MoonSets?.Invoke(seconds);
                     break;
             }
         }
@@ -230,6 +273,14 @@ namespace Piglings.Simulation
                     if (!CameraMoving) SetState(FlowState.BarnRoom);
                     break;
                 case FlowState.Rising:
+                    if (!_riseStarted)
+                    {
+                        if (Time.time - _risingSince < doorsCloseSeconds) break;
+                        _riseStarted = true;
+                        if (director != null) director.MoveTo(CameraFrame.Night, riseSeconds);
+                        MoonRises?.Invoke(riseSeconds);
+                        break;
+                    }
                     if (!CameraMoving) SetState(FlowState.Night);
                     break;
                 case FlowState.Night:
@@ -242,6 +293,7 @@ namespace Piglings.Simulation
                     if (CameraMoving) break;
                     // At the doors: they open, and the reloaded scene boots here (Doors → barn room).
                     DoorsOpen = true;
+                    _leavingToDay = true;
                     SetState(FlowState.Leaving);
                     session.GoToNight(_leaveTo, _leaveWhy);
                     break;

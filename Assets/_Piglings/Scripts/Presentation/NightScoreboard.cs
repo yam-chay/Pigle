@@ -35,6 +35,9 @@ namespace Piglings.Presentation
         [Tooltip("How long the bar takes to glide to a new score (about; 0 = snap). At a threshold it fills up first, then " +
                  "starts the new hour from empty — it never runs backwards.")]
         [SerializeField, Min(0f)] private float barEaseSeconds = 0.35f;
+        [Tooltip("M10.S: the score number climbs to a new total in about this many seconds (a chain's mult lands as one jump at " +
+                 "its close: this makes it a quick climb). 0 = snap.")]
+        [SerializeField, Min(0f)] private float scoreClimbSeconds = 0.4f;
 
         [Header("Throws")]
         [Tooltip("One LAST THROWS row, laid out once (label = \"9 wolves · depth 2\", detail = \"+620\", marker = the pill). " +
@@ -58,6 +61,9 @@ namespace Piglings.Presentation
 
         // What the texts show now, so they're only rebuilt when something changed (TMP rebuilds are not free).
         private int _shownScore = -1, _shownHour = -1, _shownReached = -1;
+        private float _climbShown, _climbTarget, _climbRate;
+        private int _climbDrawn = -1;
+        private string _scoreSuffix = "", _suffixDrawn;
         private bool _shownDawn;
 
         // The bar glides: where the score is (target) vs. what's drawn (shown), each with the hour it belongs to.
@@ -99,6 +105,7 @@ namespace Piglings.Presentation
         private void LateUpdate()
         {
             ShowHour();
+            ClimbScore();
             GlideBar();
             // Quality colours can animate (pulse, rainbow): repainted every frame. Solid ones cost a colour set.
             for (int i = 0; i < _rows.Count && i < _last.Count; i++) PaintThrow(_rows[i], _last[i]);
@@ -124,11 +131,24 @@ namespace Piglings.Presentation
                 hourText.text = s.Dawn ? "DAWN" : $"HOUR {hour} · ×{session.HourMultiplierAt(hour):0.##}";
                 hourText.color = s.Dawn ? session.DawnColour : session.HourColour(hour);
             }
-            if (scoreText != null) scoreText.text = s.Dawn ? $"{s.Score}" : $"{s.Score} / {to}";
+            _scoreSuffix = s.Dawn ? "" : $" / {to}";
+            _climbRate = scoreClimbSeconds > 0f ? Mathf.Max(1f, Mathf.Abs(s.Score - _climbShown) / scoreClimbSeconds) : float.MaxValue;
+            _climbTarget = s.Score;
             if (gapText != null) gapText.text = s.Dawn ? "" : $"hour {segment} gap: {from} -> {to}";
             // The bar's target; GlideBar moves it there.
             _barTarget = s.Dawn ? 1f : Mathf.Clamp01((s.Score - from) / (float)Mathf.Max(1, to - from));
             _targetSegment = segment;
+        }
+
+        // The score number climbs to the total at a rate set when the total changed (so a big jump takes as long as a small one).
+        private void ClimbScore()
+        {
+            if (scoreText == null) return;
+            _climbShown = Mathf.MoveTowards(_climbShown, _climbTarget, _climbRate * Time.deltaTime);
+            int shown = Mathf.RoundToInt(_climbShown);
+            if (shown == _climbDrawn && _scoreSuffix == _suffixDrawn) return;
+            _climbDrawn = shown; _suffixDrawn = _scoreSuffix;
+            scoreText.text = $"{shown}{_scoreSuffix}";
         }
 
         // Eases the drawn fill toward the score. A new hour: finish filling the old one first, then start the new one

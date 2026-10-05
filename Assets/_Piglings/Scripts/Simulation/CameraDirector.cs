@@ -63,6 +63,7 @@ namespace Piglings.Simulation
         private bool _placed;            // a frame was set (by NightFlow, or Start's default)
         private CameraPose _from, _to;
         private float _seconds, _elapsed;
+        private CameraEase _ease;
         private bool _warnedNoTower;
 
         /// <summary>True while easing between frames. NightFlow keeps its buttons off meanwhile.</summary>
@@ -108,6 +109,9 @@ namespace Piglings.Simulation
             return CameraFraming.Override(computed, night.CameraY, night.CameraSize);
         }
 
+        /// <summary>How far (world units, up / down) the camera is from a frame right now — for timing a move by its speed.</summary>
+        public float DistanceTo(CameraFrame frame) => cam != null ? Mathf.Abs(PoseOf(frame).Y - Current().Y) : 0f;
+
         /// <summary>Jump to a frame, no move (the boot after a reload: the same view as before it, so the cut is invisible).</summary>
         public void SnapTo(CameraFrame frame)
         {
@@ -135,8 +139,12 @@ namespace Piglings.Simulation
         /// Ease from wherever the camera is now (mid-move too) to a frame over <paramref name="seconds"/>.
         /// The target pose is read now: a frame that changes later (a rebuilt tower) needs another MoveTo.
         /// </summary>
-        public void MoveTo(CameraFrame frame, float seconds)
+        public void MoveTo(CameraFrame frame, float seconds) => MoveTo(frame, seconds, CameraEase.InOut);
+
+        /// <summary>A move with a given ease shape (M10.S: In / Out let two moves join at full speed across a reload).</summary>
+        public void MoveTo(CameraFrame frame, float seconds, CameraEase ease)
         {
+            _ease = ease;
             if (seconds <= 0f || cam == null) { SnapTo(frame); return; }
             _placed = true;
             Target = frame;
@@ -162,7 +170,7 @@ namespace Piglings.Simulation
                 _zoomTarget = 0f;
                 _elapsed += Time.deltaTime;
                 float t = _elapsed / _seconds;
-                pose = CameraFraming.Between(_from, _to, CameraFraming.Ease(t));
+                pose = CameraFraming.Between(_from, _to, CameraFraming.Ease(t, _ease));
                 if (t >= 1f) { IsMoving = false; _rest = _to; }
             }
             _nudge = Vector2.SmoothDamp(_nudge, _nudgeTarget, ref _nudgeVelocity, nudgeSeconds);

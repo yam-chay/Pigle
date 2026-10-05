@@ -82,6 +82,8 @@ namespace Piglings.Definitions
         [Min(0)] public int stonesNeeded = 10;
         [Tooltip("Stones added at each hour's placement round at this level (campaign).")]
         [Min(0)] public int refill = 1;
+        [Tooltip("M10.S: a throw at this level starts its chain's SCORE with this (10 / 20 / 40 / 80).")]
+        [Min(0)] public int baseScore = 10;
         [Tooltip("The weapon's sprite at this level (the stone should fill the canvas). Empty = the level before's.")]
         public Sprite sprite;
         [Tooltip("× Radius. Collider and sprite scale together. The pile's spacing grows with it too.")]

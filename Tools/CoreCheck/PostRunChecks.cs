@@ -7,16 +7,22 @@ using Piglings.Definitions; using Piglings.Events; using Piglings.Meta; using Pi
 // which buttons show, and the hour colours by night progress.
 partial class P{
 static void PostRunChecks(){
+ // --- The stone's base by evolution level (M10.S) ---
+ { var sp=new StoneProgression(new[]{10,20,30},10,25);
+   Check(sp.BaseScoreFor(1)==10 && sp.BaseScoreFor(2)==20 && sp.BaseScoreFor(3)==40 && sp.BaseScoreFor(4)==80 && sp.BaseScoreFor(9)==80 && sp.BaseScoreFor(0)==10,
+     "the stone's base by level: 10 / 20 / 40 / 80 (past the list → the last)");
+   var custom=new StoneProgression(new int[0],10,25,new[]{new StoneEvolution(10,1,5),new StoneEvolution(12,2,-3)});
+   Check(custom.BaseScoreFor(1)==5 && custom.BaseScoreFor(2)==0,"a level's own base; never negative"); }
  // --- The night's facts ---
  { var n=new Night(new NightGoal(new[]{50,5000},10,0));
-   n.Play(1);                        // hour 1: 10
+   n.Play(1);                        // hour 1: 20
    var big=n.Throw(3); n.Settle(big); // hour 1: 60 (crosses 50) -> round
    n.Ref.EndPlacement();
-   n.Play(2);                        // hour 2: 10x1.5 + 20x1.5 = 45
-   Check(n.St.Hours.Count==2 && n.St.Hours[0].BestThrow==60 && n.St.Hours[1].BestThrow==45,
-     $"best throw per hour, by the hour it was thrown in (h1 60, h2 45; got {n.St.Hours[0].BestThrow}, {(n.St.Hours.Count>1?n.St.Hours[1].BestThrow:-1)})");
+   n.Play(1);                        // hour 2: 20 × 1.5 = 30
+   Check(n.St.Hours.Count==2 && n.St.Hours[0].BestThrow==60 && n.St.Hours[1].BestThrow==30,
+     $"best throw per hour, by the hour it was thrown in (h1 60, h2 30; got {n.St.Hours[0].BestThrow}, {(n.St.Hours.Count>1?n.St.Hours[1].BestThrow:-1)})");
    n.Play(0);
-   Check(n.St.Hours[1].BestThrow==45,"a miss doesn't touch the hour's best"); }
+   Check(n.St.Hours[1].BestThrow==30,"a miss (0 with the test curve's base 0) doesn't touch the hour's best"); }
  { var n=new Night(new NightGoal(new[]{5000},10,0));
    n.Settle(n.Throw(4));          // 4 robots, depth 0
    n.Settle(n.ThrowLine(3));      // 3 robots, depth 2
@@ -134,6 +140,16 @@ static void PostRunChecks(){
    Check(PostRunProgress.Build(before,padded,"stone",stones,plan,types,rule).Pegs.Count==0,"triggers [2] vs [2, 0]: nothing moved, no row");
    Check(PostRunProgress.Build(before,after,"stone",null,null,types,rule).Stone==null && PostRunProgress.Build(before,after,"stone",null,null,types,rule).Pegs.Count==0,
      "no stone rule / no campaign plan: no stone row, no peg rows (Night.unity)"); }
+ // --- Records rows: how close tonight came (M10.S) ---
+ { Check(Math.Abs(RecordsReport.Closeness(310,620)-0.5f)<1e-5f && RecordsReport.Closeness(620,620)==1f && RecordsReport.Closeness(700,620)==1f,
+     "records bar: tonight ÷ the record (310 of 620 = half); tied or broken = full");
+   Check(RecordsReport.Closeness(0,620)==0f && RecordsReport.Closeness(5,0)==1f && RecordsReport.Closeness(0,0)==0f,"nothing tonight = empty; a first record = full");
+   var before=new PlayerProfile(); before.Records.BestThrow=620; var after=ProfileJson.Copy(before); after.Records.LongestChain=9;
+   var tonight=new NightRecords{ BestThrow=310, LongestChain=9 };
+   var rep=PostRunProgress.Build(before,after,"stone",null,null,null,null,tonight);
+   Check(rep.Records.Tonight.BestThrow==310 && rep.Records.Tonight.LongestChain==9 && rep.Records.New.LongestChain && !rep.Records.New.BestThrow,
+     "the report carries tonight's values next to the records (and NEW where beaten)");
+   Check(PostRunProgress.Build(before,after,"stone",null,null,null,null).Records.Tonight.BestThrow==0,"no tonight given: zeros"); }
  { var bar=new ProgressBar(0.7f,0.4f,false);
    Check(bar.Before==0.7f && bar.After==0.7f && bar.Gain==0f,"a bar never runs backwards (after below before → before)");
    var ready=new ProgressBar(0.3f,0.2f,true);
@@ -157,6 +173,14 @@ static void PostRunChecks(){
      if((a==PostRunAction.ToBarn && b==PostRunAction.NextNight) || (a==PostRunAction.NextNight && b==PostRunAction.ToBarn) || a==b) never=false; }
    Check(never,"never To the barn and Next night together, never the same button twice"); }
 
+ // --- The hour dots: exactly one per hour + one for dawn (the bug: 7 + the reached hours again) ---
+ { var lost=HourDots.For(7,2,false); int lit=0; foreach(var d in lost) if(d.Lit) lit++;
+   Check(lost.Count==8 && lit==2 && lost[0].Lit && lost[1].Lit && !lost[2].Lit && lost[7].IsDawn && !lost[7].Lit && lost[7].Hour==8,
+     $"dots (7 hours, reached 2, no dawn): 8 dots, hours 1-2 lit, the dawn dot dim (got {lost.Count} dots, {lit} lit)");
+   var won=HourDots.For(7,7,true); bool all=true; foreach(var d in won) all&=d.Lit;
+   Check(won.Count==8 && all && won[7].IsDawn && !won[6].IsDawn,"dots (7 hours, dawn): 8 dots, all lit, the last is dawn's (gold)");
+   Check(HourDots.For(7,99,false).Count==8 && HourDots.For(7,-1,false)[0].Lit==false && HourDots.For(0,0,false).Count==2,
+     "dots: reached clamped; never more than hours + 1"); }
  // --- Hour colours by night progress: the palette over the hours + dawn (dawn = the last colour, post_run_v5) ---
  Check(PaletteSampling.Position(1,6,7)==0f && PaletteSampling.Position(6,6,7)==5f && PaletteSampling.Position(7,6,7)==6f && PaletteSampling.Dawn(7)==6f,
    "a 6-hour night on 7 colours: one each (hour 1 = the first, hour 6 = the 6th), dawn = the 7th (the gold)");
@@ -165,5 +189,7 @@ static void PostRunChecks(){
  Check(PaletteSampling.Position(0,5,7)==0f && PaletteSampling.Position(9,5,7)==6f && PaletteSampling.Position(1,1,7)==0f && PaletteSampling.Position(3,5,1)==0f,
    "clamped: before hour 1 / past dawn / a one-hour night's hour 1 / one colour");
  Check(PaletteSampling.Position(1,1,7)==0f && PaletteSampling.Position(2,1,7)==6f,"a one-hour night: hour 1 the first colour, dawn the last");
+ Check(PaletteSampling.Position(7,7,8)==6f && PaletteSampling.Dawn(8)==7f && PaletteSampling.Position(99,7,8)==7f,
+   "8 colours, 7 hours: hour 7 = the 7th, dawn = the 8th (gold); past dawn is clamped to the last, never wrapped");
 }
 }

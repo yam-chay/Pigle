@@ -8,8 +8,9 @@ namespace Piglings.Simulation
     /// A climbing hold — and a peg socket. Its collider sits on the Holds layer, which only collides with RobotBall and
     /// Throwable, so it acts as a pin for falling balls, not for climbers.
     ///
-    /// When a peg is placed here, hits matter: a flying stone or a falling ball touching it is reported to the Rules
-    /// (NightSession.HitPeg), which decide the effect and publish the facts. An empty socket reports nothing.
+    /// Every hit of a flying stone or a falling ball is reported to the Rules (NightSession.HitPeg), which decide what it
+    /// does and publish the facts: a plain hold (no peg) adds the plain-peg score to the chain (M10.S, once per hold per
+    /// stone / ball), a placed peg its effect.
     /// This does the physical half of what they decide: split the stone (Splitter), or blow the climbing robots in range
     /// loose and push what's falling (Bomb).
     /// Its socket number and session come from PegBoard.Bind (NightSession calls it in Awake) — no lookups.
@@ -32,7 +33,7 @@ namespace Piglings.Simulation
 
         private void OnCollisionEnter2D(Collision2D c)
         {
-            if (_session == null || _socket < 0 || _session.State.Sockets[_socket].IsEmpty) return;
+            if (_session == null || _socket < 0) return;
 
             if (c.collider.TryGetComponent(out Throwable stone))
             {

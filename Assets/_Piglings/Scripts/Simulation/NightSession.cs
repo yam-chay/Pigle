@@ -227,11 +227,16 @@ namespace Piglings.Simulation
         {
             var types = new List<string>();
             foreach (var peg in CampaignPegTypes()) types.Add(peg.Id);
+            var tonight = new NightRecords
+            {
+                BestThrow = State.BestThrowPoints, LongestChain = State.LongestChain, DeepestChain = State.DeepestChain,
+                BestNightScore = State.Score,
+            };
             return PostRunProgress.Build(ProfileBeforeTonight, Profile, _night.Throwable.Id, _stones, Plan, types, id =>
             {
                 var peg = campaign != null ? campaign.FindPeg(id) : null;
                 return peg != null ? ProgressionFor(peg) : null;
-            });
+            }, tonight);
         }
 
         /// <summary>
@@ -313,7 +318,7 @@ namespace Piglings.Simulation
             // The evolutions: one per entry of the weapon's Levels list (its look stays in the definition).
             var evolutions = new List<StoneEvolution>();
             foreach (var level in weapon.Levels)
-                if (level != null) evolutions.Add(new StoneEvolution(level.stonesNeeded, level.refill));
+                if (level != null) evolutions.Add(new StoneEvolution(level.stonesNeeded, level.refill, level.baseScore));
             _stones = new StoneProgression(weapon.StoneThresholds, weapon.StartStones, weapon.MaxStones, evolutions);
             var problem = MasteryLevels.Problem(weapon.StoneThresholds);
             if (problem != null) Debug.LogWarning($"{weapon.name}: stone thresholds — {problem}.", weapon);
@@ -453,11 +458,34 @@ namespace Piglings.Simulation
             return result;
         }
 
-        // Any number of colours fits any night now (sampled over its hours); only an empty palette is worth a word.
-        private void CheckPalette()
+        // One colour per hour + dawn's (the last) is the intent (8 colours = 7 hours + dawn). A night with more hours than
+        // that still plays — the hours blend between colours — but it says so. Checked at load, and in the editor (OnValidate).
+        private void CheckPalette() => PaletteProblems(true);
+
+        private void OnValidate() => PaletteProblems(false);
+
+        private void PaletteProblems(bool atLoad)
         {
-            if (hourPalette != null && hourPalette.Count == 0)
+            if (hourPalette == null) return;
+            if (hourPalette.Count == 0)
+            {
                 Debug.LogWarning($"{hourPalette.name} has no colours: every hour is white.", hourPalette);
+                return;
+            }
+            if (atLoad) { WarnIfShort(_night); return; }
+            WarnIfShort(night);
+            if (campaign != null)
+                foreach (var entry in campaign.Nights) if (entry != null) WarnIfShort(entry.night);
+        }
+
+        private void WarnIfShort(NightDefinition n)
+        {
+            if (n == null || hourPalette == null) return;
+            int needed = n.Thresholds.Count + 1;   // its hours + dawn
+            if (needed > hourPalette.Count)
+                Debug.LogWarning($"{n.name}: {n.Thresholds.Count} hours + dawn need {needed} colours, but {hourPalette.name} has " +
+                                 $"{hourPalette.Count} — some hours will blend between colours. Add colours (the last stays dawn's gold).",
+                                 hourPalette);
         }
 
         // ---------- the save ----------
@@ -643,27 +671,25 @@ namespace Piglings.Simulation
         // how many same-type follow-up throws it has earned (campaign).
         private PegType ToPegType(PegDefinition peg, int followUps = 0)
         {
-            var multipliers = new float[peg.LevelCount];
+            var bonuses = new float[peg.LevelCount];
             var pieces = new int[peg.LevelCount];
-            var shares = new float[peg.LevelCount];
             var cooldowns = new float[peg.LevelCount];
-            for (int i = 0; i < multipliers.Length; i++)
+            for (int i = 0; i < bonuses.Length; i++)
             {
-                multipliers[i] = peg.ScoreMultiplierAt(i + 1);
+                bonuses[i] = peg.MultBonusAt(i + 1);
                 pieces[i] = peg.PiecesAt(i + 1);
-                shares[i] = peg.ValueShareAt(i + 1);
                 cooldowns[i] = peg.CooldownAt(i + 1);
             }
-            if (peg.Effect == PegEffect.Bouncy && peg.ScoreMultiplierAt(1) <= 1f)
-                Debug.LogWarning($"{peg.name}: Bouncy with a score multiplier of {peg.ScoreMultiplierAt(1)} at level 1 gives no " +
-                                 "bonus — fill its Levels list (a new entry starts at 0).", peg);
+            if (peg.Effect == PegEffect.Bouncy && peg.MultBonusAt(1) <= 0f)
+                Debug.LogWarning($"{peg.name}: Bouncy with a Mult Bonus of {peg.MultBonusAt(1)} at level 1 adds nothing — set its " +
+                                 "Levels' Mult Bonus (+1, +2…).", peg);
             if (peg.Effect == PegEffect.Bomb && peg.BombRadiusAt(1) <= 0f)
                 Debug.LogWarning($"{peg.name}: Bomb with a radius of {peg.BombRadiusAt(1)} at level 1 knocks nothing loose — fill its " +
                                  "Levels list (a new entry starts at 0).", peg);
             if (peg.Effect == PegEffect.Splitter && peg.PiecesAt(1) < 2)
                 Debug.LogWarning($"{peg.name}: Splitter with {peg.PiecesAt(1)} piece(s) at level 1 never splits — fill its Levels " +
                                  "list (a new entry starts at 0).", peg);
-            return new PegType(peg.Id, peg.MaxLevel, peg.Mergeable, peg.Effect, multipliers, pieces, shares,
+            return new PegType(peg.Id, peg.MaxLevel, peg.Mergeable, peg.Effect, bonuses, pieces,
                                peg.MaxStonesPerThrow, peg.CountSplitHitsForMastery, cooldowns, followUps);
         }
 
@@ -674,17 +700,18 @@ namespace Piglings.Simulation
             return a;
         }
 
-        // Without an asset the night still plays on ScoreCurve's defaults (10 / 10 / 10 / ×0.5, hours +0.5),
-        // but says so — silently scoring on values nobody chose would make tuning confusing.
+        // The stone's base comes from tonight's level (fixed when the night starts), the rest from the scoring asset. Without
+        // one the night still plays on ScoreCurve's defaults (wolves 10, holds 1, +1 per depth, hours +0.5), but says so —
+        // silently scoring on values nobody chose would make tuning confusing.
         private ScoreCurve BuildCurve()
         {
+            int stoneBase = _stones.BaseScoreFor(StoneAtStart.Level);
             if (scoring == null)
             {
                 Debug.LogWarning("NightSession: no ScoringDefinition assigned, using default scoring.", this);
-                return new ScoreCurve();
+                return new ScoreCurve(stoneBase);
             }
-            return new ScoreCurve(scoring.StoneValue, scoring.GrowthPerHit, scoring.WolfValue,
-                                  scoring.MultiplierPerDepth, scoring.CarryScoredTotal, scoring.HourMultiplierStep);
+            return new ScoreCurve(stoneBase, scoring.WolfValue, scoring.PlainPegScore, scoring.MultPerNewDepth, scoring.HourMultiplierStep);
         }
 
         private void OnDestroy()
