@@ -3,6 +3,7 @@ using Piglings.Events;
 using Piglings.Simulation;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace Piglings.Presentation
@@ -14,10 +15,11 @@ namespace Piglings.Presentation
     ///  - the score against the next threshold, with a fill bar (ui_pill) through the current hour, in its colour;
     ///  - "hour n gap: a → b";
     ///  - LAST THROWS (M10.S): the chains as they happen. A live chain's row ticks "SCORE × MULT × H2"; when it closes the
-    ///    row resolves into its result ("+360", in the hour's palette colour with the quality style) and stays as one of
-    ///    the last throws. Newest on top; older rows step down, shrink and dim; at most Row Brightness's length show. Misses
-    ///    (no wolf) leave no row.
-    ///  - BEST TONIGHT: the best result, the same way.
+    ///    row resolves into its result ("+360") and stays as one of the last throws. Newest on top; older rows step down,
+    ///    shrink and dim; at most Row Brightness's length show. Misses (no wolf) leave no row.
+    ///  - BEST TONIGHT: the best throw's breakdown ("84 × 3 × H2 =") and its result.
+    /// Colours: the Score Colours asset's quality bands (cream → amber → orange → red → magenta pulse → rainbow) by the
+    /// throw's quality (its worth ÷ its hour's gap) — a live row by its worth so far.
     /// The SCORE NUMBER moves only when a chain closes — straight to the new total, result included, with a climb; the hour
     /// BAR follows the raw score live and takes the remainder at the close (thresholds are checked on the real totals).
     /// Every field is optional. Reads only.
@@ -54,9 +56,10 @@ namespace Piglings.Presentation
         [SerializeField] private Vector2 rowStep = new Vector2(0f, -40f);
         [Tooltip("Each older row is this much smaller than the one above.")]
         [SerializeField, Range(0.3f, 1f)] private float olderScale = 0.85f;
-        [Tooltip("How fast rows glide to their place (higher = snappier).")]
-        [SerializeField, Min(0.1f)] private float rowGlide = 12f;
-        [Tooltip("The BEST TONIGHT row (not cloned): detail = the best result, marker — like a resolved throw row.")]
+        [Tooltip("About how many seconds a row takes to glide to its new place (smaller = snappier).")]
+        [FormerlySerializedAs("rowGlide")]
+        [SerializeField, Min(0.01f)] private float rowGlideSeconds = 0.2f;
+        [Tooltip("The BEST TONIGHT row (not cloned): label = the breakdown \"84 × 3 × H2 =\", detail = the result, marker.")]
         [SerializeField] private TemplateSlot best;
 
         // One row per chain: live while it falls, then its result.
@@ -65,13 +68,16 @@ namespace Piglings.Presentation
             public TemplateSlot Slot;
             public CanvasGroup Group;
             public bool Live = true;
-            public int Total, Hour;
+            public int Score, Total, Hour;
+            public float Mult = 1f, HourMultiplier = 1f;
+            public int Worth => Live ? Mathf.RoundToInt(Score * Mult * HourMultiplier) : Total;
         }
 
         private ScoreStyles _styles;
         private readonly Dictionary<GameId, Row> _byChain = new Dictionary<GameId, Row>();
         private readonly List<Row> _rows = new List<Row>();   // newest first
-        private int _bestTotal, _bestHour;
+        private int _bestTotal, _bestHour, _bestScore;
+        private float _bestMult;
         private Vector2 _rowTop;
         private Vector3 _rowScale;
 
@@ -127,11 +133,9 @@ namespace Piglings.Presentation
                 _byChain[e.Chain.Id] = row;
                 _rows.Insert(0, row);
             }
+            row.Score = e.Score; row.Mult = e.Mult; row.HourMultiplier = e.HourMultiplier;
             row.Slot.SetLabel($"{Numbers.Thousands(e.Score)} × {e.Mult:0.##} × H{e.Hour}");
             row.Slot.SetDetail("");
-            var colour = session.HourColour(e.Hour);
-            if (row.Slot.Label != null) row.Slot.Label.color = colour;
-            row.Slot.Tint(colour);
         }
 
         // The chain closes: its row resolves into the result and stays; a miss leaves no row. The number moves now.
@@ -146,7 +150,11 @@ namespace Piglings.Presentation
             row.Slot.SetLabel("");
             row.Slot.SetDetail($"+{Numbers.Thousands(e.Total)}");
             // Same rule as NightState.BestThrowPoints (most points, the first one keeps it on a tie).
-            if (e.Total > _bestTotal) { _bestTotal = e.Total; _bestHour = e.Hour; ShowBest(); }
+            if (e.Total > _bestTotal)
+            {
+                _bestTotal = e.Total; _bestHour = e.Hour; _bestScore = e.Score; _bestMult = e.Mult;
+                ShowBest();
+            }
             Trim();
         }
 
@@ -171,14 +179,19 @@ namespace Piglings.Presentation
             GlideBar();
             FloatRows();
             // Quality colours can animate (pulse, rainbow): repainted every frame. Solid ones cost a colour set.
-            foreach (var row in _rows) if (!row.Live) PaintResult(row.Slot, row.Total, row.Hour);
-            if (_bestTotal > 0) PaintResult(best, _bestTotal, _bestHour);
+            foreach (var row in _rows) Paint(row.Slot, row.Live ? row.Slot.Label : row.Slot.Detail, row.Worth, row.Hour);
+            if (_bestTotal > 0 && best != null)
+            {
+                Paint(best, best.Detail, _bestTotal, _bestHour);
+                Paint(null, best.Label, _bestTotal, _bestHour);
+            }
         }
 
         // Newest on top; each older one a step down, smaller and dimmer; past the shown count, invisible.
         private void FloatRows()
         {
-            float k = 1f - Mathf.Exp(-rowGlide * Time.deltaTime);
+            // Exponential glide: ~95% of the way in rowGlideSeconds.
+            float k = 1f - Mathf.Exp(-3f * Time.deltaTime / rowGlideSeconds);
             for (int i = 0; i < _rows.Count; i++)
             {
                 var rect = _rows[i].Slot.GetComponent<RectTransform>();
@@ -260,17 +273,17 @@ namespace Piglings.Presentation
         private void ShowBest()
         {
             if (best == null) return;
-            best.SetLabel(_bestTotal > 0 ? "" : "—");
+            best.SetLabel(_bestTotal > 0 ? $"{Numbers.Thousands(_bestScore)} × {_bestMult:0.##} × H{_bestHour} =" : "—");
             best.SetDetail(_bestTotal > 0 ? $"+{Numbers.Thousands(_bestTotal)}" : "");
         }
 
-        // A result: the hour's palette colour, with the quality style for its size (pulse, rainbow).
-        private void PaintResult(TemplateSlot slot, int total, int hour)
+        // A score's look from the Score Colours asset: its quality band (points ÷ its hour's gap) — solid, pulse or rainbow;
+        // the marker gets the band's base colour.
+        private void Paint(TemplateSlot slot, TMPro.TMP_Text text, int points, int hour)
         {
-            if (slot == null) return;
-            var colour = session.HourColour(hour);
-            TextColouring.Apply(slot.Detail, _styles.ForHour(colour, session.ThrowQuality(total, hour)), 0f, 0f, 1f);
-            slot.Tint(colour);
+            float quality = session.ThrowQuality(points, hour);
+            TextColouring.Apply(text, _styles.ForQuality(quality), 0f, 0f, 1f);
+            if (slot != null) slot.Tint(_styles.QualityColour(quality));
         }
     }
 }

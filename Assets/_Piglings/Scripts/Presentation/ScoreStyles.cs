@@ -43,22 +43,6 @@ namespace Piglings.Presentation
             return style;
         }
 
-        /// <summary>
-        /// A score in the HOUR PALETTE (M10.S): the hour's colour as the base, and the quality band's look on top — solid,
-        /// pulsing around the hour colour, or the animated rainbow for the biggest throws. Robot popups, the chain-close
-        /// popup, the board's throw rows all use it, so a score reads in the colour of the hour it was thrown in.
-        /// </summary>
-        public PopupColor ForHour(Color hourColour, float quality)
-        {
-            var look = _colours != null && _colours.BandIndex(quality) >= 0 ? _colours.BandFor(quality).look : QualityLook.Solid;
-            var key = (look, (Color32)hourColour);
-            if (_hourStyles.TryGetValue(key, out var style)) return style;
-            style = Build(look, hourColour);
-            _hourStyles[key] = style;
-            return style;
-        }
-        private readonly Dictionary<(QualityLook, Color32), PopupColor> _hourStyles = new Dictionary<(QualityLook, Color32), PopupColor>();
-
         /// <summary>The animated rainbow, whatever the quality (the post-run's best throw of the night). Same speed / spread as the bands'.</summary>
         public PopupColor Rainbow
         {
