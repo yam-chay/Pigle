@@ -142,7 +142,8 @@ merges the latest Production first (CLAUDE.md).
 | PR | What | Status |
 |---|---|---|
 | P | Progression: stone evolution list (look + refill per level, cap 25), peg copies up to 10 + same-type follow-ups (one per N copies), the 2-row pegboard | ✔ merged (#38, #39); follow-up chain in this PR |
-| E | Post-run screen (Yam's final spec below) + the out-of-stones loss, records, wolves dropped, hour colours by progress | ✔ this PR (editor steps pending) |
+| E | Post-run screen (Yam's final spec below) + the out-of-stones loss, records, wolves dropped, hour colours by progress | ✔ merged (#41, #42) |
+| S | Scoring model Score × Mult × Hour, the live chain counter, PR E playtest fixes (hour dots, records bars, HUD dim, flow) | this PR |
 | G | HUD reshape: screen-space night track + two screen-space chalkboards (record, tips); removes the world scoreboard and the HOURS card | after E (needs Yam's mockup + peg tip art) |
 | H | Night selection overlay (replaces Next night) | after G |
 | I | Pig face (Presentation only) | after H (any time) |
@@ -303,6 +304,100 @@ the dim overlay); TASKS.md ticked.
 something, new stones drop onto the rug one by one, the stones evolve (sprite swap + burst), the +N refill badge changes,
 new pegs fly to their holes on the pegboard. Reads the same before / after snapshot as the post-run (needs it to survive
 the reload: the save keeps "what the barn has shown" — design in F).
+
+### PR S — scoring model (Score × Mult) + live chain counter + PR E playtest fixes (planned 2026-10-05)
+Yam's spec, then how it's built, then the contradictions / interpretations. All numbers are placeholders (definitions /
+Inspector); Yam rebalances after it lands. Keeps PR P's follow-up rule as it is.
+
+**1. Scoring: chain-level SCORE × MULT × HOUR (Balatro-style)** — replaces the per-robot carried value.
+- SCORE (width), additive: + the stone's base when thrown (by evolution level: 10 / 20 / 40 / 80 — `ThrowableLevel.baseScore`
+  on the evolution list); + each wolf's value when knocked loose (any cause: stone, ball, bomb, a split piece); + the
+  plain-peg score (1) for each plain hold touched, once per hold per stone / ball.
+- MULT (depth), additive, starts at 1: + `multPerNewDepth` (1) each time the chain reaches a NEW depth (1, 2, 3… — one
+  per level, never per wolf, so wide chains don't gain mult); + a special peg's bonus when it triggers (`PegLevel.multBonus`:
+  Bouncy +1 / +2 by level, by stones AND balls, once per peg per stone / ball; Splitter / Bomb 0 by default, tunable).
+- HOUR: × the hour multiplier of the hour the chain was thrown in, at the close.
+- Result at close = SCORE × MULT × HOUR, rounded once. Mastery, records, best throws and the post-run use it.
+- Removed: `ScoringDefinition` stoneValue / growthPerHit / multiplierPerDepth / carryScoredTotal, the carried value, the
+  Bouncy "score-only" multiplier (`PegLevel.scoreMultiplier` → `multBonus`), the Splitter's value share, `RobotScored`.
+  Added: `ScoringDefinition` plainPegScore, multPerNewDepth; `ThrowableLevel.baseScore`; `PegLevel.multBonus`.
+
+**2. Score reaches the bar raw, then the mult lands as a jump**
+- During a chain every SCORE gain goes into the night score (and the hour bar) at once — raw, no mult.
+- At the close the score gets the remainder = result − raw already added (the scoreboard's number and bar climb to it).
+- Hour thresholds are checked on the real totals (raw as it comes, then the remainder). The placement round still waits
+  for the chains open at the crossing to settle.
+
+**3. Live chain counter** (screen space, under the night track — for now wherever Yam places it; the track is PR G)
+- Only numbers: "SCORE × MULT ×H2", a small label under each (score / mult / hour), ticking live. No event list.
+- One counter per chain; the newest on top, older ones move down and shrink; max 3 visible. At the close it shows the
+  result, then flies to the score and goes.
+- Board popups show the two parts: "+10" (score: cream → amber by size) and "+1 mult" (its own colour). No per-robot
+  points popup any more.
+
+**4. Post-run fixes (Yam's PR E playtest)**
+- Hour dots: ~20 white dots on a 7-hour dawn; 9 on a 2/7 loss. **Root cause: TestNight wires Hour Dot and Hour Row to the
+  same template**, so the BEST THROW rows were cloned as extra dots (7 + reached), tinted hour 1, 2… — not a palette wrap
+  (`PaletteSampling` clamps). Fixed in this PR's first commit (#42 didn't): `HourDots` (engine-free, CoreCheck) = exactly
+  hours + 1 dots, dawn last (gold only on a dawn); old clones cleared before a fill; one template for both is refused with
+  a warning. The palette warns (load + editor) when a night's hours + dawn exceed its colours (8 = 7 hours + dawn).
+- ALL-TIME RECORDS: each row = label · bar · value. The bar = tonight's value ÷ the record (how close you got); broken →
+  full, gold, a small NEW tag next to the value.
+- The live night HUD (scoreboard, counters, tips) dims while the post-run shows (CanvasGroups, Inspector alpha).
+- `HoursCardView` fails safe when not wired (it goes in PR G).
+
+**5. Flow fixes**
+- To the barn / Next night = one continuous move: Night frame → down to the doors while the background crossfades night →
+  day (the moon sets), the doors open as the camera arrives, and it carries on into the barn room — no second click.
+- Start night: the doors close as the camera leaves the barn room (a short beat), then the rise to the Night frame.
+- Builds on Yam's `BarnDoorsView` (two SpriteRenderers on BarnBottom, closed / open) — reads `NightFlow.DoorsOpen` as now.
+
+**How it's built**
+- *Rules*: `ChainTracker` keeps per chain Score, Mult, the deepest depth reached, the plain holds / pegs each hitter
+  already touched, and its hour multiplier; every gain → `ChainGained(chain, cause, source, socket, scoreAdded, multAdded,
+  score, mult, hour, hourMultiplier)` (new event; causes Stone / Wolf / PlainPeg / NewDepth / PegBonus) after adding the
+  raw score to `NightState.Score`. At the close: result, remainder into the score, then `ChainClosed` + `ChainScored`
+  (+ RawScore, Mult, HourMultiplier, Remainder). `ScoreCurve` = stone base, wolf value, plain-peg score, mult per new
+  depth, hour step, `Result(score, mult, hour)`. `NightReferee` checks thresholds on `ChainGained` (raw) and on
+  `ChainScored` (the remainder); per-hour score = raw + remainder by the chain's hour. `PegEffects`: every hold reports
+  hits (empty sockets too) → plain hold or Plain peg = +plain-peg score once per hold per hitter; Bouncy (stone or ball,
+  once per peg per hitter) → +multBonus; Splitter / Bomb → +multBonus when they trigger (0 by default).
+- *Simulation*: `Hold` reports every hit while in a chain; `NightSession` builds the curve from the scoring asset + the
+  stone's base at tonight's level. `CameraDirector.MoveTo` gets an ease shape (in-out / in / out); `NightFlow`: the descent
+  eases in, the reloaded boot eases out at the same peak speed (the move reads as one, across the reload), `Daylight`
+  0..1 for the background; Start night closes the doors, waits a beat, rises.
+- *Presentation*: `ChainCounterView` + `ChainCounter` (one per chain), `ScorePopupSpawner` (score / mult popups from
+  `ChainGained`; the chain-total popup becomes optional, off), `NightScoreboard` (the score number climbs), `CameraShake`
+  (depth trauma from `RobotLostGrip`), `DayNightBackground` (follows `NightFlow.Daylight` when it has a flow; Night.unity
+  as before), `PostRunRecordsPanel` (bars), `PostRunView` (dims the HUD).
+
+**Contradictions / interpretations** (my reading in bold — say if it's wrong)
+1. **A miss scores the stone's base** (× 1 × hour): "+ the stone's base value when thrown" makes every throw worth
+   something. Followed as written. Alternative if it feels wrong: the base joins the chain with its first wolf.
+2. **"PLAIN peg" = a hold with no effect**: an empty socket (a plain hold) or a placed Plain peg. Every hold on the wall is
+   a socket, so a ball rattling down gets +1 per hold it first touches. Special pegs give their mult, not the +1.
+3. **Split pieces**: a piece is not a throw — it adds no stone base; its hits add like any hit (wolves, plain holds, new
+   depths). The Splitter's value share has no meaning without a carried value → removed.
+4. **New depth = one per level reached**: a bomb's victims 1 deep from a stone (no depth-0 wolf yet) still give +1 for
+   depth 1; if a jump ever skipped a level, each level reached counts once (+step × levels gained).
+5. **Special-peg bonus is per level for every effect** (`multBonus`): the spec names only Bouncy (+1 by level); Splitter
+   and Bomb get the same field, 0 by default — tunable without code.
+6. **Mult is stored as a number with decimals** (shown "×3", "×3.5"), so a later peg can give +0.5 without a rewrite.
+7. **`RobotScored` goes**: there are no per-robot points any more. `ChainGained` is a new event (not `RobotScored`
+   reused); `ChainScored` keeps its meaning (the chain's result) and gains fields.
+8. **The dawn sweep** stays outside chains: each robot left on the wall scores the wolf value flat (×1). Not on a counter.
+9. **The night track doesn't exist yet** (PR G): the counter sits where Yam places it and flies to a target he sets
+   (the scoreboard's score for now); PR G moves it under the track.
+10. **"One continuous move" still reloads at the doors** (restart = reload, ARCHITECTURE). It reads as one move by
+    matching speeds across the reload (descent ease-in, boot ease-out). A load hitch of a frame or two may show; if it
+    does, the next step is loading the scene async while descending.
+11. **Background day / night in the campaign**: the day now comes with the descent (not at night end — the post-run is
+    over the night) and goes with the rise (the moon rises). Night.unity keeps fading to day at night end.
+12. **The scoreboard bar already glides**; the number now counts up too. The chain-total popup is optional (off): the
+    counter shows the result.
+13. **The DEPTH card** shows each depth's mult under the new rule (×1, ×2, ×3 with step 1) — still "what depth gives".
+14. **Records bar** needs tonight's values: the report now carries them (`RecordsReport.Tonight`); the bar is
+    tonight ÷ the record after tonight (1 = broken or tied).
 
 ### PR G — HUD reshape (replaces the world-space chalkboard and the HOURS card)
 - **Night track** (screen space, across the top): a thin line, one circle per hour (equal segments, not proportional to
