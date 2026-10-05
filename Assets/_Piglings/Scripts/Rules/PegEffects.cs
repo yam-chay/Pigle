@@ -33,8 +33,8 @@ namespace Piglings.Rules
     /// falling ball on a hold (NightSession.HitPeg, called by the Hold) and gets back what to do physically; everything that
     /// touches score or state is decided here, and published as facts.
     ///
-    /// - A plain hold (an empty socket) or a Plain peg: + the plain-peg score to the hitter's chain, once per hold per
-    ///   stone / ball (ChainTracker.TouchPlain, M10.S). A placed peg also publishes PegHit (views may react).
+    /// - A plain hold (an empty socket) or a Plain peg: + the plain-peg score to the hitter's chain on every contact, with a
+    ///   short cooldown per hold per stone / ball (ChainTracker.TouchPlain, M10.S). A placed peg also publishes PegHit (views may react).
     /// - Every special peg adds its level's mult bonus to the chain when it triggers (PegType.MultBonusAt; 0 = none):
     /// - Bouncy: a stone or a falling ball bouncing off it triggers it, once per peg per stone / ball (Bouncy +1 by level).
     /// - Splitter: a thrown stone (or piece) becomes PiecesAt(level) stones — it keeps flying and the Simulation launches
@@ -78,19 +78,22 @@ namespace Piglings.Rules
             _bus.Unsubscribe<ThrowableRemoved>(OnThrowableRemoved);
         }
 
-        /// <summary>Something hit the hold / peg in this socket. Returns what the Simulation should do about it.</summary>
-        public PegHitResult Hit(int socket, PegHitter hitter, GameId hitterId, ChainId chain)
+        /// <summary>
+        /// Something hit the hold / peg in this socket. Returns what the Simulation should do about it.
+        /// <paramref name="time"/>: the caller's clock (Time.time), for the plain holds' cooldown.
+        /// </summary>
+        public PegHitResult Hit(int socket, PegHitter hitter, GameId hitterId, ChainId chain, float time = 0f)
         {
             if (_state.Ended || socket < 0 || socket >= _state.Sockets.Length) return PegHitResult.None;
             var placed = _state.Sockets[socket];
             // A plain hold: only its score (no PegHit — balls rattle through holds all night).
-            if (placed.IsEmpty) { _chains.TouchPlain(chain, socket, hitterId); return PegHitResult.None; }
+            if (placed.IsEmpty) { _chains.TouchPlain(chain, socket, hitterId, time); return PegHitResult.None; }
             var type = _pegs.Find(placed.PegId);
             var effect = type != null ? type.Effect : PegEffect.Plain;
 
             _bus.Publish(new PegHit(socket, placed.PegId, placed.Level, effect, hitter, hitterId, chain));
 
-            if (effect == PegEffect.Plain) { _chains.TouchPlain(chain, socket, hitterId); return PegHitResult.None; }
+            if (effect == PegEffect.Plain) { _chains.TouchPlain(chain, socket, hitterId, time); return PegHitResult.None; }
             if (effect == PegEffect.Bouncy) return Bounce(socket, type, placed.Level, hitterId, chain);
             if (effect == PegEffect.Splitter && hitter == PegHitter.Stone) return Split(socket, type, placed.Level, hitterId, chain);
             if (effect == PegEffect.Bomb) return Explode(socket, placed, hitter, hitterId, chain, type);

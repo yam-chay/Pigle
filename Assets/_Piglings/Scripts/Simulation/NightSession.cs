@@ -244,7 +244,7 @@ namespace Piglings.Simulation
         /// publish the facts; the result says what to do physically.
         /// </summary>
         public PegHitResult HitPeg(int socket, PegHitter hitter, GameId hitterId, ChainId chain) =>
-            _pegEffects.Hit(socket, hitter, hitterId, chain);
+            _pegEffects.Hit(socket, hitter, hitterId, chain, Time.time);
 
         /// <summary>Tonight's PegDefinition for a peg id (sprites for the shelf and the board). Null if unknown.</summary>
         public PegDefinition FindPeg(string id)
@@ -711,7 +711,8 @@ namespace Piglings.Simulation
                 Debug.LogWarning("NightSession: no ScoringDefinition assigned, using default scoring.", this);
                 return new ScoreCurve(stoneBase);
             }
-            return new ScoreCurve(stoneBase, scoring.WolfValue, scoring.PlainPegScore, scoring.MultPerNewDepth, scoring.HourMultiplierStep);
+            return new ScoreCurve(stoneBase, scoring.WolfValue, scoring.PlainPegScore, scoring.MultPerNewDepth, scoring.HourMultiplierStep,
+                                  scoring.PlainHoldCooldown);
         }
 
         private void OnDestroy()

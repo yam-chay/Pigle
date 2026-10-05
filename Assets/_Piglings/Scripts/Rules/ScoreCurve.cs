@@ -6,8 +6,8 @@ namespace Piglings.Rules
     /// How a chain scores (M10.S, Balatro-style): two running numbers per chain, both additive, multiplied once at the close.
     ///
     ///  - SCORE ("width"): + StoneBase when the stone is thrown (by the stone's evolution level); + WolfValue for each robot
-    ///    knocked loose, whatever knocked it (stone, ball, bomb, a split piece); + PlainPegScore for each plain hold touched
-    ///    (once per hold per stone / ball).
+    ///    knocked loose, whatever knocked it (stone, ball, bomb, a split piece); + PlainPegScore for every contact with a
+    ///    plain hold (the same stone / ball on the same hold at most once per PlainHoldCooldown seconds).
     ///  - MULT ("depth"): starts at 1; + MultPerNewDepth each time the chain reaches a new depth (1, 2, 3… — once per
     ///    level, never per robot, so a wide chain doesn't gain mult); + a special peg's bonus when it triggers.
     ///  - Result = SCORE × MULT × the hour multiplier of the hour the chain was thrown in, rounded once.
@@ -25,10 +25,14 @@ namespace Piglings.Rules
         public int PlainPegScore { get; }
         public float MultPerNewDepth { get; }
         public float HourMultiplierStep { get; }  // each hour reached adds this to what chains score: ×1, ×1.5, ×2…
+        /// <summary>A plain hold scores every contact, but the same stone / ball on the same hold only once per this many
+        /// seconds — so a ball rattling or resting on a hold can't farm it (MaxFallSeconds still ends a stuck ball).</summary>
+        public float PlainHoldCooldown { get; }
 
         public ScoreCurve(int stoneBase = 10, int wolfValue = 10, int plainPegScore = 1, float multPerNewDepth = 1f,
-                          float hourMultiplierStep = 0.5f)
+                          float hourMultiplierStep = 0.5f, float plainHoldCooldown = 0.2f)
         {
+            PlainHoldCooldown = Math.Max(0f, plainHoldCooldown);
             StoneBase = Math.Max(0, stoneBase);
             WolfValue = Math.Max(0, wolfValue);
             PlainPegScore = Math.Max(0, plainPegScore);

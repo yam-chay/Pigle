@@ -76,16 +76,20 @@ static void ScoreChecks(){
  scored=null; before=st.Score; var miss=new ChainId(ids.Next()); var s4=ids.Next();
  bus.Publish(new ThrowReleased(miss,s4,"stone")); bus.Publish(new ThrowableRemoved(s4,miss));
  Check(scored.HasValue && scored.Value.RobotsDropped==0 && scored.Value.Total==10 && st.Score==before+10,"a miss -> ChainScored 10 (the base × 1)");
- // Plain holds: + 1 once per hold per hitter; a robot outside the chain or a closed chain adds nothing.
+ // Plain holds: + 1 every contact, the same hitter on the same hold at most once per cooldown (0.2 s by default);
+ // a closed chain (or none) adds nothing.
  { gains.Clear(); var ch=new ChainId(ids.Next()); var s=ids.Next(); var r=ids.Next();
    bus.Publish(new ThrowReleased(ch,s,"stone"));
-   Check(tr.TouchPlain(ch,4,s) && !tr.TouchPlain(ch,4,s) && tr.TouchPlain(ch,5,s),"plain hold: +1 per hold per stone (the same hold twice counts once)");
+   Check(tr.TouchPlain(ch,4,s,1f) && !tr.TouchPlain(ch,4,s,1.1f) && tr.TouchPlain(ch,5,s,1.1f),
+     "plain hold: +1; the same stone on the same hold 0.1 s later: nothing (cooldown); another hold: +1");
+   Check(tr.TouchPlain(ch,4,s,1.25f) && tr.TouchPlain(ch,4,s,1.5f),"...and every contact after the cooldown scores again (not once per hold)");
    bus.Publish(new RobotLostGrip(r,ch,Attribution.FromThrowable(s)));
-   Check(tr.TouchPlain(ch,4,r),"...a ball touching the same hold is a new hitter: +1 again");
-   Check(gains[gains.Count-1].Cause==ChainGainCause.PlainPeg && gains[gains.Count-1].Socket==4 && gains[gains.Count-1].Score==10+1+1+10+1,
-     "plain-hold gains carry the socket; the chain's score: 10 base + 3 holds + 10 wolf = 23");
+   Check(tr.TouchPlain(ch,4,r,1.5f),"a ball on the same hold at the same moment is another hitter: its own cooldown, +1");
+   Check(gains[gains.Count-1].Cause==ChainGainCause.PlainPeg && gains[gains.Count-1].Socket==4 && gains[gains.Count-1].Score==10+4+10+1,
+     "plain-hold gains carry the socket; the chain's score: 10 base + 5 contacts + 10 wolf = 25");
    bus.Publish(new ThrowableRemoved(s,ch)); bus.Publish(new RobotRemoved(r,ch,RemovalReason.HitGround));
-   Check(!tr.TouchPlain(ch,7,s) && !tr.TouchPlain(ChainId.None,7,s),"a closed chain (or none — the sweep) gains nothing"); }
+   Check(!tr.TouchPlain(ch,7,s,9f) && !tr.TouchPlain(ChainId.None,7,s,9f),"a closed chain (or none — the sweep) gains nothing"); }
+ Check(new ScoreCurve(10,10,1,1f,0.5f,-1f).PlainHoldCooldown==0f && new ScoreCurve().PlainHoldCooldown==0.2f,"the cooldown: 0.2 s by default, never negative");
  // A special peg's mult bonus.
  { var ch=new ChainId(ids.Next()); var s=ids.Next(); bus.Publish(new ThrowReleased(ch,s,"stone"));
    Check(tr.AddPegMult(ch,3,s,2f)==3f && tr.AddPegMult(ch,3,s,0f)==3f,"a peg bonus adds to the mult (1 + 2 = 3); 0 adds nothing");

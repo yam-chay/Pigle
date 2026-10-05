@@ -46,7 +46,9 @@ static void PegEffectChecks(){
  var empty=fx.Hit(4,PegHitter.Ball,r1,c);
  Check(empty.Outcome==PegOutcome.None && hits.Count==hitCount+1 && Score(c)==score+2,"an empty socket (a plain hold): + 1 score, nothing published but the gain");
  fx.Hit(4,PegHitter.Ball,r1,c); fx.Hit(4,PegHitter.Stone,s,c);
- Check(Score(c)==score+3,"the same hold again by the same ball: nothing; by the stone (a new hitter): + 1");
+ Check(Score(c)==score+3,"the same hold again by the same ball at once: nothing (cooldown); by the stone (another hitter): + 1");
+ fx.Hit(4,PegHitter.Ball,r1,c,0.5f);
+ Check(Score(c)==score+4,"the same ball on the same hold after the cooldown: + 1 again (every contact scores)");
  Check(fx.Hit(-1,PegHitter.Ball,r1,c).Outcome==PegOutcome.None && fx.Hit(99,PegHitter.Ball,r1,c).Outcome==PegOutcome.None,"a socket out of range: nothing");
  // A ball outside an open chain (the end-of-night sweep falls with ChainId.None) gets nothing
  int before=bounces.Count; var swept=n.Ids.Next();
@@ -54,7 +56,7 @@ static void PegEffectChecks(){
  // The close: score × mult (the pegs' mult included)
  n.Bus.Publish(new ThrowableRemoved(s,c)); n.Bus.Publish(new RobotRemoved(r1,c,RemovalReason.HitGround));
  var closed=n.Chains.Find(e=>e.Chain.Id==c.Id);
- Check(closed.Score==23 && Near(closed.Mult,6f) && closed.Total==138,$"the chain: (10 base + 10 wolf + 3 holds) × 6 = 138 (got {closed.Score} × {closed.Mult} = {closed.Total})");
+ Check(closed.Score==24 && Near(closed.Mult,6f) && closed.Total==144,$"the chain: (10 base + 10 wolf + 4 hold contacts) × 6 = 144 (got {closed.Score} × {closed.Mult} = {closed.Total})");
  // Night over: no more peg effects, no facts
  var n2=new Night(new NightGoal(new[]{1000},1,0),null,pegs); var fx2=new PegEffects(n2.Bus,n2.St,n2.Tr,pegs,n2.Ids);
  n2.St.Sockets[0].PegId="peg_bouncy"; n2.St.Sockets[0].Level=1;

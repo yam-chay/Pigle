@@ -30,8 +30,8 @@ namespace Piglings.Rules
             // How deep each robot of this chain is (a Bomb set off by its ball knocks robots one deeper).
             public readonly Dictionary<GameId, int> Depths = new Dictionary<GameId, int>();
 
-            // Plain holds already touched, per stone / ball: each one adds once per hitter.
-            public readonly HashSet<(int socket, GameId hitter)> Touched = new HashSet<(int, GameId)>();
+            // When each stone / ball last scored on each plain hold (the caller's clock): the cooldown between contacts.
+            public readonly Dictionary<(int socket, GameId hitter), float> Touched = new Dictionary<(int, GameId), float>();
         }
 
         private readonly EventBus _bus;
@@ -75,12 +75,16 @@ namespace Piglings.Rules
             !chain.IsNone && _open.TryGetValue(chain.Id, out var c) && c.Depths.TryGetValue(robot, out int d) ? d : -1;
 
         /// <summary>
-        /// A stone or ball of this chain touched a plain hold (an empty socket or a Plain peg): + the plain-peg score, once
-        /// per hold per hitter. False = nothing added (not an open chain, or already touched).
+        /// A stone or ball of this chain touched a plain hold (an empty socket or a Plain peg): + the plain-peg score, every
+        /// contact — but the same hitter on the same hold scores again only after PlainHoldCooldown seconds.
+        /// <paramref name="time"/> is the caller's clock (Rules can't keep time; NightSession passes Time.time).
+        /// False = nothing added (not an open chain, or still cooling down).
         /// </summary>
-        public bool TouchPlain(ChainId chain, int socket, GameId hitter)
+        public bool TouchPlain(ChainId chain, int socket, GameId hitter, float time)
         {
-            if (chain.IsNone || !_open.TryGetValue(chain.Id, out var c) || !c.Touched.Add((socket, hitter))) return false;
+            if (chain.IsNone || !_open.TryGetValue(chain.Id, out var c)) return false;
+            if (c.Touched.TryGetValue((socket, hitter), out float last) && time - last < _curve.PlainHoldCooldown) return false;
+            c.Touched[(socket, hitter)] = time;
             Gain(chain, c, ChainGainCause.PlainPeg, hitter, socket, _curve.PlainPegScore, 0f);
             return true;
         }

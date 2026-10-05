@@ -399,6 +399,23 @@ Inspector); Yam rebalances after it lands. Keeps PR P's follow-up rule as it is.
 14. **Records bar** needs tonight's values: the report now carries them (`RecordsReport.Tonight`); the bar is
     tonight ÷ the record after tonight (1 = broken or tied).
 
+### PR S follow-up — popups and the board (Yam, after playing S)
+- Robot popup = ONE number, the chain so far: "789 ×5" (score × mult at that moment; no hour, no result). Special pegs keep a
+  small "+1 mult" at the peg; plain holds: no popup. Replaces S's "+10" / "+1 mult" robot popups.
+- Every score colour (robot popups, the chain-close popup, the throw rows, BEST) = the HOUR PALETTE colour of the chain's hour,
+  with the quality styles (pulse / rainbow) for bigger values. No cream → amber scale.
+- The chain counters move INTO the left board's LAST THROWS and replace its rows (newest on top, older step down and shrink,
+  max 3): live "SCORE × MULT × H" ticking; at the close the row resolves into the result and stays. No wolves / depth text
+  on these rows or BEST TONIGHT. The separate screen-space counter is removed.
+- The scoreboard NUMBER changes only when a chain closes, straight to the new total (result included), with the climb. The
+  hour BAR keeps S's behaviour (raw live, the remainder at the close).
+- Chain-close popup above the pig (ChainPopupAnchor), on by default: "9 wolves · depth 2" over "120 ×3 ×H1 = 360" — the only
+  place the result shows on the board, with the camera shake / big-hit juice.
+- Plain holds score EVERY contact (+plainPegScore), with a per-hold, per-hitter cooldown (Scoring ▸ Plain Hold Cooldown,
+  0.2 s) so rattling / resting balls can't farm; MaxFallSeconds still ends stuck balls.
+- *Interpretations*: the robot popup's look uses the chain's worth so far (score × mult × hour) for its quality band; "×H1"
+  in the close popup is the hour label, the sum uses its multiplier; a miss leaves no row (its live row goes at the close).
+
 ### PR G — HUD reshape (replaces the world-space chalkboard and the HOURS card)
 - **Night track** (screen space, across the top): a thin line, one circle per hour (equal segments, not proportional to
   score), the moon riding it. Inside a segment the moon moves by progress through that hour's gap. Reaching a circle = the
