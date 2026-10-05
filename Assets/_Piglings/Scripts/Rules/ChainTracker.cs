@@ -75,27 +75,37 @@ namespace Piglings.Rules
             !chain.IsNone && _open.TryGetValue(chain.Id, out var c) && c.Depths.TryGetValue(robot, out int d) ? d : -1;
 
         /// <summary>
-        /// A stone or ball of this chain touched a plain hold (an empty socket or a Plain peg): + the plain-peg score, every
-        /// contact — but the same hitter on the same hold scores again only after PlainHoldCooldown seconds.
+        /// A stone or ball of this chain touched a plain hold (an empty socket or a Plain peg): + its score every contact —
+        /// but the same hitter on the same hold scores again only after PlainHoldCooldown seconds.
         /// <paramref name="time"/> is the caller's clock (Rules can't keep time; NightSession passes Time.time).
+        /// <paramref name="score"/>: a Plain peg's own value; below 0 = the curve's PlainPegScore (an empty socket).
         /// False = nothing added (not an open chain, or still cooling down).
         /// </summary>
-        public bool TouchPlain(ChainId chain, int socket, GameId hitter, float time)
+        public bool TouchPlain(ChainId chain, int socket, GameId hitter, float time, int score = -1)
         {
             if (chain.IsNone || !_open.TryGetValue(chain.Id, out var c)) return false;
             if (c.Touched.TryGetValue((socket, hitter), out float last) && time - last < _curve.PlainHoldCooldown) return false;
             c.Touched[(socket, hitter)] = time;
-            Gain(chain, c, ChainGainCause.PlainPeg, hitter, socket, _curve.PlainPegScore, 0f);
+            Gain(chain, c, ChainGainCause.PlainPeg, hitter, socket, score < 0 ? _curve.PlainPegScore : score, 0f, DepthOfHitter(c, hitter));
             return true;
         }
 
         /// <summary>A special peg triggered for this chain: + its mult bonus. Returns the chain's mult now (1 if not open).</summary>
-        public float AddPegMult(ChainId chain, int socket, GameId hitter, float bonus)
+        public float AddPegMult(ChainId chain, int socket, GameId hitter, float bonus) => AddPegGain(chain, socket, hitter, 0, bonus);
+
+        /// <summary>
+        /// A special peg triggered for this chain: + its score value and its mult bonus (each per level, PegType). Returns
+        /// the chain's mult now (1 if not open).
+        /// </summary>
+        public float AddPegGain(ChainId chain, int socket, GameId hitter, int score, float mult)
         {
             if (chain.IsNone || !_open.TryGetValue(chain.Id, out var c)) return 1f;
-            if (bonus > 0f) Gain(chain, c, ChainGainCause.Peg, hitter, socket, 0, bonus);
+            Gain(chain, c, ChainGainCause.Peg, hitter, socket, score, mult, DepthOfHitter(c, hitter));
             return c.Mult;
         }
+
+        // A ball's depth in its chain; a stone (or piece, or anything unknown) is 0.
+        private static int DepthOfHitter(Open c, GameId hitter) => c.Depths.TryGetValue(hitter, out int d) ? d : 0;
 
         // A piece joins its parent's chain: the chain now waits for it too. It's not a throw: no stone base.
         private void OnPieceLaunched(StonePieceLaunched e)
@@ -135,17 +145,19 @@ namespace Piglings.Rules
                 mult = _curve.MultPerNewDepth * (depth - c.MaxDepth);
                 c.MaxDepth = depth;
             }
-            Gain(e.Chain, c, ChainGainCause.Wolf, e.Robot, -1, _curve.RobotValue(), mult);
+            Gain(e.Chain, c, ChainGainCause.Wolf, e.Robot, -1, _curve.RobotValue(), mult, depth);
         }
 
         // The one place a chain grows: the raw score goes into the night's score now; the mult waits for the close.
-        private void Gain(ChainId chain, Open c, ChainGainCause cause, GameId source, int socket, int score, float mult)
+        private void Gain(ChainId chain, Open c, ChainGainCause cause, GameId source, int socket, int score, float mult, int depth = 0)
         {
-            if (score <= 0 && mult <= 0f) return;
+            if (score < 0) score = 0;
+            if (mult < 0f) mult = 0f;
+            if (score == 0 && mult == 0f) return;
             c.Score = ScoreMath.AddClamped(c.Score, score);
             c.Mult += mult;
             _state.Score = ScoreMath.AddClamped(_state.Score, score);
-            _bus.Publish(new ChainGained(chain, cause, source, socket, score, mult, c.Score, c.Mult, c.Hour, c.HourMultiplier));
+            _bus.Publish(new ChainGained(chain, cause, source, socket, score, mult, c.Score, c.Mult, c.Hour, c.HourMultiplier, depth));
         }
 
         private void OnRobotRemoved(RobotRemoved e)

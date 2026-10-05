@@ -672,11 +672,13 @@ namespace Piglings.Simulation
         private PegType ToPegType(PegDefinition peg, int followUps = 0)
         {
             var bonuses = new float[peg.LevelCount];
+            var values = new int[peg.LevelCount];
             var pieces = new int[peg.LevelCount];
             var cooldowns = new float[peg.LevelCount];
             for (int i = 0; i < bonuses.Length; i++)
             {
                 bonuses[i] = peg.MultBonusAt(i + 1);
+                values[i] = peg.ScoreValueAt(i + 1);
                 pieces[i] = peg.PiecesAt(i + 1);
                 cooldowns[i] = peg.CooldownAt(i + 1);
             }
@@ -690,7 +692,7 @@ namespace Piglings.Simulation
                 Debug.LogWarning($"{peg.name}: Splitter with {peg.PiecesAt(1)} piece(s) at level 1 never splits — fill its Levels " +
                                  "list (a new entry starts at 0).", peg);
             return new PegType(peg.Id, peg.MaxLevel, peg.Mergeable, peg.Effect, bonuses, pieces,
-                               peg.MaxStonesPerThrow, peg.CountSplitHitsForMastery, cooldowns, followUps);
+                               peg.MaxStonesPerThrow, peg.CountSplitHitsForMastery, cooldowns, followUps, values);
         }
 
         private static int[] ToArray(IReadOnlyList<int> list)

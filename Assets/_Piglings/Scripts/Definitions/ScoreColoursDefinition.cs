@@ -77,6 +77,14 @@ namespace Piglings.Definitions
             return found;
         }
 
+        /// <summary>Band i (past the list → the last); a plain white band when there are none.</summary>
+        public QualityBand BandAt(int index)
+        {
+            if (qualityBands.Count == 0) return new QualityBand();
+            var band = qualityBands[Mathf.Clamp(index, 0, qualityBands.Count - 1)];
+            return band ?? new QualityBand();
+        }
+
         /// <summary>The band for a quality; a plain white band when there are none.</summary>
         public QualityBand BandFor(float quality)
         {

@@ -53,6 +53,22 @@ namespace Piglings.Presentation
 
         private void Reset() => label = GetComponent<TMP_Text>();
 
+        /// <summary>
+        /// Fits the text into a box (world units, before the popup's scale): the font shrinks to fit, never past
+        /// <paramref name="minFontSize"/> and never above the prefab's own size; one line, no wrapping. For long texts
+        /// (the chain result) so they don't break.
+        /// </summary>
+        public void FitInto(Vector2 box, float minFontSize)
+        {
+            if (label == null || box.x <= 0f || box.y <= 0f) return;
+            float max = label.fontSize;
+            label.rectTransform.sizeDelta = box;
+            label.textWrappingMode = TextWrappingModes.NoWrap;
+            label.enableAutoSizing = true;
+            label.fontSizeMax = max;
+            label.fontSizeMin = Mathf.Min(minFontSize, max);
+        }
+
         /// <param name="key">0..1 passed to the style (Solid picks its colour there; Cycle starts there).</param>
         /// <param name="intensity">0..1: how big this moment is. Longer life and more shake as it grows.</param>
         /// <param name="resolvedText">If set, <paramref name="text"/> shows first and turns into this after resolveDelay.</param>

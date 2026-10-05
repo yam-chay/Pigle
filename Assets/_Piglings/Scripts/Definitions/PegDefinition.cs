@@ -82,6 +82,9 @@ namespace Piglings.Definitions
         /// <summary>What it adds to its chain's mult when it triggers at this level (M10.S; 0 = none).</summary>
         public float MultBonusAt(int level) => Level(level)?.multBonus ?? 0f;
 
+        /// <summary>Its SCORE value at this level (M10.S): Plain per contact, special per trigger; -1 = the default.</summary>
+        public int ScoreValueAt(int level) => Level(level)?.scoreValue ?? -1;
+
         /// <summary>Bouncy: the peg's physical bounciness at this level (0 = the hold's own material).</summary>
         public float BouncinessAt(int level) => Level(level)?.bounciness ?? 0f;
 
@@ -130,6 +133,11 @@ namespace Piglings.Definitions
         [Tooltip("M10.S: what this peg adds to its chain's MULT when it triggers at this level (Bouncy: a stone or ball bouncing " +
                  "off it, once per peg per stone / ball; Splitter: a split; Bomb: an explosion). Bouncy +1 / +2…; 0 = none.")]
         [Min(0f)] public float multBonus = 0f;
+
+        [Tooltip("M10.S: this peg's SCORE value at this level — a Plain peg adds it on every contact (the plain-hold cooldown " +
+                 "applies), a special peg when it triggers. -1 = the default: the Scoring asset's Plain Peg Score for a Plain peg, " +
+                 "nothing for a special one.")]
+        [Min(-1)] public int scoreValue = -1;
 
         [Header("Bouncy")]
         [Tooltip("Physical bounciness of the peg (0..1+). Balls and stones visibly pop off it. 0 = the hold's own material.")]

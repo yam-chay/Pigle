@@ -10,7 +10,7 @@ namespace Piglings.Presentation
     /// The post-run's THE NIGHT panel (M10.E, PROTOTYPE_V2.md ▸ PR E; mockup Docs/Mockups/post_run_v5.png): "NIGHT n"; the
     /// result (DAWN in the dawn gold — the palette's last colour — or OUT OF STONES); a dot per hour of the night in its
     /// colour plus a last one for dawn (gold), faded past what was reached; "6 / 6" (hours reached / hours); the score
-    /// ("kept X (hour n)" on a loss); numbers with thousands separators; BEST THROW EACH HOUR — a row per hour reached: "Hn" in its colour, a bar
+    /// ("Total Score: X" — what the night keeps; the hours show in the dots); numbers with thousands separators; BEST THROW EACH HOUR — a row per hour reached: "Hn" in its colour, a bar
     /// against the night's best throw, the points, the night's best in rainbow; the biggest chain, avg per stone, stones
     /// thrown · stolen ("26 · 2"). Yam lays out the labels ("biggest chain"…), one hour dot and one hour row; this fills the values.
     /// Every field is optional. Filled once, by PostRunView. Reads only.
@@ -32,7 +32,7 @@ namespace Piglings.Presentation
         [SerializeField, Range(0f, 1f)] private float unreachedAlpha = 0.2f;
         [Tooltip("Hours reached / the night's hours: \"6 / 6\".")]
         [SerializeField] private TMP_Text hoursReached;
-        [Tooltip("The score: \"48,545\" at dawn, \"kept 1,500 (hour 3)\" on a loss.")]
+        [Tooltip("\"Total Score: 48,545\" — what the night keeps (the hours reached show above, in the dots).")]
         [SerializeField] private TMP_Text score;
 
         [Header("Best throw each hour")]
@@ -87,8 +87,7 @@ namespace Piglings.Presentation
             if (hoursReached != null) hoursReached.text = $"{reached} / {hours}";
 
             if (score != null)
-                score.text = dawn ? Numbers.Thousands(s.Score)
-                    : s.ThresholdsReached > 0 ? $"kept {Numbers.Thousands(s.BankedScore)} (hour {s.ThresholdsReached})" : "kept 0";
+                score.text = $"Total Score: {Numbers.Thousands(s.BankedScore)}";
 
             if (_rows.Count == 0) _rows = TemplateList.Build(hourRow, null, reached);
             int best = s.BestThrowPoints;

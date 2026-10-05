@@ -30,6 +30,23 @@ namespace Piglings.Presentation
         /// <summary>Depth d's style (deeper than the list → the last).</summary>
         public PopupColor ForDepth(int depth) => _depth[Mathf.Clamp(depth, 0, _depth.Count - 1)];
 
+        /// <summary>
+        /// Depth d's style with the advanced looks (M10.S): the quality bands taken in order, one per depth — the same palette
+        /// as the depth colours (cream, amber, orange, red, magenta…) but with the band's look, so the deepest ones pulse and
+        /// the last is the rainbow. Deeper than the list → the last band.
+        /// </summary>
+        public PopupColor ForDepthBand(int depth)
+        {
+            if (_colours == null || _colours.BandCount == 0) return ForDepth(depth);
+            int i = Mathf.Clamp(depth, 0, _colours.BandCount - 1);
+            if (_depthBands.TryGetValue(i, out var style)) return style;
+            var band = _colours.BandAt(i);
+            style = Build(band.look, band.colour);
+            _depthBands[i] = style;
+            return style;
+        }
+        private readonly Dictionary<int, PopupColor> _depthBands = new Dictionary<int, PopupColor>();
+
         /// <summary>A throw's style from its quality (points ÷ its hour's gap).</summary>
         public PopupColor ForQuality(float quality)
         {
