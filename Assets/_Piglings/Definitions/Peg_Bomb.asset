@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Peg_Bomb
   m_EditorClassIdentifier: Piglings.Definitions::Piglings.Definitions.PegDefinition
   id: peg_bomb
+  displayName: 
   maxLevel: 3
   mergeable: 1
   sprite: {fileID: 21300000, guid: ef0693cdaa75b954db760ad64f32dce8, type: 3}
@@ -21,29 +22,29 @@ MonoBehaviour:
   effect: 3
   levels:
   - masteryWeight: 0
-    scoreMultiplier: 0
+    multBonus: 0
+    scoreValue: 5
     bounciness: 0
     pieces: 0
     fanAngle: 0
-    valueShare: 0
     bombRadius: 1
     cooldownSeconds: 9
     impulse: 0.5
   - masteryWeight: 0
-    scoreMultiplier: 0
+    multBonus: 0
+    scoreValue: 10
     bounciness: 0
     pieces: 0
     fanAngle: 0
-    valueShare: 0
     bombRadius: 1.4
     cooldownSeconds: 6
     impulse: 0.75
   - masteryWeight: 0
-    scoreMultiplier: 0
+    multBonus: 0
+    scoreValue: 15
     bounciness: 0
     pieces: 0
     fanAngle: 0
-    valueShare: 0
     bombRadius: 1.8
     cooldownSeconds: 3
     impulse: 1

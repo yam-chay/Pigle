@@ -5253,7 +5253,7 @@ MonoBehaviour:
   dragTilt: 2
   returnSeconds: 0.18
   trayOffsetX: 5
-  trayScale: 0.45
+  trayScale: 0.9
   traySpacing: 1.2
   trayHoverGrow: 0.08
 --- !u!114 &769251741
@@ -12987,12 +12987,14 @@ MonoBehaviour:
   robotScale: 1
   scalePerDepth: 0.15
   showPlainHolds: 1
-  plainHoldScale: 0.5
+  plainHoldScale: 1
   multColour: {r: 1, g: 0.35, b: 0.75, a: 1}
   multScale: 1.1
   showChainResult: 1
   chainAnchor: {fileID: 315329951}
   chainScale: 1.7
+  chainArea: {x: 4, y: 0.7}
+  chainMinFontSize: 18
   bigChainTotal: 300
   minRobotsForChainPopup: 2
 --- !u!1 &2040407676

@@ -23,6 +23,7 @@ MonoBehaviour:
   levels:
   - masteryWeight: 0
     multBonus: 1
+    scoreValue: 1
     bounciness: 0.8
     pieces: 2
     fanAngle: 30
@@ -31,6 +32,7 @@ MonoBehaviour:
     impulse: 0.5
   - masteryWeight: 0
     multBonus: 2
+    scoreValue: 10
     bounciness: 1
     pieces: 2
     fanAngle: 30
@@ -39,6 +41,7 @@ MonoBehaviour:
     impulse: 0.5
   - masteryWeight: 0
     multBonus: 3
+    scoreValue: 20
     bounciness: 1.2
     pieces: 2
     fanAngle: 30
