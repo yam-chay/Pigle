@@ -140,6 +140,16 @@ static void PostRunChecks(){
    Check(PostRunProgress.Build(before,padded,"stone",stones,plan,types,rule).Pegs.Count==0,"triggers [2] vs [2, 0]: nothing moved, no row");
    Check(PostRunProgress.Build(before,after,"stone",null,null,types,rule).Stone==null && PostRunProgress.Build(before,after,"stone",null,null,types,rule).Pegs.Count==0,
      "no stone rule / no campaign plan: no stone row, no peg rows (Night.unity)"); }
+ // --- Records rows: how close tonight came (M10.S) ---
+ { Check(Math.Abs(RecordsReport.Closeness(310,620)-0.5f)<1e-5f && RecordsReport.Closeness(620,620)==1f && RecordsReport.Closeness(700,620)==1f,
+     "records bar: tonight ÷ the record (310 of 620 = half); tied or broken = full");
+   Check(RecordsReport.Closeness(0,620)==0f && RecordsReport.Closeness(5,0)==1f && RecordsReport.Closeness(0,0)==0f,"nothing tonight = empty; a first record = full");
+   var before=new PlayerProfile(); before.Records.BestThrow=620; var after=ProfileJson.Copy(before); after.Records.LongestChain=9;
+   var tonight=new NightRecords{ BestThrow=310, LongestChain=9 };
+   var rep=PostRunProgress.Build(before,after,"stone",null,null,null,null,tonight);
+   Check(rep.Records.Tonight.BestThrow==310 && rep.Records.Tonight.LongestChain==9 && rep.Records.New.LongestChain && !rep.Records.New.BestThrow,
+     "the report carries tonight's values next to the records (and NEW where beaten)");
+   Check(PostRunProgress.Build(before,after,"stone",null,null,null,null).Records.Tonight.BestThrow==0,"no tonight given: zeros"); }
  { var bar=new ProgressBar(0.7f,0.4f,false);
    Check(bar.Before==0.7f && bar.After==0.7f && bar.Gain==0f,"a bar never runs backwards (after below before → before)");
    var ready=new ProgressBar(0.3f,0.2f,true);

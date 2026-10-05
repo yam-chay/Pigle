@@ -32,6 +32,12 @@ namespace Piglings.Presentation
         [Tooltip("Seconds after the fade-in starts before the bars fill in.")]
         [SerializeField, Min(0f)] private float barsDelay = 0.4f;
 
+        [Header("The night's HUD (M10.S)")]
+        [Tooltip("The live night HUD — the scoreboard, the chain counters, the tips: CanvasGroups dimmed while the post-run shows.")]
+        [SerializeField] private CanvasGroup[] nightHud = new CanvasGroup[0];
+        [Tooltip("The HUD's alpha while the post-run shows (1 = untouched).")]
+        [SerializeField, Range(0f, 1f)] private float hudAlpha = 0.25f;
+
         [Header("Panels")]
         [SerializeField] private PostRunNightPanel nightPanel;
         [SerializeField] private PostRunRecordsPanel recordsPanel;
@@ -73,7 +79,7 @@ namespace Piglings.Presentation
             _filled = true;
             if (nightPanel != null) nightPanel.Show(barsDelay);
             var report = session.BuildPostRunReport();
-            if (recordsPanel != null) recordsPanel.Show(report.Records);
+            if (recordsPanel != null) recordsPanel.Show(report.Records, barsDelay);
             if (progressPanel != null) progressPanel.Show(report, barsDelay);
             if (primaryLabel != null) primaryLabel.text = Label(flow.Primary);
             if (secondaryLabel != null) secondaryLabel.text = Label(flow.Secondary);
@@ -90,10 +96,12 @@ namespace Piglings.Presentation
             }
         }
 
-        // Invisible = not in the way: no clicks caught while hidden.
+        // Invisible = not in the way: no clicks caught while hidden. The night's HUD dims as the post-run comes in.
         private void Apply(float alpha)
         {
             _alpha = alpha;
+            foreach (var hud in nightHud)
+                if (hud != null) hud.alpha = Mathf.Lerp(1f, hudAlpha, alpha);
             if (group == null) return;
             group.alpha = alpha;
             group.blocksRaycasts = alpha > 0.01f;

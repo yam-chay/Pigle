@@ -6,54 +6,66 @@ using UnityEngine;
 namespace Piglings.Presentation
 {
     /// <summary>
-    /// Makes chains readable (M10.D look, both scenes): where each robot loses grip, its points only ("+60"), coloured by
-    /// its DEPTH (cream, amber, orange, red, magenta…); and when a chain closes, its total ("+620") at a fixed spot,
-    /// coloured by the throw's QUALITY (its points ÷ the gap of the hour it was thrown in). No depth or multiplier tags:
-    /// the colour says how deep, the scoreboard says the rest. Colours come from NightSession.ScoreColours.
+    /// Makes chains readable on the board (M10.S, Score × Mult): each gain shows where it happened, as its two parts —
+    /// "+10" for SCORE (cream → amber as the gain grows) and "+1 mult" for MULT (its own colour). A wolf knocked loose: its
+    /// score at the robot (and "+1 mult" too when it took the chain to a new depth); a plain hold touched: "+1" at the hold;
+    /// a special peg triggering: "+1 mult" at the peg. No per-robot points popup any more — the live chain counter shows the
+    /// running SCORE × MULT and the result. The chain's total at a fixed spot is optional (off by default).
     ///
-    /// Only listens and spawns visuals — never touches game state. The numbers come from the Rules
-    /// events, so the popups always show exactly what was added to the score.
-    ///
-    /// RobotScored carries a GameId, not a position (Rules don't know where things are), so this
-    /// keeps its own GameId → Transform map from RobotSpawner.Spawned, and forgets robots on
-    /// RobotRemoved.
+    /// Only listens and spawns visuals — never touches game state. ChainGained carries a GameId / socket, not a position
+    /// (Rules don't know where things are): robots come from RobotSpawner.Spawned (forgotten on RobotRemoved), holds from
+    /// the PegBoard.
     /// </summary>
     public sealed class ScorePopupSpawner : MonoBehaviour
     {
         [SerializeField] private NightSession session;
         [SerializeField] private RobotSpawner spawner;
+        [Tooltip("For plain-hold and peg popups (the hold's position). Empty = those popups are skipped.")]
+        [SerializeField] private PegBoard board;
         [SerializeField] private ScorePopup popupPrefab;
         [SerializeField] private Transform container;
 
-        [Header("Robot \"+N\"")]
+        [Header("SCORE \"+10\"")]
         [SerializeField] private Vector3 robotOffset = new Vector3(0f, 0.25f, 0f);
-        [SerializeField, Min(0.01f)] private float robotScale = 1f;
-        [Tooltip("Each depth step makes the popup this much bigger (0.2 = +20%), so deeper hits read as bigger.")]
-        [SerializeField, Min(0f)] private float scalePerDepth = 0.2f;
-        [Tooltip("Depth at which a robot popup gets the full shake and extra life. (Its colour is the depth's, from Score Colours.)")]
-        [SerializeField, Min(1)] private int deepAtDepth = 3;
+        [SerializeField, Min(0.01f)] private float scoreScale = 1f;
+        [Tooltip("A small gain's colour (cream) …")]
+        [SerializeField] private Color scoreSmallColour = new Color(1f, 0.95f, 0.82f);
+        [Tooltip("… and a big one's (amber): the colour slides between them by the gain's size.")]
+        [SerializeField] private Color scoreBigColour = new Color(1f, 0.72f, 0.2f);
+        [Tooltip("A gain this big (or more) gets the big colour and the full shake / life.")]
+        [SerializeField, Min(1)] private int bigScoreGain = 40;
+        [Tooltip("A plain hold's \"+1\": this much of the score popup's size (small, they come in showers).")]
+        [SerializeField, Range(0.1f, 1f)] private float plainHoldScale = 0.55f;
 
+        [Header("MULT \"+1 mult\"")]
+        [SerializeField] private Color multColour = new Color(1f, 0.35f, 0.75f);
+        [SerializeField, Min(0.01f)] private float multScale = 1.1f;
+        [Tooltip("Where the mult popup sits relative to the score popup (both at once when a wolf reaches a new depth).")]
+        [SerializeField] private Vector3 multOffset = new Vector3(0f, 0.3f, 0f);
 
-        [Header("Chain result")]
-        [Tooltip("Where the chain result appears — a fixed spot (e.g. above the barn) so it's always read in the same place.")]
+        [Header("Chain total (optional — the live counter shows it)")]
+        [SerializeField] private bool showChainTotal = false;
+        [Tooltip("Where the chain result appears — a fixed spot (e.g. above the barn).")]
         [SerializeField] private Transform chainAnchor;
         [SerializeField, Min(0.01f)] private float chainScale = 2f;
         [Tooltip("A chain worth this much (or more) gets the full treatment: longest life, strongest shake.")]
         [SerializeField, Min(1)] private int bigChainTotal = 300;
-        [Tooltip("Smallest chain that gets the big popup. 1-robot chains already got their \"+N\"; 0 = misses.")]
+        [Tooltip("Smallest chain that gets the big popup; 0 = misses too.")]
         [SerializeField, Min(0)] private int minRobotsForChainPopup = 2;
 
         private readonly Dictionary<GameId, Transform> _robots = new Dictionary<GameId, Transform>();
         private ScoreStyles _styles;
+        private PopupColor _mult;
 
         private void OnEnable() => spawner.Spawned += OnSpawned;
         private void OnDisable() => spawner.Spawned -= OnSpawned;
 
-        // Start, not Awake/OnEnable: same as ChainDebugHUD — the session's bus is created in its Awake.
+        // Start, not Awake/OnEnable: the session's bus is created in its Awake.
         private void Start()
         {
             _styles = new ScoreStyles(session.ScoreColours);
-            session.Bus.Subscribe<RobotScored>(OnRobotScored);
+            _mult = new PopupColor { mode = PopupColorMode.Solid, gradient = PopupColor.Flat(multColour) };
+            session.Bus.Subscribe<ChainGained>(OnGained);
             session.Bus.Subscribe<ChainScored>(OnChainScored);
             session.Bus.Subscribe<RobotRemoved>(OnRobotRemoved);
         }
@@ -61,7 +73,7 @@ namespace Piglings.Presentation
         private void OnDestroy()
         {
             if (session == null || session.Bus == null) return;
-            session.Bus.Unsubscribe<RobotScored>(OnRobotScored);
+            session.Bus.Unsubscribe<ChainGained>(OnGained);
             session.Bus.Unsubscribe<ChainScored>(OnChainScored);
             session.Bus.Unsubscribe<RobotRemoved>(OnRobotRemoved);
         }
@@ -69,28 +81,46 @@ namespace Piglings.Presentation
         private void OnSpawned(RobotController robot) => _robots[robot.Id] = robot.transform;
         private void OnRobotRemoved(RobotRemoved e) => _robots.Remove(e.Robot);
 
-        private void OnRobotScored(RobotScored e)
+        // The bus is synchronous: this runs inside the hit, so the robot / hold is still exactly where it happened.
+        private void OnGained(ChainGained e)
         {
-            // The bus is synchronous: this runs inside RobotController.LoseGrip, so the robot is
-            // still exactly where it was hit.
-            if (!_robots.TryGetValue(e.Robot, out var t) || t == null) return;
+            Vector3 at;
+            float scale = scoreScale;
+            switch (e.Cause)
+            {
+                case ChainGainCause.Wolf:
+                    if (!_robots.TryGetValue(e.Source, out var t) || t == null) return;
+                    at = t.position + robotOffset;
+                    break;
+                case ChainGainCause.PlainPeg:
+                case ChainGainCause.Peg:
+                    if (board == null || e.Socket < 0 || e.Socket >= board.SocketCount) return;
+                    at = board.Position(e.Socket);
+                    if (e.Cause == ChainGainCause.PlainPeg) scale *= plainHoldScale;
+                    break;
+                default:
+                    return;   // the stone's base: no place on the board for it — the counter shows it
+            }
 
-            // How deep, 0..1: how much it shakes and lingers. The colour is the depth's own.
-            float depthT = Mathf.Clamp01(e.Depth / (float)deepAtDepth);
-            float scale = robotScale * (1f + scalePerDepth * e.Depth);
-            Spawn(t.position + robotOffset, $"+{e.Total}", _styles.ForDepth(e.Depth), scale, depthT);
+            if (e.ScoreAdded > 0)
+            {
+                float size = Mathf.Clamp01(e.ScoreAdded / (float)bigScoreGain);
+                var colour = new PopupColor { mode = PopupColorMode.Solid, gradient = PopupColor.Flat(Color.Lerp(scoreSmallColour, scoreBigColour, size)) };
+                Spawn(at, $"+{e.ScoreAdded}", colour, scale, size);
+            }
+            if (e.MultAdded > 0f)
+                Spawn(at + (e.ScoreAdded > 0 ? multOffset : Vector3.zero), $"+{e.MultAdded:0.##} mult", _mult, multScale, 0.6f);
         }
 
         private void OnChainScored(ChainScored e)
         {
-            if (e.RobotsDropped < minRobotsForChainPopup || chainAnchor == null) return;
+            if (!showChainTotal || e.RobotsDropped < minRobotsForChainPopup || chainAnchor == null) return;
             float size = Mathf.Clamp01(e.Total / (float)bigChainTotal);
             Spawn(chainAnchor.position, $"+{e.Total}", _styles.ForQuality(session.ThrowQuality(e.Total, e.Hour)), chainScale, size);
         }
 
-        // Inspector: ⋮ (or right-click the component header) → "Preview popups", in Play mode.
-        // Spawns one of every look side by side at the chain anchor — a robot popup per depth 0..4, then a chain total in
-        // every quality band — so the colours, shake and life can be compared in seconds. Visuals only: nothing is scored.
+        // Inspector: ⋮ (or right-click the component header) → "Preview popups", in Play mode. A score popup at a few sizes,
+        // a mult popup, and a chain total in every quality band, side by side at the chain anchor. Visuals only.
         [ContextMenu("Preview popups (Play mode)")]
         private void PreviewPopups()
         {
@@ -101,20 +131,20 @@ namespace Piglings.Presentation
             }
 
             var origin = chainAnchor.position;
-            for (int depth = 0; depth <= 4; depth++)
+            int[] gains = { 1, 10, 20, bigScoreGain };
+            for (int i = 0; i < gains.Length; i++)
             {
-                var pos = origin + new Vector3(-2f + depth, -1.2f, 0f);
-                Spawn(pos, $"+{10 * (depth + 1)}", _styles.ForDepth(depth), robotScale * (1f + scalePerDepth * depth),
-                      Mathf.Clamp01(depth / (float)deepAtDepth));
+                float size = Mathf.Clamp01(gains[i] / (float)bigScoreGain);
+                var colour = new PopupColor { mode = PopupColorMode.Solid, gradient = PopupColor.Flat(Color.Lerp(scoreSmallColour, scoreBigColour, size)) };
+                Spawn(origin + new Vector3(-2f + i, -1.2f, 0f), $"+{gains[i]}", colour, scoreScale, size);
             }
-            // One chain total per band, at that band's quality (hour 1's gap): cream … rainbow.
+            Spawn(origin + new Vector3(2f, -1.2f, 0f), "+1 mult", _mult, multScale, 0.6f);
             float[] qualities = { 0.02f, 0.1f, 0.2f, 0.4f, 0.7f, 1.2f };
             int gap = session.HourGap(1);
             for (int i = 0; i < qualities.Length; i++)
             {
                 int points = Mathf.Max(1, Mathf.RoundToInt(qualities[i] * gap));
-                var pos = origin + new Vector3(-2.5f + i, 0f, 0f);
-                Spawn(pos, $"+{points}", _styles.ForQuality(session.ThrowQuality(points, 1)), chainScale * 0.6f, qualities[i]);
+                Spawn(origin + new Vector3(-2.5f + i, 0f, 0f), $"+{points}", _styles.ForQuality(session.ThrowQuality(points, 1)), chainScale * 0.6f, qualities[i]);
             }
         }
 

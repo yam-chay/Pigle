@@ -9,7 +9,7 @@ namespace Piglings.Presentation
     ///  - a placed peg shows its PegDefinition sprite on a child renderer (the Hold's own renderer is hidden under it);
     ///    levels 2 and 3 add an overlay on top. A child, so the peg can squash and stretch without touching the Hold's
     ///    collider, which lives on the Hold's own object;
-    ///  - Bouncy: every hit makes the peg pop (squash-stretch); a ball that gets the bonus also gets a small gold ring;
+    ///  - Bouncy: every hit makes the peg pop (squash-stretch); a stone or ball that gives its chain the bonus also gets a small gold ring;
     ///  - Splitter: when it splits a stone, the needle flashes and sparkles burst out of it;
     ///  - Bomb: going off = a star and an orange ring as wide as its radius; then the spent sprite until it recharges,
     ///    when a few sparkles fizz on the fuse and the sprite swaps back;
@@ -148,7 +148,7 @@ namespace Piglings.Presentation
         private void OnPegPlaced(PegPlaced e) => Refresh(e.Socket);
         private void OnPegMerged(PegMerged e) => Refresh(e.Socket);
 
-        // Every hit on a Bouncy peg pops it — stones too: they bounce off physically, they just get no bonus.
+        // Every hit on a Bouncy peg pops it (the bonus — stones and balls, M10.S — is once per peg per hitter: the ring).
         private void OnPegHit(PegHit e)
         {
             if (e.Effect == PegEffect.Bouncy && e.Socket < _sockets.Length && _sockets[e.Socket].Peg != null) _sockets[e.Socket].PopAge = 0f;

@@ -11,33 +11,28 @@ namespace Piglings.Definitions
     [CreateAssetMenu(menuName = "Piglings/Scoring Definition", fileName = "Scoring_")]
     public sealed class ScoringDefinition : ScriptableObject
     {
-        [Tooltip("What the stone carries into its first hit. (Future: stone upgrades.)")]
-        [SerializeField, Min(0)] private int stoneValue = 10;
+        // M10.S: a chain's SCORE × MULT × the hour. The stone's base is per evolution level (ThrowableDefinition ▸ Levels ▸
+        // Base Score); special pegs' mult bonus is per peg level (PegDefinition ▸ Levels ▸ Mult Bonus).
 
-        [Tooltip("How much a stone or a falling ball grows with each extra robot it knocks: 10 → hits worth 10, 20, 30… " +
-                 "(Future: piercing stones.)")]
-        [SerializeField, Min(0)] private int growthPerHit = 10;
-
-        [Tooltip("What a knocked robot adds of its own when it passes value on to the robots it hits. (Future: wolf upgrades.)")]
+        [Tooltip("SCORE: what each robot knocked loose adds to its chain (any cause: stone, ball, bomb, a split piece). Also what " +
+                 "the dawn sweep scores per robot, flat. (Future: wolf upgrades.)")]
         [SerializeField, Min(0)] private int wolfValue = 10;
 
-        [Tooltip("Each robot's multiplier grows by this per step of its own depth. 0.5 → depth 0 ×1, depth 1 ×1.5, depth 2 ×2. " +
-                 "(Future: pegs, slices.)")]
-        [SerializeField, Min(0f)] private float multiplierPerDepth = 0.5f;
+        [Tooltip("SCORE: what a plain hold (an empty socket or a Plain peg) adds when a stone or ball touches it — once per hold " +
+                 "per stone / ball.")]
+        [SerializeField, Min(0)] private int plainPegScore = 1;
 
-        [Tooltip("Off (default): a knocked robot passes on what it RECEIVED + wolfValue. Steady growth.\n" +
-                 "On: it passes on what it SCORED + wolfValue. Compounds hard — kept as a switch for a future late upgrade.")]
-        [SerializeField] private bool carryScoredTotal = false;
+        [Tooltip("MULT: added each time a chain reaches a NEW depth (1, 2, 3…) — once per level, never per robot, so going wide " +
+                 "doesn't add mult. Chains start at ×1.")]
+        [SerializeField, Min(0f)] private float multPerNewDepth = 1f;
 
-        [Tooltip("Each hour reached adds this to what chains score: 0.5 → hour 1 ×1, hour 2 ×1.5, hour 3 ×2… " +
-                 "Fixed when the stone is thrown; never applied to what a robot carries on, nor to the end-of-night sweep.")]
+        [Tooltip("HOUR: each hour reached adds this to the chain's final multiplier: 0.5 → hour 1 ×1, hour 2 ×1.5, hour 3 ×2… " +
+                 "Fixed when the stone is thrown, applied once at the chain's close; never to the dawn sweep.")]
         [SerializeField, Min(0f)] private float hourMultiplierStep = 0.5f;
 
-        public int StoneValue => stoneValue;
-        public int GrowthPerHit => growthPerHit;
         public int WolfValue => wolfValue;
-        public float MultiplierPerDepth => multiplierPerDepth;
-        public bool CarryScoredTotal => carryScoredTotal;
+        public int PlainPegScore => plainPegScore;
+        public float MultPerNewDepth => multPerNewDepth;
         public float HourMultiplierStep => hourMultiplierStep;
     }
 }

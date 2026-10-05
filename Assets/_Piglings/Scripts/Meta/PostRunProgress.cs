@@ -53,11 +53,24 @@ namespace Piglings.Meta
         public int InARowAtNext => After.NextFollowUpAt < 0 ? 0 : After.FollowUps + 2;
     }
 
-    /// <summary>The all-time records before and after tonight, and which broke (NEW RECORD).</summary>
+    /// <summary>The all-time records before and after tonight, tonight's own values, and which broke (NEW RECORD).</summary>
     public sealed class RecordsReport
     {
         public NightRecords Before, After;
+        public NightRecords Tonight = new NightRecords();   // tonight's bests (M10.S: the rows' "how close you got" bars)
         public RecordsBroken New;
+
+        /// <summary>
+        /// How close tonight came to the record (after tonight): tonight ÷ record, 0..1 — 1 when broken or tied. A record of 0
+        /// (nothing yet) reads 1 if tonight had any, else 0.
+        /// </summary>
+        public static float Closeness(int tonight, int record)
+        {
+            if (tonight <= 0) return 0f;
+            if (record <= 0) return 1f;
+            float f = tonight / (float)record;
+            return f > 1f ? 1f : f;
+        }
     }
 
     /// <summary>What the post-run's PROGRESS and ALL-TIME RECORDS panels show (PostRunProgress.Build).</summary>
@@ -80,8 +93,10 @@ namespace Piglings.Meta
     {
         /// <param name="pegTypes">Every peg type of the campaign, in its order (rows come out in this order).</param>
         /// <param name="pegRule">A type's progression rule (copy thresholds, weights); null for an unknown type = no row.</param>
+        /// <param name="tonight">Tonight's bests (best throw, longest / deepest chain, the night's score); null = none.</param>
         public static PostRunReport Build(PlayerProfile before, PlayerProfile after, string weaponId, StoneProgression stones,
-                                          CampaignPlan plan, IReadOnlyList<string> pegTypes, Func<string, PegProgression> pegRule)
+                                          CampaignPlan plan, IReadOnlyList<string> pegTypes, Func<string, PegProgression> pegRule,
+                                          NightRecords tonight = null)
         {
             before = before ?? new PlayerProfile();
             after = after ?? new PlayerProfile();
@@ -102,7 +117,7 @@ namespace Piglings.Meta
             var b = before.Records; var a = after.Records;
             report.Records = new RecordsReport
             {
-                Before = b.Copy(), After = a.Copy(),
+                Before = b.Copy(), After = a.Copy(), Tonight = tonight != null ? tonight.Copy() : new NightRecords(),
                 New = new RecordsBroken(a.BestThrow > b.BestThrow, a.LongestChain > b.LongestChain, a.DeepestChain > b.DeepestChain,
                                         a.BestNightScore > b.BestNightScore),
             };

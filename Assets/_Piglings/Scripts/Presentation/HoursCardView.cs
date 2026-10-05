@@ -21,6 +21,12 @@ namespace Piglings.Presentation
 
         private void Start()
         {
+            // Fail safe when not fully wired (it goes in PR G): say so once, draw nothing.
+            if (session == null || hour == null)
+            {
+                Debug.LogWarning("HoursCardView: Session or Hour isn't set — the card stays empty.", this);
+                return;
+            }
             int count = session.ThresholdCount;
             var slots = TemplateList.Build(hour, pegMarker, count);
             for (int i = 0; i < slots.Count; i++)
