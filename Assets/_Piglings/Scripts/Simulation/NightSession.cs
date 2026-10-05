@@ -82,11 +82,14 @@ namespace Piglings.Simulation
         public bool StartsInNight { get; private set; }
 
         /// <summary>
-        /// Hour n's colour: the palette sampled over tonight's hours, first → last (white without a palette). The last hour
-        /// is the palette's last colour (dawn gold) on every night.
+        /// Hour n's colour: the palette sampled over tonight's hours, first → last (white without a palette). The palette's
+        /// last colour is dawn's (DawnColour), on every night.
         /// </summary>
         public Color HourColour(int hour) =>
             hourPalette != null ? hourPalette.ColourAt(hour, _referee != null ? ThresholdCount : hour) : Color.white;
+
+        /// <summary>Dawn's colour: the palette's last (the gold); white without a palette.</summary>
+        public Color DawnColour => hourPalette != null ? hourPalette.DawnColour : Color.white;
 
         /// <summary>The score colours (depth, throw quality) every view shares; the defaults when none is assigned.</summary>
         public ScoreColoursDefinition ScoreColours
