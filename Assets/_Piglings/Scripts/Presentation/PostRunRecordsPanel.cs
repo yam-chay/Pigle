@@ -22,10 +22,10 @@ namespace Piglings.Presentation
         {
             if (records == null) return;
             var now = records.After;
-            Fill(bestThrow, now.BestThrow > 0 ? $"{now.BestThrow}" : "—", records.New.BestThrow);
+            Fill(bestThrow, now.BestThrow > 0 ? Numbers.Thousands(now.BestThrow) : "—", records.New.BestThrow);
             Fill(longestChain, now.LongestChain > 0 ? (now.LongestChain == 1 ? "1 wolf" : $"{now.LongestChain} wolves") : "—", records.New.LongestChain);
             Fill(deepestChain, now.DeepestChain > 0 ? $"depth {now.DeepestChain}" : "—", records.New.DeepestChain);
-            Fill(bestNightScore, now.BestNightScore > 0 ? $"{now.BestNightScore}" : "—", records.New.BestNightScore);
+            Fill(bestNightScore, now.BestNightScore > 0 ? Numbers.Thousands(now.BestNightScore) : "—", records.New.BestNightScore);
         }
 
         private void Fill(TemplateSlot row, string value, bool broken)

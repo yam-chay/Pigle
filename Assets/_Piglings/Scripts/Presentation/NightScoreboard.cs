@@ -122,7 +122,7 @@ namespace Piglings.Presentation
             {
                 int hour = Mathf.Min(s.Hour, count);
                 hourText.text = s.Dawn ? "DAWN" : $"HOUR {hour} · ×{session.HourMultiplierAt(hour):0.##}";
-                hourText.color = session.HourColour(s.Dawn ? count : hour);
+                hourText.color = s.Dawn ? session.DawnColour : session.HourColour(hour);
             }
             if (scoreText != null) scoreText.text = s.Dawn ? $"{s.Score}" : $"{s.Score} / {to}";
             if (gapText != null) gapText.text = s.Dawn ? "" : $"hour {segment} gap: {from} -> {to}";

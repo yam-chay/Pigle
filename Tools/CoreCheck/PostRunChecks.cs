@@ -157,12 +157,13 @@ static void PostRunChecks(){
      if((a==PostRunAction.ToBarn && b==PostRunAction.NextNight) || (a==PostRunAction.NextNight && b==PostRunAction.ToBarn) || a==b) never=false; }
    Check(never,"never To the barn and Next night together, never the same button twice"); }
 
- // --- Hour colours by night progress ---
- Check(PaletteSampling.Position(1,5,7)==0f && PaletteSampling.Position(5,5,7)==6f && PaletteSampling.Position(3,5,7)==3f,
-   "palette over a 5-hour night of 7 colours: hour 1 = the first, hour 5 = the last (dawn gold), hour 3 = the middle");
- Check(PaletteSampling.Position(7,7,7)==6f && PaletteSampling.Position(2,7,7)==1f,"a 7-hour night on 7 colours: one each");
- Check(Math.Abs(PaletteSampling.Position(2,5,7)-1.5f)<1e-5f,"between entries: hour 2 of 5 sits halfway between colours 2 and 3 (blended)");
+ // --- Hour colours by night progress: the palette over the hours + dawn (dawn = the last colour, post_run_v5) ---
+ Check(PaletteSampling.Position(1,6,7)==0f && PaletteSampling.Position(6,6,7)==5f && PaletteSampling.Position(7,6,7)==6f && PaletteSampling.Dawn(7)==6f,
+   "a 6-hour night on 7 colours: one each (hour 1 = the first, hour 6 = the 6th), dawn = the 7th (the gold)");
+ Check(PaletteSampling.Position(1,5,7)==0f && Math.Abs(PaletteSampling.Position(5,5,7)-4.8f)<1e-5f && PaletteSampling.Position(6,5,7)==6f,
+   "a 5-hour night on 7 colours: hour 5 blends just short of the gold (4.8), dawn is the gold");
  Check(PaletteSampling.Position(0,5,7)==0f && PaletteSampling.Position(9,5,7)==6f && PaletteSampling.Position(1,1,7)==0f && PaletteSampling.Position(3,5,1)==0f,
-   "clamped: before hour 1 / past the last hour / a one-hour night / one colour");
+   "clamped: before hour 1 / past dawn / a one-hour night's hour 1 / one colour");
+ Check(PaletteSampling.Position(1,1,7)==0f && PaletteSampling.Position(2,1,7)==6f,"a one-hour night: hour 1 the first colour, dawn the last");
 }
 }

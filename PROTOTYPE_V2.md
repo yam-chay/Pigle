@@ -174,8 +174,8 @@ Every PR: CoreCheck passes, Night.unity keeps working, editor steps listed in th
   Sprite, see question 1); the rug's Refill Badges list.
 
 ### PR E — post-run screen (Yam's final spec, 2026-10-05; replaces §4 and every earlier PR E note)
-Mockup: `post_run_v5.png` → `Docs/Mockups/` (outside Assets, so Unity doesn't import it; PNGs are LFS, so cloud sessions
-can't read it — the code fills Yam's frames, it doesn't depend on the layout).
+Mockup: `Docs/Mockups/post_run_v5.png` (outside Assets, so Unity doesn't import it; LFS — cloud sessions only see it when
+it's attached to a message). The code fills Yam's frames; the texts follow the mockup.
 
 **End of night (rule change)**
 - Loss = **out of stones**: stones = 0 and no chain active → wait for the last chain to settle + a delay, then the night is
@@ -284,6 +284,20 @@ the dim overlay); TASKS.md ticked.
     STONES (Night.unity has no wolf delay: no flow there).
 13. **The stone bar when a stone was earned tonight**: before = progress from the last +1 (dim), gain to full → READY;
     two stones earned still show one full bar + "a → b".
+
+**From the mockup (post_run_v5, seen 2026-10-05)** — followed, except where it disagrees with the spec:
+14. **Three buttons in the mockup** (Retry night · To the barn · Next night ▸) vs the spec's "To the barn and Next night are
+    never shown together". → **The spec wins** (Yam re-confirmed it): two buttons. The mockup's dawn row reads as
+    Next night ▸ (primary, cream) + Retry night.
+15. **Dawn has its own colour**: the mockup shows 6 hour dots + a 7th, gold, on a 6-hour night, and H6 isn't the gold. →
+    The palette spreads over the hours **and dawn**: hour 1 = the first colour, dawn = the last (`DawnColour`); the
+    post-run gets a dawn dot. (This changes point 5 above / the first build of E: there the last hour was the gold.)
+16. **"6 = +1 throw per hour"** under Bouncy is the replaced pool rule (point 7). → Same shape, the follow-up rule:
+    "6 = 3 in a row".
+17. **"14 → 15 stones · next: 15 · evolve"**: the evolution shown is the one the stone was heading for when the night
+    began (the earned stone reaches it; the barn plays it), not the one after it.
+18. Texts as in the mockup: thousands separators everywhere, "6 / 6" hours, "26 · 2", copies "5 → 6", "+141" /
+    "1,204 all time"; a NEW peg row has no copies and no bar.
 
 **PR F follow-up — the barn room plays the upgrades** (not part of E): when the barn room opens after a night that moved
 something, new stones drop onto the rug one by one, the stones evolve (sprite swap + burst), the +N refill badge changes,

@@ -7,11 +7,12 @@ using UnityEngine;
 namespace Piglings.Presentation
 {
     /// <summary>
-    /// The post-run's THE NIGHT panel (M10.E, PROTOTYPE_V2.md ▸ PR E): "NIGHT n"; the result (DAWN in the dawn gold — the
-    /// palette's last colour — or OUT OF STONES); a dot per hour of the night in its colour, faded past the hour reached;
-    /// the score ("kept X (hour n)" on a loss); BEST THROW EACH HOUR — a row per hour reached: "Hn" in its colour, a bar
+    /// The post-run's THE NIGHT panel (M10.E, PROTOTYPE_V2.md ▸ PR E; mockup Docs/Mockups/post_run_v5.png): "NIGHT n"; the
+    /// result (DAWN in the dawn gold — the palette's last colour — or OUT OF STONES); a dot per hour of the night in its
+    /// colour plus a last one for dawn (gold), faded past what was reached; "6 / 6" (hours reached / hours); the score
+    /// ("kept X (hour n)" on a loss); numbers with thousands separators; BEST THROW EACH HOUR — a row per hour reached: "Hn" in its colour, a bar
     /// against the night's best throw, the points, the night's best in rainbow; the biggest chain, avg per stone, stones
-    /// thrown · stolen. Yam lays out the labels ("biggest chain"…), one hour dot and one hour row; this fills the values.
+    /// thrown · stolen ("26 · 2"). Yam lays out the labels ("biggest chain"…), one hour dot and one hour row; this fills the values.
     /// Every field is optional. Filled once, by PostRunView. Reads only.
     /// </summary>
     public sealed class PostRunNightPanel : MonoBehaviour
@@ -24,11 +25,14 @@ namespace Piglings.Presentation
         [Tooltip("\"DAWN\" (in the palette's last colour, the dawn gold) or \"OUT OF STONES\".")]
         [SerializeField] private TMP_Text result;
         [SerializeField] private Color outOfStonesColour = new Color(0.85f, 0.35f, 0.3f);
-        [Tooltip("One hour dot (marker = the dot), cloned once per hour of the night under a Horizontal Layout Group.")]
+        [Tooltip("One hour dot (marker = the dot), cloned once per hour of the night + one for dawn (the last, gold) under a " +
+                 "Horizontal Layout Group.")]
         [SerializeField] private TemplateSlot hourDot;
         [Tooltip("A dot past the hour reached: its colour at this alpha.")]
         [SerializeField, Range(0f, 1f)] private float unreachedAlpha = 0.2f;
-        [Tooltip("The score: \"4100\" at dawn, \"kept 1500 (hour 3)\" on a loss.")]
+        [Tooltip("Hours reached / the night's hours: \"6 / 6\".")]
+        [SerializeField] private TMP_Text hoursReached;
+        [Tooltip("The score: \"48,545\" at dawn, \"kept 1,500 (hour 3)\" on a loss.")]
         [SerializeField] private TMP_Text score;
 
         [Header("Best throw each hour")]
@@ -43,7 +47,7 @@ namespace Piglings.Presentation
         [SerializeField] private TMP_Text biggestChain;
         [Tooltip("Points per stone thrown (the chains' score, without the dawn sweep).")]
         [SerializeField] private TMP_Text avgPerStone;
-        [Tooltip("\"12 thrown · 3 stolen\".")]
+        [Tooltip("Stones thrown · stolen by wolves: \"26 · 2\".")]
         [SerializeField] private TMP_Text stones;
 
         private ScoreStyles _styles;
@@ -65,20 +69,23 @@ namespace Piglings.Presentation
             if (result != null)
             {
                 result.text = dawn ? "DAWN" : "OUT OF STONES";
-                result.color = dawn ? session.HourColour(hours) : outOfStonesColour;
+                result.color = dawn ? session.DawnColour : outOfStonesColour;
             }
 
-            if (_dots.Count == 0) _dots = TemplateList.Build(hourDot, null, hours);
+            // One dot per hour, then dawn's (filled only on a dawn).
+            if (_dots.Count == 0) _dots = TemplateList.Build(hourDot, null, hours + 1);
             for (int i = 0; i < _dots.Count; i++)
             {
-                _dots[i].SetLabel($"{i + 1}");
-                _dots[i].Tint(session.HourColour(i + 1));
-                _dots[i].SetAlpha(i + 1 <= reached ? 1f : unreachedAlpha);
+                bool dawnDot = i == hours;
+                _dots[i].SetLabel(dawnDot ? "" : $"{i + 1}");
+                _dots[i].Tint(dawnDot ? session.DawnColour : session.HourColour(i + 1));
+                _dots[i].SetAlpha((dawnDot ? dawn : i + 1 <= reached) ? 1f : unreachedAlpha);
             }
+            if (hoursReached != null) hoursReached.text = $"{reached} / {hours}";
 
             if (score != null)
-                score.text = dawn ? $"{s.Score}"
-                    : s.ThresholdsReached > 0 ? $"kept {s.BankedScore} (hour {s.ThresholdsReached})" : "kept 0";
+                score.text = dawn ? Numbers.Thousands(s.Score)
+                    : s.ThresholdsReached > 0 ? $"kept {Numbers.Thousands(s.BankedScore)} (hour {s.ThresholdsReached})" : "kept 0";
 
             if (_rows.Count == 0) _rows = TemplateList.Build(hourRow, null, reached);
             int best = s.BestThrowPoints;
@@ -92,7 +99,7 @@ namespace Piglings.Presentation
                 row.SetLabel($"H{hour}");
                 if (row.Label != null) row.Label.color = colour;
                 row.Tint(colour);
-                row.SetDetail(points > 0 ? $"{points}" : "—");
+                row.SetDetail(points > 0 ? Numbers.Thousands(points) : "—");
                 if (row.Bar != null)
                 {
                     row.Bar.TintGain(colour);
@@ -111,9 +118,9 @@ namespace Piglings.Presentation
             if (avgPerStone != null)
             {
                 int chainScore = Mathf.Max(0, s.Score - s.SweepScore);
-                avgPerStone.text = s.ThrowsUsed > 0 ? $"{Mathf.RoundToInt(chainScore / (float)s.ThrowsUsed)}" : "—";
+                avgPerStone.text = s.ThrowsUsed > 0 ? Numbers.Thousands(Mathf.RoundToInt(chainScore / (float)s.ThrowsUsed)) : "—";
             }
-            if (stones != null) stones.text = $"{s.ThrowsUsed} thrown · {s.StonesStolen} stolen";
+            if (stones != null) stones.text = $"{s.ThrowsUsed} · {s.StonesStolen}";
         }
 
         // The rainbow animates letter by letter: repainted every frame.
