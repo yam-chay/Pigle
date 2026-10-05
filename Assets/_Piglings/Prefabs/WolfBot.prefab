@@ -14,6 +14,7 @@ GameObject:
   - component: {fileID: 6388284224697651634}
   - component: {fileID: 6210813675107653471}
   - component: {fileID: 2709662743224847239}
+  - component: {fileID: -5530604549286776514}
   m_Layer: 6
   m_Name: WolfBot
   m_TagString: Untagged
@@ -89,6 +90,7 @@ MonoBehaviour:
   - {fileID: 7508629624313504060}
   - {fileID: 934885069232273588}
   breachOpacity: 0.85
+  placementOpacity: 0.4
 --- !u!50 &6388284224697651634
 Rigidbody2D:
   serializedVersion: 5
@@ -166,6 +168,19 @@ MonoBehaviour:
   m_EditorClassIdentifier: Piglings.Simulation::Piglings.Simulation.RobotController
   body: {fileID: 6388284224697651634}
   ballCollider: {fileID: 6210813675107653471}
+--- !u!210 &-5530604549286776514
+SortingGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 730571935406087792}
+  m_Enabled: 1
+  m_SortingLayerID: 1249189723
+  m_SortingLayer: 2
+  m_SortingOrder: 50
+  m_SortAtRoot: 0
+  m_Sort3DAs2D: 0
 --- !u!1001 &5866800009537474358
 PrefabInstance:
   m_ObjectHideFlags: 0

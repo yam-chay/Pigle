@@ -41,6 +41,9 @@ TagManager:
   - name: Default
     uniqueID: 0
     locked: 0
+  - name: Wolf
+    uniqueID: 1440958751
+    locked: 0
   - name: Pig
     uniqueID: 1249189723
     locked: 0
