@@ -39,7 +39,7 @@ namespace Piglings.Events
 
     /// <summary>
     /// A climbing robot reached the roof and started its breach (Climbing → Breaching). THIS is the breach:
-    /// NightReferee counts it here — the stone theft, or the catch on an empty pile, happens at this moment.
+    /// NightReferee counts it here — the stone theft happens at this moment (on an empty pile it takes nothing).
     /// Published by the robot after it has entered Breaching, so the end-of-night sweep (if this breach ends
     /// the night) already sees it as not climbing and leaves it alone.
     /// </summary>
@@ -118,14 +118,15 @@ namespace Piglings.Events
 
     /// <summary>
     /// "Hours until dawn" (GDD "שעות הלילה"): Running(hour) → PegPlacement → Running(hour+1) … → Ended (dawn, won),
-    /// or Running → Ended (caught, lost). The hour is NightState.Hour; it isn't a phase of its own.
+    /// or Running → Ended (out of stones, lost). The hour is NightState.Hour; it isn't a phase of its own.
     /// Dusk (campaign scene only): before the night begins — the day phase, the camera rising. Nothing spawns, nothing
     /// can be thrown; NightReferee.Begin() starts the night (Dusk → Running). Last in the list so the others keep their values.
     /// </summary>
     public enum NightPhase { Running, PegPlacement, Ended, Dusk }
     public enum NightResult { Won, Lost }
-    // Caught: a robot breached while the pile was empty — the only way to lose. Dawn: the last threshold was reached.
-    public enum NightEndReason { Caught, Dawn }
+    // OutOfStones (M10.E): no stone left, nothing in flight and no round waiting to refill — the only way to lose. It took
+    // the slot of Caught (a breach on an empty pile), which it replaced. Dawn: the last threshold was reached.
+    public enum NightEndReason { OutOfStones, Dawn }
 
     // Added: a refill (each hour reached, or AddStones).
     public enum StoneChange { Thrown, Stolen, Added }
@@ -154,7 +155,11 @@ namespace Piglings.Events
     // PegKnocks → Peg: robots this peg type knocked loose itself (a Bomb's explosion), whatever set it off.
     // PegTriggers → Peg, per merged level (NightBanked.Level): times its effect fired — a Bouncy bonus granted, a Splitter
     // split, a Bomb explosion. Peg mastery (copies owned) is derived from these, weighted by level.
-    public enum MasteryStat { Score, DirectHits, BallKnocks, KnockedByBall, PegKnocks, PegTriggers }
+    // Dropped → Lineage (M10.E): robots of this type knocked off the wall tonight, whatever did it — a stone, a ball, a bomb,
+    // or the end-of-night sweep. For the post-run's "wolves dropped" and later lineage progression.
+    // Swept → Lineage: the part of Dropped the end-of-night sweep took (knocked in play = Dropped − Swept), kept apart so a
+    // later progression rule can choose what counts.
+    public enum MasteryStat { Score, DirectHits, BallKnocks, KnockedByBall, PegKnocks, PegTriggers, Dropped, Swept }
 
     /// <summary>
     /// Published by NightReferee on every phase change. Simulation pauses, resumes and sweeps the wall off this.
@@ -319,9 +324,9 @@ namespace Piglings.Events
     /// <summary>
     /// What the night banked: Amount × Multiplier of Stat, to Destination's mastery target Id.
     /// Published by NightReferee just before NightEnded (on both outcomes), one per target, only for non-zero amounts.
-    /// - Barn, Score: the banked score (the live score at dawn; the last threshold reached when caught). Id is null.
-    /// - Weapon, DirectHits: Id = the weapon id ("stone"). Mastery from use, so a caught night banks its hits too.
-    /// - Lineage, BallKnocks / KnockedByBall: Id = the robot type.
+    /// - Barn, Score: the banked score (the live score at dawn; the last threshold reached when out of stones). Id is null.
+    /// - Weapon, DirectHits: Id = the weapon id ("stone"). Mastery from use, so a lost night banks its hits too.
+    /// - Lineage, BallKnocks / KnockedByBall / Dropped / Swept: Id = the robot type.
     /// - Peg, PegKnocks / PegTriggers: Id = the peg id; Level = the merged level the triggers happened at (PegTriggers only).
     /// Meta's Progression applies these to the saved profile; the save itself happens at NightEnded.
     /// </summary>
@@ -339,7 +344,7 @@ namespace Piglings.Events
     /// <summary>
     /// Published once by the Rules layer (NightReferee) when the night is decided. All values are as of that moment.
     /// Score is the live score; BankedScore is what the night keeps (= Score at dawn, the last threshold reached
-    /// when caught). HoursReached = thresholds crossed (= the threshold count at dawn).
+    /// when out of stones). HoursReached = thresholds crossed (= the threshold count at dawn).
     /// ThrowsUsed counts stones actually thrown (not ones lost to breaches, not pegs), for score per stone.
     /// </summary>
     public readonly struct NightEnded

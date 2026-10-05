@@ -62,6 +62,15 @@ namespace Piglings.Meta
             return list;
         }
 
+        /// <summary>The night (1-based) whose dawn unlocks this peg type — the first one, if several do; 0 = none (starting or unknown).</summary>
+        public int UnlockNightOf(string pegId)
+        {
+            if (string.IsNullOrEmpty(pegId) || _starting.Contains(pegId)) return 0;
+            for (int i = 0; i < _unlocks.Length; i++)
+                if (_unlocks[i] == pegId) return i + 1;
+            return 0;
+        }
+
         /// <summary>The next peg type still locked, and the night (1-based, for "dawn on night n") whose dawn unlocks it.</summary>
         public bool TryNextLocked(PlayerProfile profile, out string pegId, out int nightNumber)
         {

@@ -42,6 +42,20 @@ namespace Piglings.Presentation
             return style;
         }
 
+        /// <summary>The animated rainbow, whatever the quality (the post-run's best throw of the night). Same speed / spread as the bands'.</summary>
+        public PopupColor Rainbow
+        {
+            get
+            {
+                if (_rainbow == null)
+                    _rainbow = new PopupColor { mode = PopupColorMode.PerLetter, gradient = PopupColor.Rainbow(),
+                                                speed = _colours != null ? _colours.RainbowSpeed : 1f,
+                                                spread = _colours != null ? _colours.RainbowSpread : 1f };
+                return _rainbow;
+            }
+        }
+        private PopupColor _rainbow;
+
         /// <summary>A throw quality's base colour (for a marker or an icon tint that can't animate letters).</summary>
         public Color QualityColour(float quality) => _colours != null ? _colours.BandFor(quality).colour : Color.white;
 

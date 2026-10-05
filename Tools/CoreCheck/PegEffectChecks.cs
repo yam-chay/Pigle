@@ -252,7 +252,7 @@ static void BombChecks(){
    Check(m.St.Phase==NightPhase.Running && !m.St.Sockets[1].IsSpent,"back to Running: the recharge resumes and finishes");
    fx2.Dispose(); }
 
- // --- Banking and the save: caught night, stone-triggered bomb ---
+ // --- Banking and the save: a lost night, stone-triggered bomb ---
  { var pegs3=new PegSetup(new[]{(bomb,1)},1,1);
    var k=new Night(new NightGoal(new[]{1000},1,0),null,pegs3); var fx3=new PegEffects(k.Bus,k.St,k.Tr,pegs3,k.Ids);
    var t3=new MasteryTally(k.Bus,k.St); var prog=new Progression(k.Bus,null);
@@ -261,9 +261,9 @@ static void BombChecks(){
    var r=fx3.Hit(0,PegHitter.Stone,st,ch);
    var vs=new[]{k.Ids.Next(),k.Ids.Next()};
    foreach(var x in vs) k.Bus.Publish(new RobotLostGrip(x,ch,Attribution.FromPeg(r.Explosion,r.VictimDepth)));
-   k.Settle((ch,st,vs)); k.Breach();
+   k.Settle((ch,st,vs));   // the one stone landed: out of stones
    Check(k.Ends.Count==1 && k.Banked.Exists(b=>b.Destination==MasteryDestination.Peg && b.Id=="peg_bomb" && b.Stat==MasteryStat.PegKnocks && b.Amount==2),
-         "the night banks NightBanked(Peg, \"peg_bomb\", PegKnocks, 2) — on a caught night too");
+         "the night banks NightBanked(Peg, \"peg_bomb\", PegKnocks, 2) — on a lost night too");
    Check(prog.Profile.Pegs["peg_bomb"].Knocks==2 && prog.Profile.DirectHits("stone")==2,"the profile keeps the peg's knocks, and the stone's 2 hits from its bomb");
    var json=ProfileJson.Write(prog.Profile);
    Check(ProfileJson.Read(json,out var back,out _)==ProfileReadResult.Ok && back.Pegs["peg_bomb"].Knocks==2 && ProfileJson.Write(back)==json,

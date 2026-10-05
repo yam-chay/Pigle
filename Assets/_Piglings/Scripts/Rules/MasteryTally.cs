@@ -12,7 +12,11 @@ namespace Piglings.Rules
     ///   several robots: each one counts.
     /// - A robot-ball knock (FromRobotBall) never counts for the weapon. It's recorded from both sides, per robot type:
     ///   the knocker's BallKnocks and the knocked robot's KnockedByBall.
-    /// - The end-of-night sweep isn't a RobotLostGrip (it's RobotSwept), so it never counts.
+    /// - The end-of-night sweep isn't a RobotLostGrip (it's RobotSwept), so it never counts for mastery.
+    /// - Dropped (M10.E, per robot type): every robot knocked off the wall tonight, whatever did it — a RobotLostGrip of any
+    ///   cause (stone, ball, bomb, or none we know) and the end-of-night sweep (RobotSwept while the night ends, before it's
+    ///   banked). For the post-run's "wolves dropped" and later lineage progression. The sweep's share is also counted on
+    ///   its own (Swept), so a later rule can tell knocked-in-play (Dropped − Swept) from swept.
     ///
     /// - A Bomb's victims (CauseKind.Peg) count for the peg type that exploded (PegKnocks), whatever set it off — and as
     ///   stone hits only when the stone itself (or a piece that counts) set it off by hitting it. A ball-triggered
@@ -34,6 +38,7 @@ namespace Piglings.Rules
         private readonly Dictionary<GameId, bool> _piecesCount = new Dictionary<GameId, bool>();   // stone → do its pieces count?
         private readonly Dictionary<GameId, string> _explosionPegs = new Dictionary<GameId, string>();    // explosion → peg id
         private readonly Dictionary<GameId, string> _explosionWeapons = new Dictionary<GameId, string>(); // explosion → stone's weapon
+        private bool _banked;   // NightEnded came: anything after it would never be saved
 
         public MasteryTally(EventBus bus, NightState state)
         {
@@ -47,6 +52,8 @@ namespace Piglings.Rules
             _bus.Subscribe<StonePieceLaunched>(OnPieceLaunched);
             _bus.Subscribe<BombExploded>(OnBombExploded);
             _bus.Subscribe<PegBounced>(OnPegBounced);
+            _bus.Subscribe<RobotSwept>(OnSwept);
+            _bus.Subscribe<NightEnded>(OnNightEnded);
         }
 
         public void Dispose()
@@ -60,6 +67,8 @@ namespace Piglings.Rules
             _bus.Unsubscribe<StonePieceLaunched>(OnPieceLaunched);
             _bus.Unsubscribe<BombExploded>(OnBombExploded);
             _bus.Unsubscribe<PegBounced>(OnPegBounced);
+            _bus.Unsubscribe<RobotSwept>(OnSwept);
+            _bus.Unsubscribe<NightEnded>(OnNightEnded);
         }
 
         /// <summary>
@@ -123,6 +132,18 @@ namespace Piglings.Rules
                 _weapons[e.Piece] = weapon;
         }
 
+        private void OnNightEnded(NightEnded e) => _banked = true;
+
+        // The sweep runs inside the end (the phase is already Ended) but before the night is banked, so its robots still make
+        // it into tonight's Dropped. A RobotSwept at any other time isn't the sweep.
+        private void OnSwept(RobotSwept e)
+        {
+            if (_state.Phase != NightPhase.Ended || _banked) return;
+            if (!_robotTypes.TryGetValue(e.Robot, out var type)) return;
+            Add(_state.Dropped, type, 1);
+            Add(_state.Swept, type, 1);
+        }
+
         // A robot's own removal comes after anything its ball could knock, so its type isn't needed past this point.
         private void OnRobotRemoved(RobotRemoved e) => _robotTypes.Remove(e.Robot);
 
@@ -131,6 +152,8 @@ namespace Piglings.Rules
             // Banking happened when the night ended: anything counted after it would never be saved, and NightState
             // would disagree with what was banked.
             if (_state.Ended) return;
+
+            if (_robotTypes.TryGetValue(e.Robot, out var droppedType)) Add(_state.Dropped, droppedType, 1);
 
             if (e.Cause.Kind == CauseKind.Throwable)
             {

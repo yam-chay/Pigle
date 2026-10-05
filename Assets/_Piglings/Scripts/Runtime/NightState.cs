@@ -12,15 +12,20 @@ namespace Piglings.Runtime
     {
         public int NightNumber = 1;
         public int ThrowsUsed;
-        public int RobotsDropped;
+        public int RobotsDropped;      // knocked loose inside a chain (ChainTracker); the per-type Dropped below counts every one
         public int RobotsReachedTop;
+        public int StonesStolen;       // stones the breaching robots took off the pile (a breach on an empty pile takes none)
         public int Score;
         public int LongestChain;   // most robots dropped by a single throw
         public int DeepestChain;   // highest depth reached in any chain
+        // The chain with the most robots and its own depth (LongestChain and DeepestChain can come from two chains).
+        // A tie on robots goes to the deeper one. Written by ChainTracker when the chain closes. For the post-run.
+        public int BiggestChainRobots;
+        public int BiggestChainDepth;
 
         // Written by NightReferee. Simulation reads Phase and CanThrow; Presentation reads the rest.
         public NightPhase Phase;   // the one source of truth for where the night is
-        public int StonesLeft;     // throws left; a robot that breaches takes one
+        public int StonesLeft;     // throws left; a robot that breaches takes one; 0 with nothing in flight = the loss
         public bool CanThrow;      // false during peg placement, once out of stones, after dawn, or night over
         public NightResult Result;
         public NightEndReason EndReason;
@@ -47,7 +52,7 @@ namespace Piglings.Runtime
         public int BestThrowHour;        // 0 = no throw has scored yet
 
         public int SweepScore;           // what the end-of-night sweep added (0 on a loss: there it's visual only)
-        public int BankedScore;          // what the night keeps: the live score at dawn, the last threshold reached when caught
+        public int BankedScore;          // what the night keeps: the live score at dawn, the last threshold reached when out of stones
         public int BarnMastery;          // Σ Amount × Multiplier banked to the barn
 
         // This night's use, for mastery. Written only by MasteryTally (Rules); banked by NightReferee when the night ends
@@ -56,6 +61,8 @@ namespace Piglings.Runtime
         public SortedDictionary<string, int> WeaponHits = new SortedDictionary<string, int>(System.StringComparer.Ordinal);    // weapon → robots it knocked loose itself
         public SortedDictionary<string, int> BallKnocks = new SortedDictionary<string, int>(System.StringComparer.Ordinal);    // robot type → robots its ball knocked loose
         public SortedDictionary<string, int> KnockedByBall = new SortedDictionary<string, int>(System.StringComparer.Ordinal); // robot type → times it was knocked loose by a ball
+        public SortedDictionary<string, int> Dropped = new SortedDictionary<string, int>(System.StringComparer.Ordinal);       // robot type → robots of it knocked off the wall (any cause, the sweep too)
+        public SortedDictionary<string, int> Swept = new SortedDictionary<string, int>(System.StringComparer.Ordinal);         // robot type → the part of Dropped the end-of-night sweep took
         public SortedDictionary<string, int> PegKnocks = new SortedDictionary<string, int>(System.StringComparer.Ordinal);     // peg id → robots its effect knocked loose (Bomb)
         // peg id → times its effect fired, per merged level (index 0 = level 1): Bouncy bonus granted, Splitter split, Bomb explosion.
         public SortedDictionary<string, List<int>> PegTriggers = new SortedDictionary<string, List<int>>(System.StringComparer.Ordinal);
@@ -74,6 +81,7 @@ namespace Piglings.Runtime
     {
         public int Score;      // points from chains thrown in this hour (not the end-of-night sweep)
         public int Breaches;   // robots that reached the roof during this hour
+        public int BestThrow;  // the best closed chain thrown in this hour (most points); 0 = none scored
     }
 
     /// <summary>One socket on the wall (a Hold). Empty = a plain hold.</summary>

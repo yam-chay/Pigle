@@ -17,13 +17,14 @@ namespace Piglings.Meta
     /// {
     ///   "version": 1,
     ///   "weapons": { "stone":         { "directHits": 137 } },
-    ///   "robots":  { "wolfbot_basic": { "ballKnocks": 412, "knockedByBall": 300 } },
+    ///   "robots":  { "wolfbot_basic": { "ballKnocks": 412, "knockedByBall": 300, "dropped": 950, "swept": 210 } },
     ///   "pegs":    { "peg_bomb":      { "knocks": 12, "triggers": [9, 2, 0] } },
-    ///   "campaign": { "night": 1, "dawns": { "night_01": 3 } },
-    ///   "towers":  { "night_02": ["slice_barn", "slice_wood", "slice_barn"] }
+    ///   "campaign": { "night": 1, "dawns": { "night_01": 3 }, "startInNight": false },
+    ///   "towers":  { "night_02": ["slice_barn", "slice_wood", "slice_barn"] },
+    ///   "records": { "bestThrow": 620, "longestChain": 9, "deepestChain": 3, "bestNightScore": 4100 }
     /// }
-    /// ("pegs", "triggers", "campaign" and "towers" came later, inside version 1: an older build reads the file fine and
-    /// ignores them — but would drop them if it then saved.)
+    /// ("pegs", "triggers", "campaign", "towers", and M10.E's "dropped", "swept", "startInNight" and "records" came later, inside
+    /// version 1: an older build reads the file fine and ignores them — but would drop them if it then saved.)
     /// </code>
     /// One object per id (not a bare number), so a later field (feats…) is an addition, not a new version.
     /// Reading is strict about what it does read — anything our writer can't produce means the file was damaged or
@@ -49,7 +50,11 @@ namespace Piglings.Meta
 
             var robots = new JObject();
             foreach (var r in profile.Robots)
-                robots[r.Key] = new JObject { ["ballKnocks"] = r.Value.BallKnocks, ["knockedByBall"] = r.Value.KnockedByBall };
+                robots[r.Key] = new JObject
+                {
+                    ["ballKnocks"] = r.Value.BallKnocks, ["knockedByBall"] = r.Value.KnockedByBall, ["dropped"] = r.Value.Dropped,
+                    ["swept"] = r.Value.Swept,
+                };
 
             var pegs = new JObject();
             foreach (var p in profile.Pegs)
@@ -67,8 +72,13 @@ namespace Piglings.Meta
                 ["weapons"] = weapons,
                 ["robots"] = robots,
                 ["pegs"] = pegs,
-                ["campaign"] = new JObject { ["night"] = profile.CurrentNight, ["dawns"] = dawns },
+                ["campaign"] = new JObject { ["night"] = profile.CurrentNight, ["dawns"] = dawns, ["startInNight"] = profile.StartInNight },
                 ["towers"] = towers,
+                ["records"] = new JObject
+                {
+                    ["bestThrow"] = profile.Records.BestThrow, ["longestChain"] = profile.Records.LongestChain,
+                    ["deepestChain"] = profile.Records.DeepestChain, ["bestNightScore"] = profile.Records.BestNightScore,
+                },
             };
             return root.ToString(Formatting.Indented);
         }
@@ -114,6 +124,8 @@ namespace Piglings.Meta
                     var r = result.Robot(entry.Name);
                     if (!ReadField(fields, entry.Name, "ballKnocks", ref r.BallKnocks, ref problem)) return ProfileReadResult.Corrupt;
                     if (!ReadField(fields, entry.Name, "knockedByBall", ref r.KnockedByBall, ref problem)) return ProfileReadResult.Corrupt;
+                    if (!ReadField(fields, entry.Name, "dropped", ref r.Dropped, ref problem)) return ProfileReadResult.Corrupt;
+                    if (!ReadField(fields, entry.Name, "swept", ref r.Swept, ref problem)) return ProfileReadResult.Corrupt;
                 }
 
             if (!ReadSection(root, "pegs", out var pegs, ref problem)) return ProfileReadResult.Corrupt;
@@ -130,6 +142,7 @@ namespace Piglings.Meta
             if (campaign != null)
             {
                 if (!ReadField(campaign, "campaign", "night", ref result.CurrentNight, ref problem)) return ProfileReadResult.Corrupt;
+                if (!ReadFlag(campaign, "campaign", "startInNight", ref result.StartInNight, ref problem)) return ProfileReadResult.Corrupt;
                 if (!ReadSection(campaign, "dawns", out var dawns, ref problem)) return ProfileReadResult.Corrupt;
                 if (dawns != null)
                     foreach (var entry in dawns.Properties())
@@ -154,8 +167,28 @@ namespace Piglings.Meta
                     result.Towers[entry.Name] = list;
                 }
 
+            if (!ReadSection(root, "records", out var records, ref problem)) return ProfileReadResult.Corrupt;
+            if (records != null)
+            {
+                var rec = result.Records;
+                if (!ReadField(records, "records", "bestThrow", ref rec.BestThrow, ref problem)) return ProfileReadResult.Corrupt;
+                if (!ReadField(records, "records", "longestChain", ref rec.LongestChain, ref problem)) return ProfileReadResult.Corrupt;
+                if (!ReadField(records, "records", "deepestChain", ref rec.DeepestChain, ref problem)) return ProfileReadResult.Corrupt;
+                if (!ReadField(records, "records", "bestNightScore", ref rec.BestNightScore, ref problem)) return ProfileReadResult.Corrupt;
+            }
+
             profile = result;
             return ProfileReadResult.Ok;
+        }
+
+        /// <summary>
+        /// A separate copy of a profile (the post-run's "before tonight", taken when the scene loads). Through the format
+        /// itself, so a field added to the save is copied too — no second list of fields to keep in step.
+        /// </summary>
+        public static PlayerProfile Copy(PlayerProfile profile)
+        {
+            if (profile == null) return new PlayerProfile();
+            return Read(Write(profile), out var copy, out _) == ProfileReadResult.Ok ? copy : new PlayerProfile();
         }
 
         // A missing section is fine (nothing banked there yet); one that isn't an object is not.
@@ -184,6 +217,16 @@ namespace Piglings.Meta
             if (token == null) return true;
             if (TryCount(token, out value)) return true;
             problem = $"{id}.{name} isn't a whole number from 0 up ({token.ToString(Formatting.None)})";
+            return false;
+        }
+
+        // Missing = false. Present = true or false, or the file is corrupt.
+        private static bool ReadFlag(JObject fields, string id, string name, ref bool value, ref string problem)
+        {
+            var token = fields[name];
+            if (token == null) return true;
+            if (token.Type == JTokenType.Boolean) { value = (bool)token; return true; }
+            problem = $"{id}.{name} isn't true or false ({token.ToString(Formatting.None)})";
             return false;
         }
 

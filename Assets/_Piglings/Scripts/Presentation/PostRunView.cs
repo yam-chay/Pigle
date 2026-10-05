@@ -1,0 +1,103 @@
+using Piglings.Simulation;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+
+namespace Piglings.Presentation
+{
+    /// <summary>
+    /// The post-run screen (M10.E, PROTOTYPE_V2.md ▸ PR E), over the Night frame: the scene dimmed (an overlay at Dim
+    /// Alpha), THE NIGHT and ALL-TIME RECORDS on the left, PROGRESS on the right, two buttons (PostRunButtons). It fades in
+    /// when the flow reaches PostRun — after the sweep has landed, and on a loss after the wolf's time — fills the panels
+    /// once (the report is built then: tonight is banked by now), and fades out when a button sends the camera down to
+    /// the doors. The camera never moves for it.
+    /// Yam lays it out once (a screen-space Canvas: a CanvasGroup on the root, the dim overlay, the panel frames, template
+    /// rows, the two buttons with a TMP label each). Every field but the flow and session is optional. Reads only — the
+    /// buttons' clicks are PostRunButtons' (Simulation).
+    /// </summary>
+    public sealed class PostRunView : MonoBehaviour
+    {
+        [SerializeField] private NightSession session;
+        [SerializeField] private NightFlow flow;
+
+        [Header("Look")]
+        [Tooltip("On the post-run's root: faded in / out as a whole (panels, buttons, the dim overlay).")]
+        [SerializeField] private CanvasGroup group;
+        [Tooltip("A full-screen Image behind the panels (black): the scene dimmed.")]
+        [SerializeField] private Graphic dim;
+        [Tooltip("How dark the scene gets behind the post-run (the overlay's alpha).")]
+        [SerializeField, Range(0f, 1f)] private float dimAlpha = 0.6f;
+        [Tooltip("Seconds to fade in, and out when leaving.")]
+        [SerializeField, Min(0f)] private float fadeSeconds = 0.35f;
+        [Tooltip("Seconds after the fade-in starts before the bars fill in.")]
+        [SerializeField, Min(0f)] private float barsDelay = 0.4f;
+
+        [Header("Panels")]
+        [SerializeField] private PostRunNightPanel nightPanel;
+        [SerializeField] private PostRunRecordsPanel recordsPanel;
+        [SerializeField] private PostRunProgressPanel progressPanel;
+
+        [Header("Button labels (the slots are PostRunButtons')")]
+        [SerializeField] private TMP_Text primaryLabel;
+        [SerializeField] private TMP_Text secondaryLabel;
+        [SerializeField] private string retryText = "Retry night";
+        [SerializeField] private string toBarnText = "To the barn";
+        [SerializeField] private string nextNightText = "Next night ▸";
+
+        private bool _filled;
+        private float _alpha;
+
+        private void Start()
+        {
+            if (dim != null)
+            {
+                var c = dim.color;
+                dim.color = new Color(c.r, c.g, c.b, dimAlpha);
+            }
+            Apply(0f);
+        }
+
+        private void LateUpdate()
+        {
+            var state = flow.State;
+            if (state == FlowState.PostRun && !_filled) Fill();
+
+            // In while the post-run is up; out once a button sends the camera down (or the scene reloads).
+            float target = state == FlowState.PostRun ? 1f : 0f;
+            if (!Mathf.Approximately(_alpha, target))
+                Apply(fadeSeconds > 0f ? Mathf.MoveTowards(_alpha, target, Time.deltaTime / fadeSeconds) : target);
+        }
+
+        private void Fill()
+        {
+            _filled = true;
+            if (nightPanel != null) nightPanel.Show(barsDelay);
+            var report = session.BuildPostRunReport();
+            if (recordsPanel != null) recordsPanel.Show(report.Records);
+            if (progressPanel != null) progressPanel.Show(report, barsDelay);
+            if (primaryLabel != null) primaryLabel.text = Label(flow.Primary);
+            if (secondaryLabel != null) secondaryLabel.text = Label(flow.Secondary);
+        }
+
+        private string Label(PostRunAction action)
+        {
+            switch (action)
+            {
+                case PostRunAction.Retry: return retryText;
+                case PostRunAction.ToBarn: return toBarnText;
+                case PostRunAction.NextNight: return nextNightText;
+                default: return "";
+            }
+        }
+
+        // Invisible = not in the way: no clicks caught while hidden.
+        private void Apply(float alpha)
+        {
+            _alpha = alpha;
+            if (group == null) return;
+            group.alpha = alpha;
+            group.blocksRaycasts = alpha > 0.01f;
+            group.interactable = alpha > 0.99f;
+        }
+    }
+}

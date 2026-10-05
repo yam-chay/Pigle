@@ -184,6 +184,12 @@ namespace Piglings.Rules
             _open.Remove(chain.Id);
             if (c.Dropped > _state.LongestChain) _state.LongestChain = c.Dropped;
             if (c.MaxDepth > _state.DeepestChain) _state.DeepestChain = c.MaxDepth;
+            // One chain's robots with its own depth (the post-run's "biggest chain"); a tie goes to the deeper one.
+            if (c.Dropped > _state.BiggestChainRobots || (c.Dropped == _state.BiggestChainRobots && c.Dropped > 0 && c.MaxDepth > _state.BiggestChainDepth))
+            {
+                _state.BiggestChainRobots = c.Dropped;
+                _state.BiggestChainDepth = c.MaxDepth;
+            }
 
             // Nothing is paid here: every robot was scored as it fell, so this is just the sum.
             _bus.Publish(new ChainClosed(chain, c.Dropped, c.MaxDepth));
