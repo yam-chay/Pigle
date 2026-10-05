@@ -72,17 +72,17 @@ namespace Piglings.Presentation
                 result.color = dawn ? session.DawnColour : outOfStonesColour;
             }
 
-            // One dot per hour. No extra dawn dot.
-            if (_dots.Count == 0)
-                _dots = TemplateList.Build(hourDot, null, hours);
-
+            // Exactly one dot per hour + one for dawn (HourDots, CoreCheck). Old clones go first, so a second fill never
+            // stacks a second set. Hours in their colour, dawn in the palette's last (gold); unreached ones dimmed.
+            TemplateList.Clear(_dots);
+            var dots = HourDots.For(hours, reached, dawn);
+            _dots = TemplateList.Build(hourDot, null, dots.Count);
             for (int i = 0; i < _dots.Count; i++)
             {
-                int hour = i + 1;
-
-                _dots[i].SetLabel($"{hour}");
-                _dots[i].Tint(session.HourColour(hour));
-                _dots[i].SetAlpha(hour <= reached ? 1f : unreachedAlpha);
+                var d = dots[i];
+                _dots[i].SetLabel(d.IsDawn ? "" : $"{d.Hour}");
+                _dots[i].Tint(d.IsDawn ? session.DawnColour : session.HourColour(d.Hour));
+                _dots[i].SetAlpha(d.Lit ? 1f : unreachedAlpha);
             }
             if (hoursReached != null) hoursReached.text = $"{reached} / {hours}";
 
@@ -90,7 +90,12 @@ namespace Piglings.Presentation
                 score.text = dawn ? Numbers.Thousands(s.Score)
                     : s.ThresholdsReached > 0 ? $"kept {Numbers.Thousands(s.BankedScore)} (hour {s.ThresholdsReached})" : "kept 0";
 
-            if (_rows.Count == 0) _rows = TemplateList.Build(hourRow, null, reached);
+            TemplateList.Clear(_rows);
+            // The same object as both templates was the "extra dots" bug (7 hour dots + one more per reached hour): refuse it.
+            if (hourRow != null && hourRow == hourDot)
+                Debug.LogWarning("PostRunNightPanel: Hour Row and Hour Dot are the same object — give BEST THROW EACH HOUR its own " +
+                                 "row template. The rows are skipped until then.", this);
+            else _rows = TemplateList.Build(hourRow, null, reached);
             int best = s.BestThrowPoints;
             _bestRow = null;
             for (int i = 0; i < _rows.Count; i++)

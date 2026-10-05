@@ -453,11 +453,34 @@ namespace Piglings.Simulation
             return result;
         }
 
-        // Any number of colours fits any night now (sampled over its hours); only an empty palette is worth a word.
-        private void CheckPalette()
+        // One colour per hour + dawn's (the last) is the intent (8 colours = 7 hours + dawn). A night with more hours than
+        // that still plays — the hours blend between colours — but it says so. Checked at load, and in the editor (OnValidate).
+        private void CheckPalette() => PaletteProblems(true);
+
+        private void OnValidate() => PaletteProblems(false);
+
+        private void PaletteProblems(bool atLoad)
         {
-            if (hourPalette != null && hourPalette.Count == 0)
+            if (hourPalette == null) return;
+            if (hourPalette.Count == 0)
+            {
                 Debug.LogWarning($"{hourPalette.name} has no colours: every hour is white.", hourPalette);
+                return;
+            }
+            if (atLoad) { WarnIfShort(_night); return; }
+            WarnIfShort(night);
+            if (campaign != null)
+                foreach (var entry in campaign.Nights) if (entry != null) WarnIfShort(entry.night);
+        }
+
+        private void WarnIfShort(NightDefinition n)
+        {
+            if (n == null || hourPalette == null) return;
+            int needed = n.Thresholds.Count + 1;   // its hours + dawn
+            if (needed > hourPalette.Count)
+                Debug.LogWarning($"{n.name}: {n.Thresholds.Count} hours + dawn need {needed} colours, but {hourPalette.name} has " +
+                                 $"{hourPalette.Count} — some hours will blend between colours. Add colours (the last stays dawn's gold).",
+                                 hourPalette);
         }
 
         // ---------- the save ----------

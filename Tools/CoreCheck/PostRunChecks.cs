@@ -157,6 +157,14 @@ static void PostRunChecks(){
      if((a==PostRunAction.ToBarn && b==PostRunAction.NextNight) || (a==PostRunAction.NextNight && b==PostRunAction.ToBarn) || a==b) never=false; }
    Check(never,"never To the barn and Next night together, never the same button twice"); }
 
+ // --- The hour dots: exactly one per hour + one for dawn (the bug: 7 + the reached hours again) ---
+ { var lost=HourDots.For(7,2,false); int lit=0; foreach(var d in lost) if(d.Lit) lit++;
+   Check(lost.Count==8 && lit==2 && lost[0].Lit && lost[1].Lit && !lost[2].Lit && lost[7].IsDawn && !lost[7].Lit && lost[7].Hour==8,
+     $"dots (7 hours, reached 2, no dawn): 8 dots, hours 1-2 lit, the dawn dot dim (got {lost.Count} dots, {lit} lit)");
+   var won=HourDots.For(7,7,true); bool all=true; foreach(var d in won) all&=d.Lit;
+   Check(won.Count==8 && all && won[7].IsDawn && !won[6].IsDawn,"dots (7 hours, dawn): 8 dots, all lit, the last is dawn's (gold)");
+   Check(HourDots.For(7,99,false).Count==8 && HourDots.For(7,-1,false)[0].Lit==false && HourDots.For(0,0,false).Count==2,
+     "dots: reached clamped; never more than hours + 1"); }
  // --- Hour colours by night progress: the palette over the hours + dawn (dawn = the last colour, post_run_v5) ---
  Check(PaletteSampling.Position(1,6,7)==0f && PaletteSampling.Position(6,6,7)==5f && PaletteSampling.Position(7,6,7)==6f && PaletteSampling.Dawn(7)==6f,
    "a 6-hour night on 7 colours: one each (hour 1 = the first, hour 6 = the 6th), dawn = the 7th (the gold)");
@@ -165,5 +173,7 @@ static void PostRunChecks(){
  Check(PaletteSampling.Position(0,5,7)==0f && PaletteSampling.Position(9,5,7)==6f && PaletteSampling.Position(1,1,7)==0f && PaletteSampling.Position(3,5,1)==0f,
    "clamped: before hour 1 / past dawn / a one-hour night's hour 1 / one colour");
  Check(PaletteSampling.Position(1,1,7)==0f && PaletteSampling.Position(2,1,7)==6f,"a one-hour night: hour 1 the first colour, dawn the last");
+ Check(PaletteSampling.Position(7,7,8)==6f && PaletteSampling.Dawn(8)==7f && PaletteSampling.Position(99,7,8)==7f,
+   "8 colours, 7 hours: hour 7 = the 7th, dawn = the 8th (gold); past dawn is clamped to the last, never wrapped");
 }
 }

@@ -11,6 +11,15 @@ namespace Piglings.Presentation
     /// </summary>
     public static class TemplateList
     {
+        /// <summary>Destroys clones built earlier (a view that fills more than once must start clean) and empties the list.</summary>
+        public static void Clear(List<TemplateSlot> built)
+        {
+            if (built == null) return;
+            foreach (var slot in built)
+                if (slot != null) Object.Destroy(slot.gameObject);
+            built.Clear();
+        }
+
         public static List<TemplateSlot> Build(TemplateSlot item, GameObject separator, int count)
         {
             var built = new List<TemplateSlot>();
