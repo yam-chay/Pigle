@@ -66,9 +66,8 @@ static void CampaignChecks(){
    Check(trig["peg_splitter"].Count==2 && trig["peg_splitter"][0]==0 && trig["peg_splitter"][1]==1,"a split at level 2 counts at level 2");
    Check(trig["peg_bomb"].Count==1 && trig["peg_bomb"][0]==1,"an explosion counts once; a spent bomb's hit doesn't");
    n.Bus.Publish(new ThrowableRemoved(s,c)); n.Bus.Publish(new RobotRemoved(r,c,RemovalReason.HitGround));
-   n.Breach();   // caught (one stone, already thrown)
    Check(n.Banked.Exists(b=>b.Destination==MasteryDestination.Peg && b.Id=="peg_bouncy" && b.Stat==MasteryStat.PegTriggers && b.Level==2 && b.Amount==1),
-         "banked per level: NightBanked(Peg, peg_bouncy, PegTriggers, 1, level 2) — on a caught night too");
+         "banked per level: NightBanked(Peg, peg_bouncy, PegTriggers, 1, level 2) — on a lost night too");
    Check(prog.Profile.Pegs["peg_bouncy"].TriggersAt(1)==1 && prog.Profile.Pegs["peg_bouncy"].TriggersAt(2)==1 && prog.Profile.Pegs["peg_splitter"].TriggersAt(2)==1,
          "the profile keeps triggers per level");
    fx.Dispose(); t.Dispose(); prog.Dispose(); }
@@ -169,7 +168,7 @@ static void CampaignChecks(){
    Check(plan.TryNextLocked(p,out var next,out int on) && next=="peg_bomb" && on==1,"next locked: Bomb, 'dawn on night 1'");
    Check(!plan.CanGoNext(p,0),"no dawn yet: no Next night");
    prog.RecordNightResult("night_01",dawn:false);
-   Check(p.Dawns.Count==0,"a caught night records no dawn");
+   Check(p.Dawns.Count==0,"a lost night records no dawn");
    prog.RecordNightResult("night_01",dawn:true);
    Check(plan.IsUnlocked(p,"peg_bomb") && plan.UnlockedPegs(p)[1]=="peg_bomb" && plan.CanGoNext(p,0),"dawn on night 1: Bomb unlocked, Next night offered");
    Check(plan.TryNextLocked(p,out next,out on) && next=="peg_splitter" && on==2,"next locked: Splitter, 'dawn on night 2'");

@@ -114,7 +114,7 @@ static int[] Totals(ScoreCurve curve, IdAllocator ids, out int[] carries){
  bus.Publish(new RobotLostGrip(z,ch,Attribution.FromRobotBall(x,0)));
  tr.Dispose(); carries=cs.ToArray(); return t.ToArray();
 }
-// NightReferee: the hours until dawn. Running(hour) -> PegPlacement -> Running(hour+1) ... -> Ended (dawn), or caught.
+// NightReferee: the hours until dawn. Running(hour) -> PegPlacement -> Running(hour+1) ... -> Ended (dawn), or out of stones.
 class Night{
  public EventBus Bus=new EventBus(); public NightState St=new NightState(); public IdAllocator Ids=new IdAllocator();
  public ChainTracker Tr; public NightReferee Ref;

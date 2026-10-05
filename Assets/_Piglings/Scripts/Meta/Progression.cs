@@ -31,7 +31,7 @@ namespace Piglings.Meta
 
         // ---------- the campaign (called by the scene's flow; plain writes, nothing derived is stored) ----------
 
-        /// <summary>A night ended: a dawn is the cause behind unlocks. A caught night records nothing here (its hits still bank).</summary>
+        /// <summary>A night ended: a dawn is the cause behind unlocks. A lost night records nothing here (its hits still bank).</summary>
         public void RecordNightResult(string nightId, bool dawn)
         {
             if (!dawn || string.IsNullOrEmpty(nightId)) return;

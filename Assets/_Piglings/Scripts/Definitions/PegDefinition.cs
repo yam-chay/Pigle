@@ -16,6 +16,8 @@ namespace Piglings.Definitions
         [Tooltip("Save key: stored on the board, and peg stats are saved under it. Never rename it once players have a " +
                  "save — their progress would be orphaned (it'd need a migration in ProfileJson). Lowercase, e.g. peg_bomb.")]
         [SerializeField] private string id = "peg_plain";
+        [Tooltip("The name players read (post-run, tips). Empty = made from the id (peg_bouncy → Bouncy).")]
+        [SerializeField] private string displayName = "";
         [Tooltip("Throwing a peg onto a placed peg of the same type levels it up, up to this level.")]
         [SerializeField, Min(1)] private int maxLevel = 3;
         [Tooltip("Off: a placed peg of this type can't be levelled up — same-type pegs need their own sockets.")]
@@ -54,6 +56,18 @@ namespace Piglings.Definitions
         [SerializeField] private bool countSplitHitsForMastery = true;
 
         public string Id => id;
+
+        /// <summary>The name players read: Display Name, or the id without "peg_", capitalised.</summary>
+        public string DisplayName
+        {
+            get
+            {
+                if (!string.IsNullOrWhiteSpace(displayName)) return displayName;
+                string bare = id != null && id.StartsWith("peg_", System.StringComparison.Ordinal) ? id.Substring(4) : id ?? "";
+                return bare.Length == 0 ? name : char.ToUpperInvariant(bare[0]) + bare.Substring(1).Replace('_', ' ');
+            }
+        }
+
         public int MaxLevel => maxLevel;
         public bool Mergeable => mergeable;
         public Sprite Sprite => sprite;

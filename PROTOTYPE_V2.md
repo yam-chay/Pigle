@@ -142,7 +142,7 @@ merges the latest Production first (CLAUDE.md).
 | PR | What | Status |
 |---|---|---|
 | P | Progression: stone evolution list (look + refill per level, cap 25), peg copies up to 10 + same-type follow-ups (one per N copies), the 2-row pegboard | ✔ merged (#38, #39); follow-up chain in this PR |
-| E | Post-run screen (Yam's final spec below) + the out-of-stones loss, records, wolves dropped, hour colours by progress | in progress |
+| E | Post-run screen (Yam's final spec below) + the out-of-stones loss, records, wolves dropped, hour colours by progress | ✔ this PR (editor steps pending) |
 | G | HUD reshape: screen-space night track + two screen-space chalkboards (record, tips); removes the world scoreboard and the HOURS card | after E (needs Yam's mockup + peg tip art) |
 | H | Night selection overlay (replaces Next night) | after G |
 | I | Pig face (Presentation only) | after H (any time) |

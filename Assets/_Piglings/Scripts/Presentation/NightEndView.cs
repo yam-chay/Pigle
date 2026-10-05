@@ -8,7 +8,7 @@ namespace Piglings.Presentation
     /// Everything shown once the night reaches Ended (placeholder OnGUI until the real panel, M6.2):
     ///  - the sweep as ONE running total in a fixed spot, ticking up fast (no per-robot popups) — on a win only:
     ///    on a loss the robots still fall, but the sweep scores nothing;
-    ///  - the end screen: dawn or caught, hours reached, final score, what the night banked, "Click to play again"
+    ///  - the end screen: dawn or out of stones, hours reached, final score, what the night banked, "Click to play again"
     ///    (PlayAgain, Simulation, does the reload).
     /// Night.unity only: the campaign scene has NightFlow and its own buttons instead. (The "[Night]" tuning line moved
     /// to NightLog, owned by NightSession, so both scenes keep it.) Reads only.
@@ -46,7 +46,7 @@ namespace Piglings.Presentation
 
             var box = new Rect(Screen.width / 2f - 170f, Screen.height / 2f - 80f, 340f, 190f);
             GUILayout.BeginArea(box, GUI.skin.box);
-            GUILayout.Label(s.Result == NightResult.Won ? "DAWN — the night is won" : "CAUGHT — the wolves got the pigs");
+            GUILayout.Label(s.Result == NightResult.Won ? "DAWN — the night is won" : "OUT OF STONES — the wolf goes for the pigs");
             GUILayout.Label($"Hours {s.ThresholdsReached} / {session.ThresholdCount}   Score {s.Score}");
             GUILayout.Label(s.Result == NightResult.Won
                 ? $"Banked {s.BankedScore}"

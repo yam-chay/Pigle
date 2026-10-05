@@ -1,0 +1,110 @@
+using System.Collections.Generic;
+using Piglings.Meta;
+using Piglings.Simulation;
+using TMPro;
+using UnityEngine;
+
+namespace Piglings.Presentation
+{
+    /// <summary>
+    /// The post-run's PROGRESS panel (M10.E): only what moved tonight. Every bar shows before tonight (dim) and tonight's
+    /// gain (bright, filling in as the panel appears); a bar tonight completed shows READY. Upgrades aren't played here —
+    /// the barn room does that (the footer, laid out by Yam, says so).
+    ///  - The stone (always): "+N hits", the bar to the next +1 stone, "a → b stones", the next evolution, and the evolution
+    ///    track (one slot per level: its Stones Needed and stone sprite; reached ones full, the rest faded).
+    ///  - A row per peg type that fired tonight or was unlocked tonight: name + sprite, "copies a → b", the bar to the next
+    ///    copy, the next follow-up step ("6 copies → 3 in a row"); unlocked tonight: the NEW badge + "unlocked by dawn on
+    ///    night n". Unused types have no row.
+    ///  - Wolves dropped (always): "+N" tonight and the all-time total.
+    /// The rows come from NightSession.BuildPostRunReport (Meta's PostRunProgress). Every field is optional. Filled once,
+    /// by PostRunView. Reads only.
+    /// </summary>
+    public sealed class PostRunProgressPanel : MonoBehaviour
+    {
+        [SerializeField] private NightSession session;
+
+        [Header("Stones")]
+        [Tooltip("\"+7 hits\".")]
+        [SerializeField] private TMP_Text stoneHits;
+        [Tooltip("The bar to the next +1 stone.")]
+        [SerializeField] private ProgressBarView stoneBar;
+        [Tooltip("\"11 → 12 stones\" (\"12 stones\" when none was earned).")]
+        [SerializeField] private TMP_Text stoneCount;
+        [Tooltip("\"next: level 3 at 20 stones\" / \"fully evolved\".")]
+        [SerializeField] private TMP_Text nextEvolution;
+        [Tooltip("One evolution slot (marker = an Image for the level's stone sprite, label = its Stones Needed), cloned per " +
+                 "level of the stone under a Horizontal Layout Group.")]
+        [SerializeField] private TemplateSlot evolutionSlot;
+        [Tooltip("An evolution not reached yet: its sprite at this alpha.")]
+        [SerializeField, Range(0f, 1f)] private float notReachedAlpha = 0.3f;
+
+        [Header("Pegs (only what moved)")]
+        [Tooltip("One peg row, cloned per type that moved under a Vertical Layout Group: marker = an Image for the peg's sprite, " +
+                 "label = its name, detail = \"copies 2 → 3\", note = the next step or \"unlocked by dawn on night n\", bar = to " +
+                 "the next copy, badge = NEW.")]
+        [SerializeField] private TemplateSlot pegRow;
+
+        [Header("Wolves dropped")]
+        [Tooltip("\"+12\".")]
+        [SerializeField] private TMP_Text wolvesTonight;
+        [Tooltip("The all-time total.")]
+        [SerializeField] private TMP_Text wolvesTotal;
+
+        [Header("Timing")]
+        [Tooltip("Seconds between one bar filling in and the next (stone first, then each peg).")]
+        [SerializeField, Min(0f)] private float rowDelay = 0.15f;
+
+        private List<TemplateSlot> _evolutions = new List<TemplateSlot>();
+        private List<TemplateSlot> _pegs = new List<TemplateSlot>();
+
+        public void Show(PostRunReport report, float delay)
+        {
+            if (report == null) return;
+            ShowStone(report.Stone, delay);
+
+            if (_pegs.Count == 0) _pegs = TemplateList.Build(pegRow, null, report.Pegs.Count);
+            for (int i = 0; i < _pegs.Count && i < report.Pegs.Count; i++) ShowPeg(_pegs[i], report.Pegs[i], delay + (i + 1) * rowDelay);
+
+            if (wolvesTonight != null) wolvesTonight.text = $"+{report.WolvesTonight}";
+            if (wolvesTotal != null) wolvesTotal.text = $"{report.WolvesTotal}";
+        }
+
+        private void ShowStone(StoneProgressRow stone, float delay)
+        {
+            if (stone == null) return;
+            if (stoneHits != null) stoneHits.text = $"+{stone.HitsGained} hits";
+            if (stoneBar != null) stoneBar.Show(stone.Bar.Before, stone.Bar.After, stone.Bar.Ready, delay);
+            if (stoneCount != null)
+                stoneCount.text = stone.After.Stones > stone.Before.Stones ? $"{stone.Before.Stones} → {stone.After.Stones} stones" : $"{stone.After.Stones} stones";
+            if (nextEvolution != null)
+                nextEvolution.text = stone.After.NextEvolutionStones < 0 ? "fully evolved"
+                    : $"next: level {stone.After.NextEvolutionLevel} at {stone.After.NextEvolutionStones} stones";
+
+            // The track: one slot per evolution of the night's stone (its Levels list), reached = the level the stones give now.
+            var weapon = session.Night.Throwable;
+            var levels = weapon.Levels;
+            if (_evolutions.Count == 0) _evolutions = TemplateList.Build(evolutionSlot, null, levels.Count);
+            for (int i = 0; i < _evolutions.Count && i < levels.Count; i++)
+            {
+                int level = i + 1;
+                var slot = _evolutions[i];
+                slot.SetSprite(weapon.SpriteFor(level));
+                slot.SetLabel(levels[i] != null ? $"{levels[i].stonesNeeded}" : "");
+                slot.SetAlpha(level <= stone.After.Level ? 1f : notReachedAlpha);
+            }
+        }
+
+        private void ShowPeg(TemplateSlot slot, PegProgressRow row, float delay)
+        {
+            var peg = session.Campaign != null ? session.Campaign.FindPeg(row.PegId) : null;
+            slot.SetLabel(peg != null ? peg.DisplayName : row.PegId);
+            if (peg != null) slot.SetSprite(peg.Sprite);
+            slot.SetDetail(row.CopiesAfter > row.CopiesBefore ? $"copies {row.CopiesBefore} → {row.CopiesAfter}" : $"copies {row.CopiesAfter}");
+            slot.ShowBadge(row.UnlockedTonight);
+            slot.SetNote(row.UnlockedTonight ? $"unlocked by dawn on night {row.UnlockedByNight}"
+                : row.InARowAtNext > 0 ? $"{row.After.NextFollowUpAt} copies → {row.InARowAtNext} in a row"
+                : row.After.AtMax ? "max" : "");
+            if (slot.Bar != null) slot.Bar.Show(row.Bar.Before, row.Bar.After, row.Bar.Ready, delay);
+        }
+    }
+}
