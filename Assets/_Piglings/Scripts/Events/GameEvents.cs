@@ -83,18 +83,21 @@ namespace Piglings.Events
     /// - Stone: the throw's base (Source = the stone). - Wolf: a robot knocked loose (Source = the robot); MultAdded > 0
     ///   when it took the chain to a new depth. - PlainPeg: a plain hold touched (Socket; Source = the stone / ball).
     /// - Peg: a special peg's mult bonus (Socket; Source = the stone / ball).
-    /// Views: the live counter ticks, popups show "+10" / "+1 mult". Socket is -1 when no hold is involved.
+    /// Views: the board's live row ticks, popups show it. Socket is -1 when no hold is involved.
+    /// Depth: how deep the source is — a wolf's own depth; for a hold / peg, its hitter's (a stone 0, a ball its depth) —
+    /// so views can colour by depth.
     /// </summary>
     public readonly struct ChainGained
     {
         public readonly ChainId Chain; public readonly ChainGainCause Cause; public readonly GameId Source; public readonly int Socket;
         public readonly int ScoreAdded; public readonly float MultAdded;
         public readonly int Score; public readonly float Mult; public readonly int Hour; public readonly float HourMultiplier;
+        public readonly int Depth;
         public ChainGained(ChainId chain, ChainGainCause cause, GameId source, int socket, int scoreAdded, float multAdded,
-                           int score, float mult, int hour, float hourMultiplier)
+                           int score, float mult, int hour, float hourMultiplier, int depth = 0)
         {
             Chain = chain; Cause = cause; Source = source; Socket = socket; ScoreAdded = scoreAdded; MultAdded = multAdded;
-            Score = score; Mult = mult; Hour = hour; HourMultiplier = hourMultiplier;
+            Score = score; Mult = mult; Hour = hour; HourMultiplier = hourMultiplier; Depth = depth;
         }
     }
 

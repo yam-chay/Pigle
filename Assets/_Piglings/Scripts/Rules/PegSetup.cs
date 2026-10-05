@@ -22,12 +22,14 @@ namespace Piglings.Rules
         private readonly float[] _multBonuses;        // any effect: + the chain's mult when it triggers (M10.S)
         private readonly int[] _pieces;               // Splitter: stones after a split, the original included
         private readonly float[] _cooldowns;          // Bomb: seconds spent after it goes off (wall time)
+        private readonly int[] _scoreValues;          // any peg: its SCORE value (Plain: per contact; special: per trigger); < 0 = default
 
         public PegType(string id, int maxLevel = 3, bool mergeable = true, PegEffect effect = PegEffect.Plain,
                        IReadOnlyList<float> multBonuses = null, IReadOnlyList<int> pieces = null,
                        int maxStonesPerThrow = 4, bool splitHitsCountForMastery = true,
-                       IReadOnlyList<float> cooldowns = null, int followUps = 0)
+                       IReadOnlyList<float> cooldowns = null, int followUps = 0, IReadOnlyList<int> scoreValues = null)
         {
+            _scoreValues = Copy(scoreValues);
             FollowUps = followUps < 0 ? 0 : followUps;
             Id = id;
             MaxLevel = maxLevel < 1 ? 1 : maxLevel;
@@ -42,6 +44,13 @@ namespace Piglings.Rules
 
         /// <summary>What it adds to its chain's mult when it triggers at this level (Bouncy +1 / +2…; M10.S). Never negative; none = 0.</summary>
         public float MultBonusAt(int level) => System.Math.Max(0f, At(_multBonuses, level, 0f));
+
+        /// <summary>
+        /// Its SCORE value at this level (every peg has one, so it can be tuned in the editor or changed by code later): a Plain
+        /// peg adds it on every contact (with the plain-hold cooldown), a special peg when it triggers. Below 0 (or none set) =
+        /// the default: the scoring's Plain Peg Score for a Plain peg, nothing for a special one.
+        /// </summary>
+        public int ScoreValueAt(int level) => At(_scoreValues, level, -1);
 
         /// <summary>Splitter: stones after a split at this level, the original included. At least 1 (1 = no split).</summary>
         public int PiecesAt(int level) => System.Math.Max(1, At(_pieces, level, 1));

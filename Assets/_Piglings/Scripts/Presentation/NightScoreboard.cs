@@ -15,7 +15,7 @@ namespace Piglings.Presentation
     ///  - the score against the next threshold, with a fill bar (ui_pill) through the current hour, in its colour;
     ///  - "hour n gap: a → b";
     ///  - LAST THROWS (M10.S): the chains as they happen. A live chain's row ticks "SCORE × MULT × H2"; when it closes the
-    ///    row resolves into its result ("+360") and stays as one of the last throws. Newest on top; older rows step down,
+    ///    row keeps that label and reveals its result next to it ("+360"), staying as one of the last throws. Newest on top; older rows step down,
     ///    shrink and dim; at most Row Brightness's length show. Misses (no wolf) leave no row.
     ///  - BEST TONIGHT: the best throw's breakdown ("84 × 3 × H2 =") and its result.
     /// Colours: the Score Colours asset's quality bands (cream → amber → orange → red → magenta pulse → rainbow) by the
@@ -147,7 +147,6 @@ namespace Piglings.Presentation
             if (e.RobotsDropped <= 0) { _rows.Remove(row); Destroy(row.Slot.gameObject); return; }
             row.Live = false;
             row.Total = e.Total;
-            row.Slot.SetLabel("");
             row.Slot.SetDetail($"+{Numbers.Thousands(e.Total)}");
             // Same rule as NightState.BestThrowPoints (most points, the first one keeps it on a tie).
             if (e.Total > _bestTotal)
@@ -179,7 +178,12 @@ namespace Piglings.Presentation
             GlideBar();
             FloatRows();
             // Quality colours can animate (pulse, rainbow): repainted every frame. Solid ones cost a colour set.
-            foreach (var row in _rows) Paint(row.Slot, row.Live ? row.Slot.Label : row.Slot.Detail, row.Worth, row.Hour);
+            // The label ("84 × 3 × H2") stays after the close; the result appears in the detail next to it.
+            foreach (var row in _rows)
+            {
+                Paint(row.Slot, row.Slot.Label, row.Worth, row.Hour);
+                if (!row.Live) Paint(null, row.Slot.Detail, row.Total, row.Hour);
+            }
             if (_bestTotal > 0 && best != null)
             {
                 Paint(best, best.Detail, _bestTotal, _bestHour);

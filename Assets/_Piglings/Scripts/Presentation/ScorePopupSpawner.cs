@@ -9,7 +9,9 @@ namespace Piglings.Presentation
     /// Makes chains readable on the board (M10.S, Score × Mult):
     ///  - A robot knocked loose: ONE number at the robot — the chain so far, "789 ×5" (its SCORE × its MULT at that moment; no
     ///    hour, no result). The numbers grow along the chain.
-    ///  - A special peg triggering: a small "+1 mult" at the peg. A plain hold: a small "+1" at the hold.
+    ///  - A special peg triggering: a small "+1 mult" at the peg. A plain hold: a small "+1" at the hold, coloured by its
+    ///    hitter's depth with the quality bands' looks (ScoreStyles.ForDepthBand).
+    ///  - The result fits the Chain Area box (the font shrinks; ScorePopup.FitInto).
     ///  - The chain's close: above the pig (Chain Anchor = ChainPopupAnchor), "120 ×3 ×H1 = 360" — the only place the result
     ///    shows on the board (with the camera shake / big-hit juice).
     /// Colours: the Score Colours asset's quality bands (cream → amber → orange → red → magenta pulse → rainbow) by quality —
@@ -48,6 +50,11 @@ namespace Piglings.Presentation
         [Tooltip("ChainPopupAnchor, above the pig: where the result appears, always in the same place.")]
         [SerializeField] private Transform chainAnchor;
         [SerializeField, Min(0.01f)] private float chainScale = 1.2f;
+        [Tooltip("The space the result may take (world units, before Chain Scale): the font shrinks to fit it, so long results " +
+                 "never break. Drawn as a box at the anchor when this object is selected. (0, 0) = no fitting.")]
+        [SerializeField] private Vector2 chainArea = new Vector2(3f, 0.6f);
+        [Tooltip("The smallest font the result may shrink to.")]
+        [SerializeField, Min(0.1f)] private float chainMinFontSize = 2f;
         [Tooltip("A chain worth this much (or more) gets the full treatment: longest life, strongest shake.")]
         [SerializeField, Min(1)] private int bigChainTotal = 300;
         [Tooltip("Smallest chain that gets the result popup (robots dropped); 0 = misses too.")]
@@ -104,7 +111,8 @@ namespace Piglings.Presentation
             else if (e.Cause == ChainGainCause.PlainPeg && showPlainHolds && e.ScoreAdded > 0)
             {
                 if (board == null || e.Socket < 0 || e.Socket >= board.SocketCount) return;
-                Spawn(board.Position(e.Socket), $"+{e.ScoreAdded}", StyleFor(e.ScoreAdded, e.Hour), plainHoldScale, 0f);
+                // Coloured by its hitter's depth (the stone 0, a ball its own), with the bands' looks: the deepest pulse / rainbow.
+                Spawn(board.Position(e.Socket), $"+{e.ScoreAdded}", _styles.ForDepthBand(e.Depth), plainHoldScale, 0f);
             }
             // The stone's base: no popup (the board's live row shows it).
         }
@@ -114,7 +122,8 @@ namespace Piglings.Presentation
             if (!showChainResult || e.RobotsDropped < minRobotsForChainPopup || chainAnchor == null) return;
             string sum = $"{Numbers.Thousands(e.Score)} ×{e.Mult:0.##} ×H{e.Hour} = {Numbers.Thousands(e.Total)}";
             float size = Mathf.Clamp01(e.Total / (float)bigChainTotal);
-            Spawn(chainAnchor.position, sum, StyleFor(e.Total, e.Hour), chainScale, size);
+            var popup = Spawn(chainAnchor.position, sum, StyleFor(e.Total, e.Hour), chainScale, size);
+            popup.FitInto(chainArea, chainMinFontSize);
         }
 
         // Inspector: ⋮ (or right-click the component header) → "Preview popups", in Play mode: a robot popup and a chain result
@@ -139,10 +148,19 @@ namespace Piglings.Presentation
             Spawn(origin + new Vector3(3.5f, -1.2f, 0f), "+1 mult", _mult, multScale, 0.4f);
         }
 
-        private void Spawn(Vector3 position, string text, PopupColor color, float scale, float intensity)
+        private ScorePopup Spawn(Vector3 position, string text, PopupColor color, float scale, float intensity)
         {
             var popup = Instantiate(popupPrefab, position, Quaternion.identity, container);
             popup.Show(text, color, 0f, scale, intensity);
+            return popup;
+        }
+
+        // The chain result's space, so it can be sized in the Scene view (select this object).
+        private void OnDrawGizmosSelected()
+        {
+            if (chainAnchor == null || chainArea.x <= 0f || chainArea.y <= 0f) return;
+            Gizmos.color = new Color(1f, 0.8f, 0.2f);
+            Gizmos.DrawWireCube(chainAnchor.position, new Vector3(chainArea.x * chainScale, chainArea.y * chainScale, 0f));
         }
     }
 }

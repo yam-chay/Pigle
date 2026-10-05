@@ -93,7 +93,11 @@ namespace Piglings.Rules
 
             _bus.Publish(new PegHit(socket, placed.PegId, placed.Level, effect, hitter, hitterId, chain));
 
-            if (effect == PegEffect.Plain) { _chains.TouchPlain(chain, socket, hitterId, time); return PegHitResult.None; }
+            if (effect == PegEffect.Plain)
+            {
+                _chains.TouchPlain(chain, socket, hitterId, time, type != null ? type.ScoreValueAt(placed.Level) : -1);
+                return PegHitResult.None;
+            }
             if (effect == PegEffect.Bouncy) return Bounce(socket, type, placed.Level, hitterId, chain);
             if (effect == PegEffect.Splitter && hitter == PegHitter.Stone) return Split(socket, type, placed.Level, hitterId, chain);
             if (effect == PegEffect.Bomb) return Explode(socket, placed, hitter, hitterId, chain, type);
@@ -135,7 +139,7 @@ namespace Piglings.Rules
 
             var explosion = _ids.Next();
             placed.Recharge = type.CooldownAt(placed.Level);
-            _chains.AddPegMult(chain, socket, trigger, type.MultBonusAt(placed.Level));
+            _chains.AddPegGain(chain, socket, trigger, System.Math.Max(0, type.ScoreValueAt(placed.Level)), type.MultBonusAt(placed.Level));
             _bus.Publish(new BombExploded(socket, placed.PegId, placed.Level, chain, explosion, hitter, trigger, depth));
             return new PegHitResult(PegOutcome.Exploded, explosion: explosion, victimDepth: depth);
         }
@@ -149,7 +153,7 @@ namespace Piglings.Rules
             if (newPieces <= 0) return PegHitResult.None;
 
             _split.Add((socket, stone));
-            _chains.AddPegMult(chain, socket, stone, type.MultBonusAt(level));
+            _chains.AddPegGain(chain, socket, stone, System.Math.Max(0, type.ScoreValueAt(level)), type.MultBonusAt(level));
             _bus.Publish(new StoneSplit(socket, chain, stone, newPieces, type.SplitHitsCountForMastery));
             return new PegHitResult(PegOutcome.Split, newPieces);
         }
@@ -159,7 +163,7 @@ namespace Piglings.Rules
             // A ball outside an open chain (the end-of-night sweep) has nothing to score into.
             if (!_chains.IsOpen(chain) || !_bounced.Add((socket, hitter))) return PegHitResult.None;
             float bonus = type.MultBonusAt(level);
-            float chainMult = _chains.AddPegMult(chain, socket, hitter, bonus);
+            float chainMult = _chains.AddPegGain(chain, socket, hitter, System.Math.Max(0, type.ScoreValueAt(level)), bonus);
             _bus.Publish(new PegBounced(socket, hitter, chain, bonus, chainMult));
             return new PegHitResult(PegOutcome.Bounced);
         }

@@ -57,6 +57,32 @@ static void PegEffectChecks(){
  n.Bus.Publish(new ThrowableRemoved(s,c)); n.Bus.Publish(new RobotRemoved(r1,c,RemovalReason.HitGround));
  var closed=n.Chains.Find(e=>e.Chain.Id==c.Id);
  Check(closed.Score==24 && Near(closed.Mult,6f) && closed.Total==144,$"the chain: (10 base + 10 wolf + 4 hold contacts) × 6 = 144 (got {closed.Score} × {closed.Mult} = {closed.Total})");
+ // Every peg has a SCORE value per level (M10.S): a Plain peg per contact, a special one per trigger; -1 / unset = the default.
+ { var plainTen=new PegType("peg_plain10",3,true,PegEffect.Plain,scoreValues:new[]{10});
+   var bouncy5=new PegType("peg_bouncy5",3,true,PegEffect.Bouncy,new[]{1f},scoreValues:new[]{5});
+   var plainDefault=new PegType("peg_plain_d",3,true,PegEffect.Plain,scoreValues:new[]{-1});
+   var ps=new PegSetup(new[]{(plainTen,1),(bouncy5,1),(plainDefault,1)},1,4);
+   var m=new Night(Hours(100000),new ScoreCurve(),ps); var fxv=new PegEffects(m.Bus,m.St,m.Tr,ps,m.Ids);
+   m.St.Sockets[0].PegId="peg_plain10"; m.St.Sockets[0].Level=1; m.St.Sockets[1].PegId="peg_bouncy5"; m.St.Sockets[1].Level=1;
+   m.St.Sockets[2].PegId="peg_plain_d"; m.St.Sockets[2].Level=1;
+   var cv=new ChainId(m.Ids.Next()); var sv=m.Ids.Next(); m.Bus.Publish(new ThrowReleased(cv,sv,"stone"));
+   fxv.Hit(0,PegHitter.Stone,sv,cv);
+   Check(m.Gains[m.Gains.Count-1].ScoreAdded==10,"a Plain peg with its own value (10) adds it per contact");
+   fxv.Hit(2,PegHitter.Stone,sv,cv);
+   Check(m.Gains[m.Gains.Count-1].ScoreAdded==1,"a Plain peg left at -1 adds the default plain-peg score (1)");
+   fxv.Hit(1,PegHitter.Stone,sv,cv);
+   Check(m.Gains[m.Gains.Count-1].ScoreAdded==5 && Near(m.Gains[m.Gains.Count-1].MultAdded,1f),"a special peg with a value adds it with its mult bonus when it triggers (+5, +1 mult)");
+   Check(bouncy.ScoreValueAt(1)==-1 && new PegType("x").ScoreValueAt(2)==-1,"none set = -1 (the default)");
+   // The depth on gains: a ball's own depth on the holds it touches; the stone 0.
+   var b1=m.Ids.Next(); var b2=m.Ids.Next();
+   m.Bus.Publish(new RobotLostGrip(b1,cv,Attribution.FromThrowable(sv)));
+   m.Bus.Publish(new RobotLostGrip(b2,cv,Attribution.FromRobotBall(b1,0)));
+   Check(m.Gains[m.Gains.Count-1].Cause==ChainGainCause.Wolf && m.Gains[m.Gains.Count-1].Depth==1,"a wolf's gain carries its depth (1)");
+   fxv.Hit(3,PegHitter.Ball,b2,cv);
+   Check(m.Gains[m.Gains.Count-1].Cause==ChainGainCause.PlainPeg && m.Gains[m.Gains.Count-1].Depth==1,"a plain hold touched by a depth-1 ball: depth 1");
+   fxv.Hit(3,PegHitter.Stone,sv,cv);
+   Check(m.Gains[m.Gains.Count-1].Depth==0,"...by the stone: depth 0");
+   fxv.Dispose(); }
  // Night over: no more peg effects, no facts
  var n2=new Night(new NightGoal(new[]{1000},1,0),null,pegs); var fx2=new PegEffects(n2.Bus,n2.St,n2.Tr,pegs,n2.Ids);
  n2.St.Sockets[0].PegId="peg_bouncy"; n2.St.Sockets[0].Level=1;

@@ -426,6 +426,14 @@ Inspector); Yam rebalances after it lands. Keeps PR P's follow-up rule as it is.
   every solid band the same hour colour, so only pulse / rainbow differed. Quality = worth so far (live) or the result ÷
   its hour's gap.
 
+### PR S follow-up 3 (Yam)
+- LAST THROWS: the label ("84 × 3 × H2") stays when the chain ends; the result appears next to it.
+- The chain popup above the pig fits a box Yam sets (Chain Area, drawn as a gizmo): the font shrinks for long results.
+- Plain-hold "+1" popups coloured by their hitter's depth, with the quality bands' looks (the last = rainbow).
+- Every peg has a SCORE value per level (Plain per contact, special per trigger; -1 = default) — tunable now, changeable by
+  code later (upgrades).
+- Post-run: "Total Score: X" (what the night keeps) instead of "kept X (hour n)" — the hours show in the dots.
+
 ### PR G — HUD reshape (replaces the world-space chalkboard and the HOURS card)
 - **Night track** (screen space, across the top): a thin line, one circle per hour (equal segments, not proportional to
   score), the moon riding it. Inside a segment the moon moves by progress through that hour's gap. Reaching a circle = the
