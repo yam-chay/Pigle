@@ -7760,7 +7760,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1273318192}
   - component: {fileID: 1273318193}
-  - component: {fileID: 1273318194}
   m_Layer: 5
   m_Name: HourDots
   m_TagString: Untagged
@@ -7814,21 +7813,6 @@ MonoBehaviour:
   m_ChildScaleWidth: 0
   m_ChildScaleHeight: 0
   m_ReverseArrangement: 0
---- !u!114 &1273318194
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1273318191}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3f18e877c5585f844b765bf6fd12ecd3, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Piglings.Presentation::Piglings.Presentation.HoursCardView
-  session: {fileID: 1068153025}
-  hour: {fileID: 254521544}
-  pegMarker: {fileID: 0}
 --- !u!1 &1304231565
 GameObject:
   m_ObjectHideFlags: 0

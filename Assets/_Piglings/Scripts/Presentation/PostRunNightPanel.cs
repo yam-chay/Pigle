@@ -72,14 +72,17 @@ namespace Piglings.Presentation
                 result.color = dawn ? session.DawnColour : outOfStonesColour;
             }
 
-            // One dot per hour, then dawn's (filled only on a dawn).
-            if (_dots.Count == 0) _dots = TemplateList.Build(hourDot, null, hours + 1);
+            // One dot per hour. No extra dawn dot.
+            if (_dots.Count == 0)
+                _dots = TemplateList.Build(hourDot, null, hours);
+
             for (int i = 0; i < _dots.Count; i++)
             {
-                bool dawnDot = i == hours;
-                _dots[i].SetLabel(dawnDot ? "" : $"{i + 1}");
-                _dots[i].Tint(dawnDot ? session.DawnColour : session.HourColour(i + 1));
-                _dots[i].SetAlpha((dawnDot ? dawn : i + 1 <= reached) ? 1f : unreachedAlpha);
+                int hour = i + 1;
+
+                _dots[i].SetLabel($"{hour}");
+                _dots[i].Tint(session.HourColour(hour));
+                _dots[i].SetAlpha(hour <= reached ? 1f : unreachedAlpha);
             }
             if (hoursReached != null) hoursReached.text = $"{reached} / {hours}";
 
