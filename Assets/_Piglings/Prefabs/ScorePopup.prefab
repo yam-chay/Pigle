@@ -200,6 +200,9 @@ MonoBehaviour:
   resolveDelay: 0.35
   rise: 0.5
   pop: 0.35
+  extraLifetime: 0.8
+  shakeAmount: 0.06
+  shakeSpeed: 25
 --- !u!210 &3408841924912943400
 SortingGroup:
   m_ObjectHideFlags: 0
@@ -209,7 +212,7 @@ SortingGroup:
   m_GameObject: {fileID: 8009105007375306273}
   m_Enabled: 1
   m_SortingLayerID: 1729530219
-  m_SortingLayer: 2
+  m_SortingLayer: 3
   m_SortingOrder: 50
   m_SortAtRoot: 0
   m_Sort3DAs2D: 0
