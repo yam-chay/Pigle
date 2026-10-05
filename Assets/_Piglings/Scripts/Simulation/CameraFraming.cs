@@ -13,6 +13,10 @@ namespace Piglings.Simulation
         public override string ToString() => $"y {Y:0.##}, size {Size:0.##}";
     }
 
+    /// <summary>The shape of a camera move (M10.S): slow at both ends, or one end at full speed — so two moves can join
+    /// across a scene reload at the same speed (the descent eases in, the boot after the reload eases out).</summary>
+    public enum CameraEase { InOut, In, Out }
+
     /// <summary>
     /// The camera's maths, engine-free so Tools/CoreCheck can check it (like BreachTiming): the ease of a move between
     /// two frames, and the Tower frame fitted to the built tower. CameraDirector does the moving with it.
@@ -24,6 +28,33 @@ namespace Piglings.Simulation
         {
             t = Clamp01(t);
             return t * t * (3f - 2f * t);
+        }
+
+        /// <summary>
+        /// The ease of a given shape: InOut (smoothstep), In (t²: slow away, full speed at the end), Out (slow into the end,
+        /// full speed at the start). t is clamped to 0..1.
+        /// </summary>
+        public static float Ease(float t, CameraEase shape)
+        {
+            t = Clamp01(t);
+            switch (shape)
+            {
+                case CameraEase.In: return t * t;
+                case CameraEase.Out: return 1f - (1f - t) * (1f - t);
+                default: return Ease(t);
+            }
+        }
+
+        /// <summary>
+        /// How long an In or Out move over <paramref name="distance"/> takes so its full-speed end moves at
+        /// <paramref name="peakSpeed"/> (t² over T seconds ends at 2·d / T): T = 2·d / speed, never below
+        /// <paramref name="minSeconds"/>. Two moves timed this way meet at the same speed.
+        /// </summary>
+        public static float SecondsAtPeakSpeed(float distance, float peakSpeed, float minSeconds = 0.1f)
+        {
+            if (peakSpeed <= 0f) return minSeconds;
+            float seconds = 2f * Math.Abs(distance) / peakSpeed;
+            return seconds < minSeconds ? minSeconds : seconds;
         }
 
         /// <summary>The pose t (0..1, already eased or not) of the way from one frame to another.</summary>

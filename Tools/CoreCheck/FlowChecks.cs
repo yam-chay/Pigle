@@ -55,6 +55,17 @@ static void FlowChecks(){
    Check(Math.Abs(mid.Y-3.58f)<1e-4f && Math.Abs(mid.Size-2.325f)<1e-4f,"between: halfway is halfway (y and size together)");
    Check(end.Y==6f && end.Size==3.5f && CameraFraming.Between(barn,night,0f).Y==1.16f,"between: ends exactly on the frames"); }
 
+ // --- CameraFraming: one move across the reload (M10.S): the descent eases in, the boot eases out, same speed at the seam ---
+ Check(CameraFraming.Ease(0.5f,CameraEase.In)==0.25f && CameraFraming.Ease(0.5f,CameraEase.Out)==0.75f && CameraFraming.Ease(1f,CameraEase.In)==1f
+       && CameraFraming.Ease(0f,CameraEase.Out)==0f && CameraFraming.Ease(2f,CameraEase.Out)==1f,"ease In = t², Out = 1 − (1 − t)², clamped");
+ { float down=CameraFraming.SecondsAtPeakSpeed(4f,8f), on=CameraFraming.SecondsAtPeakSpeed(1.2f,8f);
+   float dt=1e-3f;
+   float speedIn=(CameraFraming.Ease(1f,CameraEase.In)-CameraFraming.Ease(1f-dt,CameraEase.In))*4f/(dt*down);
+   float speedOut=(CameraFraming.Ease(dt,CameraEase.Out)-CameraFraming.Ease(0f,CameraEase.Out))*1.2f/(dt*on);
+   Check(Math.Abs(down-1f)<1e-5f && Math.Abs(on-0.3f)<1e-5f,"timed by peak speed: 4 units at 8/s = 1 s, 1.2 units = 0.3 s (T = 2d / v)");
+   Check(Math.Abs(speedIn-8f)<0.05f && Math.Abs(speedOut-8f)<0.05f,$"the descent ends and the boot starts at the same speed (8/s; got {speedIn:0.00}, {speedOut:0.00})");
+   Check(CameraFraming.SecondsAtPeakSpeed(0f,8f)==0.1f && CameraFraming.SecondsAtPeakSpeed(3f,0f)==0.1f,"never shorter than the minimum; no speed = the minimum"); }
+
  // --- CameraFraming: the Tower frame ---
  { var t=CameraFraming.Tower(0f,10f,3f,0.5f,16f/9f);
    Check(Math.Abs(t.Y-5f)<1e-5f && Math.Abs(t.Size-5.5f)<1e-5f,$"tower: centred on the tower, half its height + margin (y 5, size 5.5; got {t})");
