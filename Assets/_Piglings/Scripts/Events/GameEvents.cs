@@ -73,46 +73,47 @@ namespace Piglings.Events
         public ChainClosed(ChainId chain, int robotsDropped, int maxDepth) { Chain = chain; RobotsDropped = robotsDropped; MaxDepth = maxDepth; }
     }
 
+    /// <summary>What added to a chain (M10.S): the thrown stone's base, a wolf knocked loose, a plain hold touched, a special peg.</summary>
+    public enum ChainGainCause { Stone, Wolf, PlainPeg, Peg }
+
     /// <summary>
-    /// Published by the Rules layer right after RobotLostGrip: what that robot is worth, already
-    /// added to the score. Received = the value its hitter (stone or ball) carried into it;
-    /// Total = Received × Multiplier × HourMultiplier, rounded once; Carries = what this robot's own ball now carries.
-    /// Hour / HourMultiplier: the hour the chain's stone was thrown in, and its multiplier (×1 in hour 1) — fixed at
-    /// the throw, the same as ChainScored.Hour, so robot and chain popups always agree.
-    /// PegMultiplier: the Bouncy pegs its hitter bounced off before this hit (×1 = none; two ×2 pegs = ×3). Like the hour,
-    /// it multiplies what this robot scores, never what it carries on.
-    /// Order is its place in the chain (1 = first to lose grip).
-    /// Presentation shows "Received ×Multiplier", then "+Total".
+    /// A chain grew (M10.S, Score × Mult): published by ChainTracker after it has added ScoreAdded to the night's score
+    /// (raw — the mult lands at the close). Score / Mult are the chain's running totals now; HourMultiplier the hour it was
+    /// thrown in (×1 in hour 1), applied at the close.
+    /// - Stone: the throw's base (Source = the stone). - Wolf: a robot knocked loose (Source = the robot); MultAdded > 0
+    ///   when it took the chain to a new depth. - PlainPeg: a plain hold touched (Socket; Source = the stone / ball).
+    /// - Peg: a special peg's mult bonus (Socket; Source = the stone / ball).
+    /// Views: the live counter ticks, popups show "+10" / "+1 mult". Socket is -1 when no hold is involved.
     /// </summary>
-    public readonly struct RobotScored
+    public readonly struct ChainGained
     {
-        public readonly GameId Robot; public readonly ChainId Chain;
-        public readonly int Order; public readonly int Depth;
-        public readonly int Received; public readonly float Multiplier; public readonly int Hour; public readonly float HourMultiplier;
-        public readonly float PegMultiplier;
-        public readonly int Total; public readonly int Carries;
-        public RobotScored(GameId robot, ChainId chain, int order, int depth, int received, float multiplier, int hour, float hourMultiplier,
-                           float pegMultiplier, int total, int carries)
+        public readonly ChainId Chain; public readonly ChainGainCause Cause; public readonly GameId Source; public readonly int Socket;
+        public readonly int ScoreAdded; public readonly float MultAdded;
+        public readonly int Score; public readonly float Mult; public readonly int Hour; public readonly float HourMultiplier;
+        public ChainGained(ChainId chain, ChainGainCause cause, GameId source, int socket, int scoreAdded, float multAdded,
+                           int score, float mult, int hour, float hourMultiplier)
         {
-            Robot = robot; Chain = chain; Order = order; Depth = depth;
-            Received = received; Multiplier = multiplier; Hour = hour; HourMultiplier = hourMultiplier; PegMultiplier = pegMultiplier;
-            Total = total; Carries = carries;
+            Chain = chain; Cause = cause; Source = source; Socket = socket; ScoreAdded = scoreAdded; MultAdded = multAdded;
+            Score = score; Mult = mult; Hour = hour; HourMultiplier = hourMultiplier;
         }
     }
 
     /// <summary>
-    /// Published by the Rules layer right after ChainClosed: the chain's value, which is the sum of
-    /// its RobotScored totals (nothing extra is added at close). Also published for misses, with zeros.
-    /// Hour: the hour the throw was made in (a chain is never split across hours: throwing stops when a
-    /// threshold is crossed, and the next hour starts only once every chain has settled), so views can colour it.
+    /// Published by the Rules layer right after ChainClosed: the chain's result = Score × Mult × HourMultiplier, rounded once
+    /// (M10.S). Score was already added to the night's score as it came (raw); Remainder = Total − Score is added now, just
+    /// before this is published. Also published for misses (a miss still has the stone's base). Hour: the hour the throw was
+    /// made in, so views can colour it.
     /// </summary>
     public readonly struct ChainScored
     {
         public readonly ChainId Chain; public readonly int RobotsDropped; public readonly int MaxDepth; public readonly int Total;
         public readonly int Hour;
-        public ChainScored(ChainId chain, int robotsDropped, int maxDepth, int total, int hour)
+        public readonly int Score; public readonly float Mult; public readonly float HourMultiplier; public readonly int Remainder;
+        public ChainScored(ChainId chain, int robotsDropped, int maxDepth, int total, int hour,
+                           int score = 0, float mult = 1f, float hourMultiplier = 1f, int remainder = 0)
         {
             Chain = chain; RobotsDropped = robotsDropped; MaxDepth = maxDepth; Total = total; Hour = hour;
+            Score = score; Mult = mult; HourMultiplier = hourMultiplier; Remainder = remainder;
         }
     }
 
@@ -238,41 +239,39 @@ namespace Piglings.Events
     }
 
     /// <summary>
-    /// A falling ball bounced off a Bouncy peg and got its bonus (once per peg per ball). Multiplier = this peg's (×2 at
-    /// level 1); BallMultiplier = the ball's total now (pegs stack on the extra part: two ×2 pegs = ×3). It multiplies what
-    /// the robots this ball knocks loose from now on score.
+    /// A stone or a falling ball bounced off a Bouncy peg and its chain got the peg's mult bonus (M10.S; once per peg per
+    /// stone / ball). MultBonus = this peg's (+1 at level 1); ChainMult = the chain's mult now.
     /// </summary>
     public readonly struct PegBounced
     {
-        public readonly int Socket; public readonly GameId Ball; public readonly ChainId Chain;
-        public readonly float Multiplier; public readonly float BallMultiplier;
-        public PegBounced(int socket, GameId ball, ChainId chain, float multiplier, float ballMultiplier)
+        public readonly int Socket; public readonly GameId Hitter; public readonly ChainId Chain;
+        public readonly float MultBonus; public readonly float ChainMult;
+        public PegBounced(int socket, GameId hitter, ChainId chain, float multBonus, float chainMult)
         {
-            Socket = socket; Ball = ball; Chain = chain; Multiplier = multiplier; BallMultiplier = ballMultiplier;
+            Socket = socket; Hitter = hitter; Chain = chain; MultBonus = multBonus; ChainMult = chainMult;
         }
     }
 
     /// <summary>
     /// A thrown stone (or a piece of one) hit a Splitter needle and splits: it keeps flying, and NewPieces more stones
-    /// launch from it, fanned out, in the same chain. Every one of them (the original too) now carries the stone's value
-    /// × ValueShare. Published by the Rules (they decided it: once per needle per stone, within the per-throw cap);
+    /// launch from it, fanned out, in the same chain (their hits add to it like any hit; a piece isn't a throw, so it adds
+    /// no stone base). Published by the Rules (they decided it: once per needle per stone, within the per-throw cap);
     /// each piece then announces itself with StonePieceLaunched once it really exists.
     /// PiecesCountForMastery: the pieces' direct hits count as stone hits (the Splitter's toggle).
     /// </summary>
     public readonly struct StoneSplit
     {
         public readonly int Socket; public readonly ChainId Chain; public readonly GameId Stone;
-        public readonly int NewPieces; public readonly float ValueShare; public readonly bool PiecesCountForMastery;
-        public StoneSplit(int socket, ChainId chain, GameId stone, int newPieces, float valueShare, bool piecesCountForMastery)
+        public readonly int NewPieces; public readonly bool PiecesCountForMastery;
+        public StoneSplit(int socket, ChainId chain, GameId stone, int newPieces, bool piecesCountForMastery)
         {
-            Socket = socket; Chain = chain; Stone = stone; NewPieces = newPieces; ValueShare = valueShare;
-            PiecesCountForMastery = piecesCountForMastery;
+            Socket = socket; Chain = chain; Stone = stone; NewPieces = newPieces; PiecesCountForMastery = piecesCountForMastery;
         }
     }
 
     /// <summary>
     /// A piece of a split stone is flying (published by the piece itself, in Simulation). It joins Parent's chain — the
-    /// chain closes only once every piece is gone — carrying Parent's value. It came from the throw, not the pile: no
+    /// chain closes only once every piece is gone. It came from the throw, not the pile: no
     /// ThrowReleased, the stone count doesn't change. Socket = the needle it split at (it can't split there again).
     /// </summary>
     public readonly struct StonePieceLaunched
@@ -286,8 +285,7 @@ namespace Piglings.Events
 
     /// <summary>
     /// A Bomb went off (the Rules decided: it was charged, the night Running, the trigger in an open chain). Explosion is
-    /// a new hitter in the trigger's chain: it carries the trigger's current value and grows with each robot it knocks
-    /// loose; those robots are VictimDepth deep (1 from a stone, the ball's depth + 1 from a ball). The Simulation knocks
+    /// a new hitter in the trigger's chain: the robots it knocks loose add to the chain like any; they are VictimDepth deep (1 from a stone, the ball's depth + 1 from a ball). The Simulation knocks
     /// every climbing robot in the level's radius loose with Attribution.FromPeg(Explosion, VictimDepth).
     /// The bomb is now spent — a plain hold — until PegRecharged.
     /// </summary>
@@ -312,7 +310,7 @@ namespace Piglings.Events
 
     /// <summary>
     /// A robot still on the wall was knocked off by the end-of-night sweep (published by Simulation while it
-    /// sweeps). Not part of any chain. Won: NightReferee scores it flat with the robot-value function. Lost: visual
+    /// sweeps). Not part of any chain. Won: NightReferee scores it flat with the wolf value (×1). Lost: visual
     /// only — the robots fall either way, but the bank stays at the last threshold reached.
     /// </summary>
     public readonly struct RobotSwept

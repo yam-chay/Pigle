@@ -7,16 +7,22 @@ using Piglings.Definitions; using Piglings.Events; using Piglings.Meta; using Pi
 // which buttons show, and the hour colours by night progress.
 partial class P{
 static void PostRunChecks(){
+ // --- The stone's base by evolution level (M10.S) ---
+ { var sp=new StoneProgression(new[]{10,20,30},10,25);
+   Check(sp.BaseScoreFor(1)==10 && sp.BaseScoreFor(2)==20 && sp.BaseScoreFor(3)==40 && sp.BaseScoreFor(4)==80 && sp.BaseScoreFor(9)==80 && sp.BaseScoreFor(0)==10,
+     "the stone's base by level: 10 / 20 / 40 / 80 (past the list → the last)");
+   var custom=new StoneProgression(new int[0],10,25,new[]{new StoneEvolution(10,1,5),new StoneEvolution(12,2,-3)});
+   Check(custom.BaseScoreFor(1)==5 && custom.BaseScoreFor(2)==0,"a level's own base; never negative"); }
  // --- The night's facts ---
  { var n=new Night(new NightGoal(new[]{50,5000},10,0));
-   n.Play(1);                        // hour 1: 10
+   n.Play(1);                        // hour 1: 20
    var big=n.Throw(3); n.Settle(big); // hour 1: 60 (crosses 50) -> round
    n.Ref.EndPlacement();
-   n.Play(2);                        // hour 2: 10x1.5 + 20x1.5 = 45
-   Check(n.St.Hours.Count==2 && n.St.Hours[0].BestThrow==60 && n.St.Hours[1].BestThrow==45,
-     $"best throw per hour, by the hour it was thrown in (h1 60, h2 45; got {n.St.Hours[0].BestThrow}, {(n.St.Hours.Count>1?n.St.Hours[1].BestThrow:-1)})");
+   n.Play(1);                        // hour 2: 20 × 1.5 = 30
+   Check(n.St.Hours.Count==2 && n.St.Hours[0].BestThrow==60 && n.St.Hours[1].BestThrow==30,
+     $"best throw per hour, by the hour it was thrown in (h1 60, h2 30; got {n.St.Hours[0].BestThrow}, {(n.St.Hours.Count>1?n.St.Hours[1].BestThrow:-1)})");
    n.Play(0);
-   Check(n.St.Hours[1].BestThrow==45,"a miss doesn't touch the hour's best"); }
+   Check(n.St.Hours[1].BestThrow==30,"a miss (0 with the test curve's base 0) doesn't touch the hour's best"); }
  { var n=new Night(new NightGoal(new[]{5000},10,0));
    n.Settle(n.Throw(4));          // 4 robots, depth 0
    n.Settle(n.ThrowLine(3));      // 3 robots, depth 2

@@ -2,16 +2,18 @@ using System.Collections.Generic;
 
 namespace Piglings.Meta
 {
-    /// <summary>One stone evolution: from this many stones the stone is this level (its place in the list + 1), and the
-    /// pile gets this many stones back at each hour's placement round.</summary>
+    /// <summary>One stone evolution: from this many stones the stone is this level (its place in the list + 1), the
+    /// pile gets this many stones back at each hour's placement round, and each throw starts its chain's score with this
+    /// base (M10.S: 10 / 20 / 40 / 80).</summary>
     public readonly struct StoneEvolution
     {
         public readonly int StonesNeeded;
         public readonly int Refill;
+        public readonly int BaseScore;
 
-        public StoneEvolution(int stonesNeeded, int refill)
+        public StoneEvolution(int stonesNeeded, int refill, int baseScore = 10)
         {
-            StonesNeeded = stonesNeeded; Refill = refill < 0 ? 0 : refill;
+            StonesNeeded = stonesNeeded; Refill = refill < 0 ? 0 : refill; BaseScore = baseScore < 0 ? 0 : baseScore;
         }
     }
 
@@ -56,10 +58,10 @@ namespace Piglings.Meta
         private readonly int[] _thresholds;
         private readonly StoneEvolution[] _evolutions;
 
-        /// <summary>The default evolutions: 10 → lv1 +1 · 15 → lv2 +2 · 20 → lv3 +3 · 25 → lv4 +4.</summary>
+        /// <summary>The default evolutions: 10 → lv1 +1 · 15 → lv2 +2 · 20 → lv3 +3 · 25 → lv4 +4; base 10 / 20 / 40 / 80.</summary>
         public static readonly StoneEvolution[] DefaultEvolutions =
         {
-            new StoneEvolution(10, 1), new StoneEvolution(15, 2), new StoneEvolution(20, 3), new StoneEvolution(25, 4),
+            new StoneEvolution(10, 1, 10), new StoneEvolution(15, 2, 20), new StoneEvolution(20, 3, 40), new StoneEvolution(25, 4, 80),
         };
 
         public int StartStones { get; }
@@ -83,6 +85,9 @@ namespace Piglings.Meta
                 for (int i = 0; i < _evolutions.Length; i++) _evolutions[i] = evolutions[i];
             }
         }
+
+        /// <summary>A throw's base score at this level (M10.S): the evolution's Base Score; past the list → the last.</summary>
+        public int BaseScoreFor(int level) => _evolutions[level < 1 ? 0 : level > _evolutions.Length ? _evolutions.Length - 1 : level - 1].BaseScore;
 
         /// <summary>The level a stone count gives: entries reached in order (a gap stops it), at least 1.</summary>
         public int LevelFor(int stones)
