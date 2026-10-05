@@ -33,7 +33,7 @@ namespace Piglings.Presentation
         [SerializeField, Min(0f)] private float barsDelay = 0.4f;
 
         [Header("The night's HUD (M10.S)")]
-        [Tooltip("The live night HUD — the scoreboard, the chain counters, the tips: CanvasGroups dimmed while the post-run shows.")]
+        [Tooltip("The live night HUD — the scoreboard (with its live throw rows), the tips: CanvasGroups dimmed while the post-run shows.")]
         [SerializeField] private CanvasGroup[] nightHud = new CanvasGroup[0];
         [Tooltip("The HUD's alpha while the post-run shows (1 = untouched).")]
         [SerializeField, Range(0f, 1f)] private float hudAlpha = 0.25f;

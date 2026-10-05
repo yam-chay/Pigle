@@ -18,9 +18,11 @@ namespace Piglings.Definitions
                  "the dawn sweep scores per robot, flat. (Future: wolf upgrades.)")]
         [SerializeField, Min(0)] private int wolfValue = 10;
 
-        [Tooltip("SCORE: what a plain hold (an empty socket or a Plain peg) adds when a stone or ball touches it — once per hold " +
-                 "per stone / ball.")]
+        [Tooltip("SCORE: what a plain hold (an empty socket or a Plain peg) adds every time a stone or ball touches it.")]
         [SerializeField, Min(0)] private int plainPegScore = 1;
+        [Tooltip("Seconds before the same stone / ball scores again on the same plain hold — so rattling or resting balls can't " +
+                 "farm a hold (Max Fall Seconds still ends a stuck ball).")]
+        [SerializeField, Min(0f)] private float plainHoldCooldown = 0.2f;
 
         [Tooltip("MULT: added each time a chain reaches a NEW depth (1, 2, 3…) — once per level, never per robot, so going wide " +
                  "doesn't add mult. Chains start at ×1.")]
@@ -32,6 +34,7 @@ namespace Piglings.Definitions
 
         public int WolfValue => wolfValue;
         public int PlainPegScore => plainPegScore;
+        public float PlainHoldCooldown => plainHoldCooldown;
         public float MultPerNewDepth => multPerNewDepth;
         public float HourMultiplierStep => hourMultiplierStep;
     }

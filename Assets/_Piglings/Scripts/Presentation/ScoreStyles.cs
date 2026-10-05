@@ -37,10 +37,27 @@ namespace Piglings.Presentation
             int band = _colours.BandIndex(quality);
             if (band < 0) return _plain;
             if (_bands.TryGetValue(band, out var style)) return style;
-            style = Build(_colours.BandFor(quality));
+            var b = _colours.BandFor(quality);
+            style = Build(b.look, b.colour);
             _bands[band] = style;
             return style;
         }
+
+        /// <summary>
+        /// A score in the HOUR PALETTE (M10.S): the hour's colour as the base, and the quality band's look on top — solid,
+        /// pulsing around the hour colour, or the animated rainbow for the biggest throws. Robot popups, the chain-close
+        /// popup, the board's throw rows all use it, so a score reads in the colour of the hour it was thrown in.
+        /// </summary>
+        public PopupColor ForHour(Color hourColour, float quality)
+        {
+            var look = _colours != null && _colours.BandIndex(quality) >= 0 ? _colours.BandFor(quality).look : QualityLook.Solid;
+            var key = (look, (Color32)hourColour);
+            if (_hourStyles.TryGetValue(key, out var style)) return style;
+            style = Build(look, hourColour);
+            _hourStyles[key] = style;
+            return style;
+        }
+        private readonly Dictionary<(QualityLook, Color32), PopupColor> _hourStyles = new Dictionary<(QualityLook, Color32), PopupColor>();
 
         /// <summary>The animated rainbow, whatever the quality (the post-run's best throw of the night). Same speed / spread as the bands'.</summary>
         public PopupColor Rainbow
@@ -59,22 +76,21 @@ namespace Piglings.Presentation
         /// <summary>A throw quality's base colour (for a marker or an icon tint that can't animate letters).</summary>
         public Color QualityColour(float quality) => _colours != null ? _colours.BandFor(quality).colour : Color.white;
 
-        private PopupColor Build(QualityBand band)
+        private PopupColor Build(QualityLook look, Color colour)
         {
-            switch (band.look)
+            switch (look)
             {
                 // A pulse is a cycle colour → toward white → colour: Cycle loops it, so it breathes.
                 case QualityLook.Pulse:
-                    var light = Color.Lerp(band.colour, Color.white, _colours.PulseAmount);
+                    var light = Color.Lerp(colour, Color.white, _colours != null ? _colours.PulseAmount : 0.5f);
                     var g = new Gradient();
-                    g.SetKeys(new[] { new GradientColorKey(band.colour, 0f), new GradientColorKey(light, 0.5f), new GradientColorKey(band.colour, 1f) },
-                              new[] { new GradientAlphaKey(band.colour.a, 0f), new GradientAlphaKey(band.colour.a, 1f) });
-                    return new PopupColor { mode = PopupColorMode.Cycle, gradient = g, speed = _colours.PulsesPerSecond };
+                    g.SetKeys(new[] { new GradientColorKey(colour, 0f), new GradientColorKey(light, 0.5f), new GradientColorKey(colour, 1f) },
+                              new[] { new GradientAlphaKey(colour.a, 0f), new GradientAlphaKey(colour.a, 1f) });
+                    return new PopupColor { mode = PopupColorMode.Cycle, gradient = g, speed = _colours != null ? _colours.PulsesPerSecond : 1f };
                 case QualityLook.Rainbow:
-                    return new PopupColor { mode = PopupColorMode.PerLetter, gradient = PopupColor.Rainbow(),
-                                            speed = _colours.RainbowSpeed, spread = _colours.RainbowSpread };
+                    return Rainbow;
                 default:
-                    return new PopupColor { mode = PopupColorMode.Solid, gradient = PopupColor.Flat(band.colour) };
+                    return new PopupColor { mode = PopupColorMode.Solid, gradient = PopupColor.Flat(colour) };
             }
         }
     }

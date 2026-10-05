@@ -13,9 +13,13 @@ namespace Piglings.Presentation
     ///  - "HOUR n · ×m" in the hour's palette colour;
     ///  - the score against the next threshold, with a fill bar (ui_pill) through the current hour, in its colour;
     ///  - "hour n gap: a → b";
-    ///  - LAST THROWS: the last 3 closed chains, newest on top and brightest ("9 wolves · depth 2   +620"; depth only
-    ///    when ≥ 1; misses not listed), the points and marker coloured by the throw's quality;
-    ///  - BEST TONIGHT, the same way.
+    ///  - LAST THROWS (M10.S): the chains as they happen. A live chain's row ticks "SCORE × MULT × H2"; when it closes the
+    ///    row resolves into its result ("+360", in the hour's palette colour with the quality style) and stays as one of
+    ///    the last throws. Newest on top; older rows step down, shrink and dim; at most Row Brightness's length show. Misses
+    ///    (no wolf) leave no row.
+    ///  - BEST TONIGHT: the best result, the same way.
+    /// The SCORE NUMBER moves only when a chain closes — straight to the new total, result included, with a climb; the hour
+    /// BAR follows the raw score live and takes the remainder at the close (thresholds are checked on the real totals).
     /// Every field is optional. Reads only.
     /// </summary>
     public sealed class NightScoreboard : MonoBehaviour
@@ -35,29 +39,41 @@ namespace Piglings.Presentation
         [Tooltip("How long the bar takes to glide to a new score (about; 0 = snap). At a threshold it fills up first, then " +
                  "starts the new hour from empty — it never runs backwards.")]
         [SerializeField, Min(0f)] private float barEaseSeconds = 0.35f;
-        [Tooltip("M10.S: the score number climbs to a new total in about this many seconds (a chain's mult lands as one jump at " +
-                 "its close: this makes it a quick climb). 0 = snap.")]
+        [Tooltip("M10.S: the score number changes only when a chain closes, climbing to the new total (its result included) in " +
+                 "about this many seconds. 0 = snap.")]
         [SerializeField, Min(0f)] private float scoreClimbSeconds = 0.4f;
 
         [Header("Throws")]
-        [Tooltip("One LAST THROWS row, laid out once (label = \"9 wolves · depth 2\", detail = \"+620\", marker = the pill). " +
-                 "Cloned under the same parent, which needs a Vertical Layout Group.")]
+        [Tooltip("One LAST THROWS row, laid out once where the NEWEST row sits (label = the live \"SCORE × MULT × H\", detail = " +
+                 "the result \"+360\", marker = the pill). Cloned per chain and placed by code — its parent must NOT have a " +
+                 "Layout Group.")]
         [SerializeField] private TemplateSlot throwRow;
-        [Tooltip("Rows shown, newest first, and how bright each is (1 = full).")]
+        [Tooltip("Rows shown, newest first, and how bright each is (1 = full). Its length = how many show (3).")]
         [SerializeField] private float[] rowBrightness = { 1f, 0.65f, 0.4f };
-        [Tooltip("The BEST TONIGHT row (not cloned): label, points, marker — like a throw row.")]
+        [Tooltip("Each older row sits this far from the one above (canvas units; negative y = down).")]
+        [SerializeField] private Vector2 rowStep = new Vector2(0f, -40f);
+        [Tooltip("Each older row is this much smaller than the one above.")]
+        [SerializeField, Range(0.3f, 1f)] private float olderScale = 0.85f;
+        [Tooltip("How fast rows glide to their place (higher = snappier).")]
+        [SerializeField, Min(0.1f)] private float rowGlide = 12f;
+        [Tooltip("The BEST TONIGHT row (not cloned): detail = the best result, marker — like a resolved throw row.")]
         [SerializeField] private TemplateSlot best;
 
-        private struct Throw
+        // One row per chain: live while it falls, then its result.
+        private sealed class Row
         {
-            public int Robots, Depth, Points, Hour;
+            public TemplateSlot Slot;
+            public CanvasGroup Group;
+            public bool Live = true;
+            public int Total, Hour;
         }
 
         private ScoreStyles _styles;
-        private readonly List<Throw> _last = new List<Throw>();   // newest first
-        private Throw _best;
-        private List<TemplateSlot> _rows = new List<TemplateSlot>();
-        private readonly List<CanvasGroup> _rowGroups = new List<CanvasGroup>();
+        private readonly Dictionary<GameId, Row> _byChain = new Dictionary<GameId, Row>();
+        private readonly List<Row> _rows = new List<Row>();   // newest first
+        private int _bestTotal, _bestHour;
+        private Vector2 _rowTop;
+        private Vector3 _rowScale;
 
         // What the texts show now, so they're only rebuilt when something changed (TMP rebuilds are not free).
         private int _shownScore = -1, _shownHour = -1, _shownReached = -1;
@@ -73,33 +89,79 @@ namespace Piglings.Presentation
         private void Start()
         {
             _styles = new ScoreStyles(session.ScoreColours);
-            _rows = TemplateList.Build(throwRow, null, rowBrightness.Length);
-            foreach (var row in _rows)
+            if (throwRow != null)
             {
-                // A CanvasGroup dims the whole row (texts, marker) without touching the colours the code sets.
-                if (!row.TryGetComponent(out CanvasGroup group)) group = row.gameObject.AddComponent<CanvasGroup>();
-                _rowGroups.Add(group);
+                _rowTop = throwRow.GetComponent<RectTransform>().anchoredPosition;
+                _rowScale = throwRow.transform.localScale;
+                throwRow.gameObject.SetActive(false);
             }
+            session.Bus.Subscribe<ChainGained>(OnChainGained);
             session.Bus.Subscribe<ChainScored>(OnChainScored);
-            ShowThrows();
+            session.Bus.Subscribe<NightEnded>(OnNightEnded);
             ShowBest();
         }
 
         private void OnDestroy()
         {
-            if (session != null && session.Bus != null) session.Bus.Unsubscribe<ChainScored>(OnChainScored);
+            if (session == null || session.Bus == null) return;
+            session.Bus.Unsubscribe<ChainGained>(OnChainGained);
+            session.Bus.Unsubscribe<ChainScored>(OnChainScored);
+            session.Bus.Unsubscribe<NightEnded>(OnNightEnded);
         }
 
-        // Misses (no wolf dropped) aren't listed: the board is about what worked.
+        // A chain grows: its live row ticks "SCORE × MULT × H" (a new chain gets a new row, on top).
+        private void OnChainGained(ChainGained e)
+        {
+            if (throwRow == null) return;
+            if (!_byChain.TryGetValue(e.Chain.Id, out var row))
+            {
+                var slot = Instantiate(throwRow, throwRow.transform.parent);
+                slot.name = $"{throwRow.name} (chain)";
+                slot.gameObject.SetActive(true);
+                var rect = slot.GetComponent<RectTransform>();
+                rect.anchoredPosition = _rowTop;
+                rect.localScale = _rowScale;
+                // A CanvasGroup dims the whole row (texts, marker) without touching the colours the code sets.
+                if (!slot.TryGetComponent(out CanvasGroup group)) group = slot.gameObject.AddComponent<CanvasGroup>();
+                row = new Row { Slot = slot, Group = group, Hour = e.Hour };
+                _byChain[e.Chain.Id] = row;
+                _rows.Insert(0, row);
+            }
+            row.Slot.SetLabel($"{Numbers.Thousands(e.Score)} × {e.Mult:0.##} × H{e.Hour}");
+            row.Slot.SetDetail("");
+            var colour = session.HourColour(e.Hour);
+            if (row.Slot.Label != null) row.Slot.Label.color = colour;
+            row.Slot.Tint(colour);
+        }
+
+        // The chain closes: its row resolves into the result and stays; a miss leaves no row. The number moves now.
         private void OnChainScored(ChainScored e)
         {
-            if (e.RobotsDropped <= 0) return;
-            var t = new Throw { Robots = e.RobotsDropped, Depth = e.MaxDepth, Points = e.Total, Hour = e.Hour };
-            _last.Insert(0, t);
-            if (_last.Count > _rows.Count) _last.RemoveAt(_last.Count - 1);
-            ShowThrows();
-            // Same rule as NightState.BestThrowPoints (most points, the first one keeps it on a tie); kept here for its wolves and depth.
-            if (t.Points > _best.Points) { _best = t; ShowBest(); }
+            SetScoreTarget();
+            if (!_byChain.TryGetValue(e.Chain.Id, out var row)) return;
+            _byChain.Remove(e.Chain.Id);
+            if (e.RobotsDropped <= 0) { _rows.Remove(row); Destroy(row.Slot.gameObject); return; }
+            row.Live = false;
+            row.Total = e.Total;
+            row.Slot.SetLabel("");
+            row.Slot.SetDetail($"+{Numbers.Thousands(e.Total)}");
+            // Same rule as NightState.BestThrowPoints (most points, the first one keeps it on a tie).
+            if (e.Total > _bestTotal) { _bestTotal = e.Total; _bestHour = e.Hour; ShowBest(); }
+            Trim();
+        }
+
+        // The dawn sweep adds after the last chain: the number takes it too.
+        private void OnNightEnded(NightEnded e) => SetScoreTarget();
+
+        // Resolved rows past what shows go; live ones stay (hidden) until their chain closes.
+        private void Trim()
+        {
+            for (int i = _rows.Count - 1; i >= rowBrightness.Length; i--)
+            {
+                if (_rows[i].Live) continue;
+                Destroy(_rows[i].Slot.gameObject);
+                _rows.RemoveAt(i);
+            }
         }
 
         private void LateUpdate()
@@ -107,9 +169,24 @@ namespace Piglings.Presentation
             ShowHour();
             ClimbScore();
             GlideBar();
+            FloatRows();
             // Quality colours can animate (pulse, rainbow): repainted every frame. Solid ones cost a colour set.
-            for (int i = 0; i < _rows.Count && i < _last.Count; i++) PaintThrow(_rows[i], _last[i]);
-            if (_best.Points > 0) PaintThrow(best, _best);
+            foreach (var row in _rows) if (!row.Live) PaintResult(row.Slot, row.Total, row.Hour);
+            if (_bestTotal > 0) PaintResult(best, _bestTotal, _bestHour);
+        }
+
+        // Newest on top; each older one a step down, smaller and dimmer; past the shown count, invisible.
+        private void FloatRows()
+        {
+            float k = 1f - Mathf.Exp(-rowGlide * Time.deltaTime);
+            for (int i = 0; i < _rows.Count; i++)
+            {
+                var rect = _rows[i].Slot.GetComponent<RectTransform>();
+                rect.anchoredPosition = Vector2.Lerp(rect.anchoredPosition, _rowTop + rowStep * i, k);
+                rect.localScale = Vector3.Lerp(rect.localScale, _rowScale * Mathf.Pow(olderScale, i), k);
+                float alpha = i < rowBrightness.Length ? rowBrightness[i] : 0f;
+                _rows[i].Group.alpha = Mathf.Lerp(_rows[i].Group.alpha, alpha, k);
+            }
         }
 
         private void ShowHour()
@@ -132,15 +209,21 @@ namespace Piglings.Presentation
                 hourText.color = s.Dawn ? session.DawnColour : session.HourColour(hour);
             }
             _scoreSuffix = s.Dawn ? "" : $" / {to}";
-            _climbRate = scoreClimbSeconds > 0f ? Mathf.Max(1f, Mathf.Abs(s.Score - _climbShown) / scoreClimbSeconds) : float.MaxValue;
-            _climbTarget = s.Score;
             if (gapText != null) gapText.text = s.Dawn ? "" : $"hour {segment} gap: {from} -> {to}";
             // The bar's target; GlideBar moves it there.
             _barTarget = s.Dawn ? 1f : Mathf.Clamp01((s.Score - from) / (float)Mathf.Max(1, to - from));
             _targetSegment = segment;
         }
 
-        // The score number climbs to the total at a rate set when the total changed (so a big jump takes as long as a small one).
+        // The number's new total: the night's score now (a chain's result included), climbed to at a rate set here — so a big
+        // jump takes as long as a small one.
+        private void SetScoreTarget()
+        {
+            int score = session.State.Score;
+            _climbRate = scoreClimbSeconds > 0f ? Mathf.Max(1f, Mathf.Abs(score - _climbShown) / scoreClimbSeconds) : float.MaxValue;
+            _climbTarget = score;
+        }
+
         private void ClimbScore()
         {
             if (scoreText == null) return;
@@ -174,44 +257,20 @@ namespace Piglings.Presentation
             fill.color = session.HourColour(_shownSegment);
         }
 
-        // Texts change only when a throw comes in; colours are painted every frame (LateUpdate).
-        private void ShowThrows()
-        {
-            for (int i = 0; i < _rows.Count; i++)
-            {
-                bool used = i < _last.Count;
-                if (_rows[i].gameObject.activeSelf != used) _rows[i].gameObject.SetActive(used);
-                if (!used) continue;
-                FillThrow(_rows[i], _last[i]);
-                _rowGroups[i].alpha = i < rowBrightness.Length ? rowBrightness[i] : 1f;
-            }
-        }
-
         private void ShowBest()
         {
             if (best == null) return;
-            if (_best.Points <= 0)
-            {
-                best.SetLabel("—");
-                best.SetDetail("");
-                return;
-            }
-            FillThrow(best, _best);
+            best.SetLabel(_bestTotal > 0 ? "" : "—");
+            best.SetDetail(_bestTotal > 0 ? $"+{Numbers.Thousands(_bestTotal)}" : "");
         }
 
-        private static void FillThrow(TemplateSlot slot, Throw t)
-        {
-            string wolves = t.Robots == 1 ? "1 wolf" : $"{t.Robots} wolves";
-            slot.SetLabel(t.Depth >= 1 ? $"{wolves} · depth {t.Depth}" : wolves);
-            slot.SetDetail($"+{t.Points}");
-        }
-
-        private void PaintThrow(TemplateSlot slot, Throw t)
+        // A result: the hour's palette colour, with the quality style for its size (pulse, rainbow).
+        private void PaintResult(TemplateSlot slot, int total, int hour)
         {
             if (slot == null) return;
-            float quality = session.ThrowQuality(t.Points, t.Hour);
-            TextColouring.Apply(slot.Detail, _styles.ForQuality(quality), 0f, 0f, 1f);
-            slot.Tint(_styles.QualityColour(quality));
+            var colour = session.HourColour(hour);
+            TextColouring.Apply(slot.Detail, _styles.ForHour(colour, session.ThrowQuality(total, hour)), 0f, 0f, 1f);
+            slot.Tint(colour);
         }
     }
 }
