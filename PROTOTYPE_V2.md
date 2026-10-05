@@ -9,8 +9,8 @@ Authored nights + the barn day phase + progression + a post-run screen + a night
 `TestNight.unity`** (Yam duplicated it from Night.unity; cloud sessions can't create scenes). **Night.unity and the current
 build keep working unchanged**: new behaviour only activates when its components/data are present.
 
-The loop: night ends (dawn / caught) → the sweep finishes → the camera descends to the **Doors**, the doors open → the
-**post-run** panels → Retry / Next → **Barn room** (day loadout) → optional **Tower** (slice placement) → Start night → the
+The loop: night ends (dawn / out of stones) → the sweep finishes → the **post-run** panels over the Night frame (stage 2,
+PR E; was: at the Doors) → a button → the camera descends to the **Doors**, the doors open → **Barn room** (day loadout) → optional **Tower** (slice placement) → Start night → the
 camera rises to the **Night** frame as the moon rises.
 
 ## Decisions (with Yam)
@@ -64,16 +64,7 @@ Camera moves **only between phases**; input locked while moving; ease in-out. Ca
 - Copies owned = how many of that type can be placed in a night (still limited by pegThrowsPerThreshold per hour).
 - Stones: see Decisions.
 
-### 4. Post-run screen — PR E (screen-space UI, in the Doors frame)
-- **Left — NIGHT SUMMARY:** "NIGHT n"; DAWN (gold) or CAUGHT; hour dots in palette colours (filled up to the hour reached);
-  score (on a loss: "kept: X (hour n)"); best throw (quality-coloured, rainbow if ≥ 100% of its hour's gap); deepest depth
-  (depth colour); wolves dropped; stones lost (= stolen by breaches).
-- **Right — PROGRESS:** Stones "a → b" with dots from 10 to 14 and the evolved stone icon at 15 ("15 · evolve"), the new dot
-  glowing gold, a mastery bar + next threshold. Each unlocked peg: "Bouncy 1 → 2", 4 copy dots (new one glowing), "max 4",
-  trigger bar. A newly unlocked peg: NEW tag. The next locked peg: faded + lock + "dawn on night n".
-- **Buttons in the doorway:** Retry night (secondary), Next night ▸ (primary, only after a dawn; hidden after the last
-  night). On a loss Retry is primary. Later "Next night" becomes "To the barn ▸": a label / flow-target change, not a rewrite.
-- Before/after values: snapshot the profile before banking.
+### 4. Post-run screen — PR E: replaced by Yam's final spec in "Stage 2 ▸ PR E" (2026-10-05)
 
 ### 5. Day phase — the barn room — PR F (Barn room frame)
 - Inside the open barn: the pig centre-left (the existing pig rig, hole mask off, Idle).
@@ -151,7 +142,7 @@ merges the latest Production first (CLAUDE.md).
 | PR | What | Status |
 |---|---|---|
 | P | Progression: stone evolution list (look + refill per level, cap 25), peg copies up to 10 + same-type follow-ups (one per N copies), the 2-row pegboard | ✔ merged (#38, #39); follow-up chain in this PR |
-| E | Post-run screen (§4) + avg per stone, thrown vs lost, BEST CHAINS, stage progress | next |
+| E | Post-run screen (Yam's final spec below) + the out-of-stones loss, records, wolves dropped, hour colours by progress | in progress |
 | G | HUD reshape: screen-space night track + two screen-space chalkboards (record, tips); removes the world scoreboard and the HOURS card | after E (needs Yam's mockup + peg tip art) |
 | H | Night selection overlay (replaces Next night) | after G |
 | I | Pig face (Presentation only) | after H (any time) |
@@ -182,17 +173,122 @@ Every PR: CoreCheck passes, Night.unity keeps working, editor steps listed in th
   each peg's Max Copies, Copy Thresholds (one per extra copy) and Follow Up Every Copies; the pegboard sprite + Holes File (+ Hole
   Sprite, see question 1); the rug's Refill Badges list.
 
-### PR E — post-run screen (§4), plus
-- Night summary adds **avg per stone** (score ÷ stones thrown), and **stones thrown** and **stones lost to breaches** as
-  two lines, so a loss explains itself.
-- **BEST CHAINS**: the top 3 closed chains of the night (Inspector, up to 5), the scoreboard's row format
-  ("9 wolves · depth 2  +620"), quality-coloured. Needs a Rules record of the top chains (`NightState` only keeps the
-  best one today) — CoreCheck.
-- **PROGRESS**: stones a → b with dots up to the NEXT evolution and that evolution's icon (its level sprite); each peg type:
-  copies and follow-ups ("5/6 → 2nd follow-up"), a NEW tag when unlocked tonight (before/after snapshot of the
-  profile taken before banking).
-- **Hour colours sampled by night progress** (see question 3) land here: the post-run's hour dots are the first new user.
-- Editor steps: the two panels in the Doors frame (UI kit), template rows / dots, the Retry / Next buttons moved in.
+### PR E — post-run screen (Yam's final spec, 2026-10-05; replaces §4 and every earlier PR E note)
+Mockup: `post_run_v5.png` → `Docs/Mockups/` (outside Assets, so Unity doesn't import it; PNGs are LFS, so cloud sessions
+can't read it — the code fills Yam's frames, it doesn't depend on the layout).
+
+**End of night (rule change)**
+- Loss = **out of stones**: stones = 0 and no chain active → wait for the last chain to settle + a delay, then the night is
+  a loss, banked at the last hour reached. No waiting for a wolf to breach.
+- A breach on an empty pile can no longer happen first; the Caught path goes unless something still needs it.
+- At that moment the wolf's chimney climb starts (hook only). The delay before the sweep and the post-run is an Inspector
+  value (to match the wolf's sequence later). Dawn ends as before.
+
+**Camera**
+- The post-run appears over the **Night** frame (scene dimmed, Inspector alpha). The camera does NOT move at night end.
+- It moves only on a button: To the barn → Doors → Barn room. Next night → down to the barn room for the next night's
+  loadout. Retry night → same night (flow: see question 4).
+
+**Buttons** — "To the barn" and "Next night" are never shown together. All disabled while the camera moves.
+- LOSS: Retry night (primary) + To the barn (secondary).
+- DAWN: Next night ▸ (primary) + Retry night (secondary). After the last night's dawn: To the barn instead of Next night.
+
+**Left — two panels**
+- **THE NIGHT**: "NIGHT n", the result (DAWN gold / OUT OF STONES), hour dots in the hour colours up to the hour reached,
+  the score (loss: "kept X (hour n)"). BEST THROW EACH HOUR: one row per hour reached — "Hn" in the hour colour, a bar
+  relative to the night's best throw, the value; the night's best in rainbow. Biggest chain (wolves · depth), avg per stone
+  (score ÷ stones thrown), stones thrown · stolen by wolves.
+- **ALL-TIME RECORDS**: best throw, longest chain (wolves), deepest chain, best night score. Broken tonight → NEW RECORD
+  tag + gold value. Stored in the save (additive).
+
+**Right — PROGRESS: only what moved tonight**
+- Every bar: BEFORE tonight (dim) + TONIGHT's gain (bright), the gain filling in when the panel appears; a completed bar
+  shows READY.
+- **Stones** (always): "+N hits", bar to the next +1 stone, "a → b stones", the next evolution, an evolution track
+  (each level's Stones Needed + stone sprite; reached ones full, others faded).
+- **A peg type only if it triggered tonight or was unlocked tonight**: copies a → b, bar to the next copy, the next
+  follow-up step ("6 copies → 3 in a row" — see question 7). Unlocked tonight: NEW tag + "unlocked by dawn on night n".
+  Unused types: no row.
+- **Wolves dropped** (always): "+N" tonight and the all-time total. Every wolf knocked loose, stored per robot type in the
+  save (for later lineage progression).
+- Footer: "Upgrades are waiting in the barn". The post-run does NOT play upgrades (PR F follow-up, below).
+
+**Checks / done when**: CoreCheck covers out-of-stones loss timing, records update + NEW flags, "only what moved"
+filtering, wolves-dropped counts; Night.unity keeps working; editor steps listed (panel frames, template rows, buttons,
+the dim overlay); TASKS.md ticked.
+
+**How it's built (plan)**
+- *Rules*: `NightReferee` ends the night the moment the condition holds — Running, not dawn, `StonesLeft == 0`, no open
+  chain, no pending round (`PendingPegRounds == 0`) — as `End(Lost, NightEndReason.OutOfStones)`, banked at
+  `ScoreAtThreshold` like before. Checked whenever it can become true: a chain closes, a theft takes the last stone, a
+  round ends. A breach on an empty pile still counts as a breach (`RobotsReachedTop`, the hour's breaches) but takes
+  nothing and ends nothing. `NightEndReason.Caught` is **replaced** by `OutOfStones` (same slot; nothing else needs it).
+  New per-night facts: `HourStats.BestThrow`, `NightState.StonesStolen`, `BiggestChainWolves` / `BiggestChainDepth` (one
+  chain's wolves and its own depth — `LongestChain` / `DeepestChain` can come from two chains).
+- *The delay is presentation*: `NightSession` (both scenes; it already keeps the refill-pause clock) has **Wolf Seconds**
+  (Inspector). On an out-of-stones end it raises `WolfClimbStarts(seconds)` (the hook) and the wall stays frozen (Ended);
+  after the delay `RobotSpawner` sweeps (on a loss the sweep scores nothing, so it can wait; on a dawn it stays inside
+  the end, where it's scored). `NightFlow` waits for that + the wall to settle, then shows the post-run.
+- *Meta*: the save gets `"records": {bestThrow, longestChain, deepestChain, bestNightScore}` and
+  `"robots".{type}.dropped` (both additive, v1). `Progression.RecordNight` updates the records and returns which broke.
+  `MasteryTally` counts `Dropped[type]` on every `RobotLostGrip` (any cause; never the sweep) → `NightBanked(Lineage,
+  type, Dropped)`. `PostRunProgress` (engine-free) builds the PROGRESS rows from the profile **before** tonight (a copy
+  taken at load) and **after** it (banked): the stone row, a peg row per type whose saved triggers changed or that was
+  unlocked tonight, the wolves row.
+- *Hour colours by night progress*: `HourPaletteDefinition.ColourAt(hour, hours)` samples the palette first → last over
+  the night's length (hour 1 = the first colour, the last hour = the last colour, dawn gold), blending between entries.
+  `NightSession.HourColour` uses it, so the scoreboard and the HOURS card change with it.
+- *Simulation*: `NightFlow` — Night → Settling (wolf delay + the wall settled) → **PostRun at the Night frame** → a button
+  → Descending (Night → Doors, the doors open on arrival) → Leaving (save + reload). `PostRunButtons` (two slots, primary
+  and secondary; what each does comes from `PostRunChoices`, engine-free + CoreCheck). `FlowButtons` keeps only the
+  barn-room buttons.
+- *Presentation*: `PostRunView` (dim overlay + fade, button labels), `PostRunNightPanel`, `PostRunRecordsPanel`,
+  `PostRunProgressPanel`, `ProgressBarView` (before + gain + READY). Template rows like the scoreboard (`TemplateSlot`).
+
+**Contradictions / questions** (found while planning — recommendations in bold)
+1. **Out of stones vs a pending round.** A chain that crossed a threshold queues a round whose refill adds stones, so 0
+   stones isn't the end yet. → **The condition includes `PendingPegRounds == 0`** (and not dawn). A round with no refill
+   (Refill 0) that ends with an empty pile → the loss right after it.
+2. **Caught could still pre-empt the new loss** if the Rules waited out the delay (wolves keep climbing; a breach on 0
+   stones). → **Rules end at once; the delay is presentation only** (Rules can't keep time anyway). A breach on an empty
+   pile while a chain is still in flight does **nothing** (no stone to take; the outcome waits for the chain). Caught has
+   no user left → removed. CoreCheck cases that change: "last stone landed → not a loss" (now: the loss), "caught in hour
+   3 banks 100" (now at the landing), "caught before the first threshold", "a threshold doesn't protect you" (now: the
+   round, then the loss), "3 breaches take 3 stones — still not lost" (now: lost at the 3rd), "Caught at Breaching entry",
+   the mastery and flow cases built on Caught.
+3. **The wall during the wolf's delay.** Ending at once freezes the wall (Ended = not moving). → **Freeze**: it reads as
+   the wolf taking the remote, and matches the GDD loss-sequence proposal (wolf climbs → remote off → sweep). The
+   alternative (robots keep climbing, breaches do nothing) needs a second "moving" rule outside the Rules. *Yam?*
+4. **Retry vs To the barn on a loss** both end in the same night's barn room — identical buttons. → **Retry = fast:
+   reload straight into the night** (boot at the Night frame, doors closed, begin at once — the post-run was at the Night
+   frame, so the cut is invisible); To the barn = the full day phase. Needs a one-shot "start in the night" flag in the
+   save (navigation, like the night index). *Yam to decide.*
+5. **Restart = reload, and the scene boots at the Doors.** With the post-run at the Night frame, To the barn / Next night
+   first ease Night → Doors (doors open), then save + reload — else the cut shows. (Fast Retry, if chosen, needs no move.)
+6. **Records are results, not causes** — against "the save stores causes only". They can't be derived (no per-night
+   history is saved), so they're the exception, in their own section. A scoring retune doesn't rewrite them. Best night
+   score = **the banked score** (what the night keeps). NEW = tonight beat the record from before tonight (strictly); the
+   first night ever sets every non-zero record → all NEW.
+7. **Peg row wording**: the old "6 = +1 throw per hour" is the replaced pool rule. → **The follow-up rule**:
+   `PegStatus.NextFollowUpAt` → "6 copies → 3 in a row" (1 + its follow-ups); at the max: "max".
+8. **Wolves dropped "any cause"** → **every `RobotLostGrip`** (stone, ball, bomb), **not** the end-of-night sweep (nobody
+   knocked those loose). Old saves have none: the all-time total starts from this build. `NightState.RobotsDropped` only
+   counts knocks inside an open chain; the new per-type count counts them all.
+9. **"kept X (hour n)"** → n = **the last hour finished** (the one whose threshold the score is kept at); "kept 0" before
+   the first. The hour dots / BEST THROW rows go up to the hour being played (reached).
+10. **Avg per stone** = the chains' score (without the dawn sweep) ÷ stones thrown — the sweep isn't the stones' work.
+11. **Dropped from the old PR E notes** by this spec: BEST CHAINS (top 3), the "next locked peg" row (faded + lock), the
+    copy dots. Kept out unless Yam wants them back.
+12. **The placeholder post-run goes**: FlowButtons' Retry / Next and the Doors-frame post-run. The post-run log line stays
+    (now at the Night frame). PlayAgain / NightEndView already stand down in campaign mode; NightEndView says OUT OF
+    STONES and waits for the wolf delay too (Night.unity has the same delay).
+13. **The stone bar when a stone was earned tonight**: before = progress from the last +1 (dim), gain to full → READY;
+    two stones earned still show one full bar + "a → b".
+
+**PR F follow-up — the barn room plays the upgrades** (not part of E): when the barn room opens after a night that moved
+something, new stones drop onto the rug one by one, the stones evolve (sprite swap + burst), the +N refill badge changes,
+new pegs fly to their holes on the pegboard. Reads the same before / after snapshot as the post-run (needs it to survive
+the reload: the save keeps "what the barn has shown" — design in F).
 
 ### PR G — HUD reshape (replaces the world-space chalkboard and the HOURS card)
 - **Night track** (screen space, across the top): a thin line, one circle per hour (equal segments, not proportional to
