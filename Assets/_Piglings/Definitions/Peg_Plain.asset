@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Peg_Plain
   m_EditorClassIdentifier: Piglings.Definitions::Piglings.Definitions.PegDefinition
   id: peg_plain
+  displayName: 
   maxLevel: 3
   mergeable: 1
   sprite: {fileID: 21300000, guid: 7b8c54e28b9c4744b9efe22c26bb7d71, type: 3}
@@ -22,7 +23,7 @@ MonoBehaviour:
   levels: []
   copyThresholds: 0a0000001e0000003c0000006400000096000000d200000018010000
   maxCopies: 3
-  followUpAtCopies: 4
+  followUpEveryCopies: 4
   maxStonesPerThrow: 4
   pieceScale: 0.8
   countSplitHitsForMastery: 1
