@@ -281,13 +281,14 @@ namespace Piglings.Presentation
             best.SetDetail(_bestTotal > 0 ? $"+{Numbers.Thousands(_bestTotal)}" : "");
         }
 
-        // A score's look from the Score Colours asset: its quality band (points ÷ its hour's gap) — solid, pulse or rainbow;
-        // the marker gets the band's base colour.
+        // A score's look from the Score Colours asset: its quality band (points ÷ its hour's gap) — solid, pulse or rainbow.
+        // The marker follows the same style (pulsing, cycling the rainbow), not the band's flat colour — the rainbow band's
+        // flat colour is white, which made the best rows' dots white.
         private void Paint(TemplateSlot slot, TMPro.TMP_Text text, int points, int hour)
         {
-            float quality = session.ThrowQuality(points, hour);
-            TextColouring.Apply(text, _styles.ForQuality(quality), 0f, 0f, 1f);
-            if (slot != null) slot.Tint(_styles.QualityColour(quality));
+            var style = _styles.ForQuality(session.ThrowQuality(points, hour));
+            TextColouring.Apply(text, style, 0f, 0f, 1f);
+            if (slot != null) slot.Tint(TextColouring.Sample(style, 0f, 0f));
         }
     }
 }
