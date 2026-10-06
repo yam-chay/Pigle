@@ -83,7 +83,10 @@ namespace Piglings.Presentation
             if (stoneIcon != null && weapon.SpriteFor(stone.After.Level) != null) stoneIcon.sprite = weapon.SpriteFor(stone.After.Level);
             if (stoneHits != null) stoneHits.text = $"+{Numbers.Thousands(stone.HitsGained)} hits";
             if (stoneBar != null) stoneBar.Show(stone.Bar.Before, stone.Bar.After, stone.Bar.Ready, delay);
-            if (evolutionBar != null) evolutionBar.Show(stone.EvolutionBar.Before, stone.EvolutionBar.After, stone.EvolvedTonight, delay);
+            // The bar along the track: the Evolution Bar field, or (as laid out in TestNight) the evolution slot's Bar when
+            // it isn't inside the slot — one bar shared by every clone, so it must be driven once, here, not per slot.
+            var trackBar = TrackBar();
+            if (trackBar != null) trackBar.Show(stone.EvolutionBar.Before, stone.EvolutionBar.After, stone.EvolvedTonight, delay);
             if (stoneCount != null)
                 stoneCount.text = stone.After.Stones > stone.Before.Stones ? $"{stone.Before.Stones} → {stone.After.Stones} stones" : $"{stone.After.Stones} stones";
             // The evolution it was heading for when the night began (post_run_v5: 14 → 15 stones, "next: 15 · evolve" — the
@@ -102,13 +105,21 @@ namespace Piglings.Presentation
                 slot.SetLabel(levels[i] != null ? $"{levels[i].stonesNeeded}" : "");
                 bool reached = level <= stone.After.Level;
                 slot.SetAlpha(reached ? 1f : notReachedAlpha);
-                // The line into this slot: full once reached; the first slot has none.
-                if (slot.Bar != null)
+                // The line into this slot (only a bar INSIDE the slot): full once reached; the first slot has none.
+                if (slot.Bar != null && slot.Bar != trackBar && slot.Bar.transform.IsChildOf(slot.transform))
                 {
                     slot.Bar.gameObject.SetActive(i > 0);
                     if (i > 0) slot.Bar.Show(0f, reached ? 1f : 0f, false);
                 }
             }
+        }
+
+        private ProgressBarView TrackBar()
+        {
+            if (evolutionBar != null) return evolutionBar;
+            if (evolutionSlot != null && evolutionSlot.Bar != null && !evolutionSlot.Bar.transform.IsChildOf(evolutionSlot.transform))
+                return evolutionSlot.Bar;
+            return null;
         }
 
         private void ShowPeg(TemplateSlot slot, PegProgressRow row, float delay)
