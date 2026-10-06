@@ -30,7 +30,8 @@ namespace Piglings.Simulation
         public RobotState State { get; private set; } = RobotState.Spawned;
         public ChainId Chain { get; private set; } = ChainId.None;
         public int Depth { get; private set; }
-        public bool CanLoseGrip => State == RobotState.Climbing;
+        // A swept robot still holding on (a loss: it lets go after the wolf's beat) is already counted — nothing may knock it again.
+        public bool CanLoseGrip => State == RobotState.Climbing && !_swept;
 
         /// <summary>The breach sequence's length (RobotDefinition). StonePile times the stolen stone's hop from it.</summary>
         public float BreachSeconds => _def != null ? _def.BreachSeconds : 0f;
@@ -43,6 +44,7 @@ namespace Piglings.Simulation
 
         private NightSession _session;
         private RobotDefinition _def;
+        private bool _swept;           // counted by the end-of-night sweep (RobotSwept); may still be holding on (LetGo)
         private float _climbSpeed;
         private float _breakTimer;
         private float _fallTimer;
@@ -85,12 +87,23 @@ namespace Piglings.Simulation
         /// The end-of-night sweep: a robot still climbing lets go and falls. Not part of any chain — the Rules
         /// score it flat (RobotSwept). Called by RobotSpawner when the night ends. A breaching robot is skipped:
         /// its breach already counted, and its time limit removes it.
+        /// <paramref name="letGo"/> false (a loss in the campaign, M11.T1): it's counted now, inside the night's end like
+        /// every sweep, but keeps holding on (the wall is still in Ended) until LetGo — after the wolf's beat.
+        /// True = it was swept (false: not climbing, nothing done).
         /// </summary>
-        public void Sweep()
+        public bool Sweep(bool letGo = true)
         {
-            if (!CanLoseGrip) return;
+            if (!CanLoseGrip) return false;
+            _swept = true;
             _session.Bus.Publish(new RobotSwept(Id));
-            SetState(RobotState.LosingGrip);
+            if (letGo) SetState(RobotState.LosingGrip);
+            return true;
+        }
+
+        /// <summary>A swept robot still holding on lets go now (RobotSpawner.LetGoSwept). Any other robot: nothing.</summary>
+        public void LetGo()
+        {
+            if (_swept && State == RobotState.Climbing) SetState(RobotState.LosingGrip);
         }
 
         /// <summary>
