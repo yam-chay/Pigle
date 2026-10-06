@@ -144,6 +144,8 @@ namespace Piglings.Simulation
             DrawBoard();
             GUILayout.Space(8f);
             DrawScenarios();
+            GUILayout.Space(8f);
+            DrawLog();
             GUILayout.EndScrollView();
             GUI.DragWindow(new Rect(0f, 0f, 10000f, 20f));
         }
@@ -199,6 +201,9 @@ namespace Piglings.Simulation
             SetOpen(false);
             session.DebugEditSave(profile =>
             {
+                // The balance log's label: an edited save is no longer the normal flow (a scenario keeps its name).
+                profile.Origin = string.IsNullOrEmpty(profile.Origin) ? "debug edit"
+                    : profile.Origin.EndsWith(" (edited)") ? profile.Origin : profile.Origin + " (edited)";
                 if (rule != null) ProfileEdits.SetStones(profile, weapon, rule, stones);
                 ProfileEdits.SetNightsWon(profile, plan, nightsWon);
                 ProfileEdits.SetCurrentNight(profile, plan, night - 1);
@@ -229,6 +234,18 @@ namespace Piglings.Simulation
                     session.DebugLoadScenario(scenario);
                     return;
                 }
+            }
+        }
+
+        private void DrawLog()
+        {
+            GUILayout.Label("<b>BALANCE LOG</b>", Rich());
+            GUILayout.Label($"Origin: {(string.IsNullOrEmpty(session.Profile.Origin) ? "normal flow" : session.Profile.Origin)}");
+            if (GUILayout.Button("Open the log folder"))
+            {
+                System.IO.Directory.CreateDirectory(BalanceLog.Folder);
+                // A file:// URL opens the folder in Explorer / Finder (editor and desktop builds).
+                Application.OpenURL(new System.Uri(BalanceLog.Folder).AbsoluteUri);
             }
         }
 

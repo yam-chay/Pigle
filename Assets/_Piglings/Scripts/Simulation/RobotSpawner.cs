@@ -65,11 +65,13 @@ namespace Piglings.Simulation
             var night = session.Night;
             _timer -= Time.deltaTime;
             if (_timer > 0f) return;
-            _timer = night.SpawnInterval;
+            // The Balance Knobs' spawn rate: 2 = twice as often (half the interval).
+            _timer = night.SpawnInterval / session.SpawnRateMultiplier;
 
             var pos = new Vector3(Random.Range(minX, maxX), transform.position.y, 0f);
             var robot = Instantiate(robotPrefab, pos, Quaternion.identity, container);
-            robot.Initialize(session, night.Robot, night.Wall != null ? night.Wall.ClimbSpeedMultiplier : 1f);
+            float climb = (night.Wall != null ? night.Wall.ClimbSpeedMultiplier : 1f) * session.ClimbSpeedMultiplier;
+            robot.Initialize(session, night.Robot, climb);
             _spawned.RemoveAll(r => r == null);   // forget destroyed robots so the list stays small
             _spawned.Add(robot);
             Spawned?.Invoke(robot);

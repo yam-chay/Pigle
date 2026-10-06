@@ -21,8 +21,10 @@ namespace Piglings.Meta
     ///   "pegs":    { "peg_bomb":      { "knocks": 12, "triggers": [9, 2, 0] } },
     ///   "campaign": { "night": 1, "dawns": { "night_01": 3 }, "startInNight": false },
     ///   "towers":  { "night_02": ["slice_barn", "slice_wood", "slice_barn"] },
-    ///   "records": { "bestThrow": 620, "longestChain": 9, "deepestChain": 3, "bestNightScore": 4100 }
+    ///   "records": { "bestThrow": 620, "longestChain": 9, "deepestChain": 3, "bestNightScore": 4100 },
+    ///   "debug":   { "origin": "scenario Scenario_Night3" }
     /// }
+    /// ("debug" — M11.T3, written only when the save came from the debug panel — is one more of those additions.)
     /// ("pegs", "triggers", "campaign", "towers", and M10.E's "dropped", "swept", "startInNight" and "records" came later, inside
     /// version 1: an older build reads the file fine and ignores them — but would drop them if it then saved.)
     /// </code>
@@ -80,6 +82,7 @@ namespace Piglings.Meta
                     ["deepestChain"] = profile.Records.DeepestChain, ["bestNightScore"] = profile.Records.BestNightScore,
                 },
             };
+            if (!string.IsNullOrEmpty(profile.Origin)) root["debug"] = new JObject { ["origin"] = profile.Origin };
             return root.ToString(Formatting.Indented);
         }
 
@@ -175,6 +178,14 @@ namespace Piglings.Meta
                 if (!ReadField(records, "records", "longestChain", ref rec.LongestChain, ref problem)) return ProfileReadResult.Corrupt;
                 if (!ReadField(records, "records", "deepestChain", ref rec.DeepestChain, ref problem)) return ProfileReadResult.Corrupt;
                 if (!ReadField(records, "records", "bestNightScore", ref rec.BestNightScore, ref problem)) return ProfileReadResult.Corrupt;
+            }
+
+            if (!ReadSection(root, "debug", out var debug, ref problem)) return ProfileReadResult.Corrupt;
+            if (debug != null)
+            {
+                var origin = debug["origin"];
+                if (origin != null && origin.Type != JTokenType.String) { problem = "debug.origin isn't text"; return ProfileReadResult.Corrupt; }
+                if (origin != null) result.Origin = (string)origin;
             }
 
             profile = result;

@@ -307,3 +307,10 @@ Barn = 6 units wide. Wolf-bot ball radius = 58 px × 0.3 × 0.01 = 0.174.
 - Save edits go through `NightSession.DebugEditSave(edit, startInNight, why)` → save → reload; the edits are `Meta/ProfileEdits` (engine-free, CoreCheck): a result is written as its smallest cause (stones → hits, copies → level-1 triggers, nights won → dawns), so nothing derived is ever stored.
 - Board edit: `NightReferee.SetSocket(socket, pegId, level)` (any phase but Ended; only tonight's types; no shelf / throw / follow-up) publishes `PegSocketSet`; `PegBoardView` redraws and `PegBoard` re-applies the hold's material. Not saved.
 - Scenarios: `DebugScenarioDefinition` assets; `NightSession.DebugLoadScenario` resets the profile, applies the scenario, saves, reloads.
+
+## Balance log (M11.T3)
+- `Rules/BalanceTally` (engine-free, the caller's clock): gathers each closed chain (`ChainRecord`: score, mult, hour mult, total, wolves, depth, wall density at the throw, stones left) and per-hour sums (`HourRecord`, incl. miss share); CoreCheck.
+- `Simulation/BalanceCsv` (engine-free, in CoreCheck): one fixed column set for `chain` / `hour` / `night` rows; invariant numbers; quoting.
+- `Simulation/BalanceLog` (owned by NightSession, `Write Balance Log`): appends a night's rows on `NightEnded` to `persistentDataPath/BalanceLogs/balance_<profile>.csv`; never throws.
+- `PlayerProfile.Origin` (save: `"debug": { "origin" }`, written only when set): the label every row carries — set by the debug panel (scenario / edit), "" = normal flow. Not a cause; nothing in the game reads it.
+- `BalanceKnobsDefinition` (NightSession ▸ Balance Knobs): `ClimbSpeedMultiplier`, `SpawnRateMultiplier`, applied by `RobotSpawner` on top of the night and its wall.
