@@ -141,12 +141,12 @@ merges the latest Production first (CLAUDE.md).
 ### PR order and status
 | PR | What | Status |
 |---|---|---|
-| P | Progression: stone evolution list (look + refill per level, cap 25), peg copies up to 10 + same-type follow-ups (one per N copies), the 2-row pegboard | ✔ merged (#38, #39); follow-up chain in this PR |
+| P | Progression: stone evolution list (look + refill per level, cap 25), peg copies up to 10 + same-type follow-ups (one per N copies), the 2-row pegboard | ✔ merged (#38–#40) |
 | E | Post-run screen (Yam's final spec below) + the out-of-stones loss, records, wolves dropped, hour colours by progress | ✔ merged (#41, #42) |
-| S | Scoring model Score × Mult × Hour, the live chain counter, PR E playtest fixes (hour dots, records bars, HUD dim, flow) | this PR |
-| G | HUD reshape: screen-space night track + two screen-space chalkboards (record, tips); removes the world scoreboard and the HOURS card | after E (needs Yam's mockup + peg tip art) |
-| H | Night selection overlay (replaces Next night) | after G |
-| I | Pig face (Presentation only) | after H (any time) |
+| S | Scoring model Score × Mult × Hour, the live chain counter, PR E playtest fixes (hour dots, records bars, HUD dim, flow) | ✔ merged (#43–#49) |
+| G | HUD reshape: screen-space night track + two screen-space chalkboards (record, tips); removes the world scoreboard and the HOURS card | after the playtest (stage 3) — its mockup comes from it |
+| H | Night selection overlay (replaces Next night) | moved to stage 3 (T4) |
+| I | Pig face (Presentation only) | cut from this milestone (after the playtest) |
 
 Every PR: CoreCheck passes, Night.unity keeps working, editor steps listed in the PR, TASKS.md ticked.
 
@@ -478,6 +478,93 @@ Inspector); Yam rebalances after it lands. Keeps PR P's follow-up rule as it is.
    grip, breaches or is removed. Only the night's pig gets the face (the barn room's rig copy stays calm).
 8. **Follow-ups + bigger refills** (P) both push against the "0 stones" losses; with Yam's retune, watch that night 3
    doesn't flip to never-lost. The dead-time decision (TASKS ▸ Open) is still separate.
+
+## Stage 3 — the playtest build (M11, planned 2026-10-06)
+
+**Target:** an internal playtest with personal contacts in about a week (around 2026-10-14, may slip 2–3 days). An HTML5
+(WebGL) build on itch, desktop browser only (no mobile layout). The campaign scene (TestNight) is the build.
+
+### Decisions (with Yam, 2026-10-06)
+- **Out of scope until after the playtest:** G (HUD reshape — the playtest informs its mockup), the barn upgrade reveal
+  (PR F follow-up), I (cut from this milestone), player-facing loadout selection, wall-material tuning.
+- **A miss scores 0.** A chain that drops no wolf adds nothing to the night (today it scores its stone's base).
+- **Stone base by level = 10 / 20 / 40 / 80** (asset values; Throwable_Stone ▸ Levels ▸ Base Score is 10/20/30/40 now).
+- **Splitter pieces at half mult**, as a toggle in a Definition asset (not final): see T3.
+- **Logging before tuning:** the M5.2 balance pass runs on T3's numbers, not on feel.
+
+### PR order and status
+| PR | What | Status |
+|---|---|---|
+| T1 | End-of-night flow (loss: last chain → beat → wolf placeholder → sweep → post-run) + docs hygiene | this PR |
+| T2 | Developer debug panel (F1, IMGUI): edit the save, board edit mode, scenario presets | next |
+| T3 | Balance logging + the scoring changes (miss = 0, Splitter half mult) + wolf climb / spawn speed multipliers in an SO | |
+| T4 | H — night select overlay (spec: Stage 2 ▸ PR H) | |
+| T5 | Wall-material plumbing: per-material SO, neutral values; selection hidden in the playtest build | |
+| T6 | Progress bars (hour gap + score) move with the chain-close popup, not during the chain | |
+| T7 | Pitched SFX hooks, placeholder clips | |
+| T8 | Minimal start screen (Play / Continue / Reset save), 2 tip cards (depth, peg placement), fixed aspect; the save survives a page reload in WebGL | |
+
+### T1 — end-of-night flow
+What's already in place (checked 2026-10-06):
+- **Stones = 0 waits for the last chain:** `NightReferee.OutOfStones` needs no stone left, no chain open and no round
+  pending (its refill comes first). ✔
+- **No waiting for a breach:** a breach on an empty pile takes nothing and changes nothing. ✔
+- **The wolf hook:** `NightFlow.WolfClimbStarts(seconds)` + Wolf Seconds; nothing listens yet. ✔ (no visual)
+- **Post-run after the wall settles:** `NightFlow` waits for `WallSettled` + Settled Hold Seconds. ✔
+- **Not in place:** the beat, the order. Today the sweep runs the moment the night is lost (inside the referee's phase
+  change), so the robots fall *while* the wolf's time runs.
+
+The order after T1, on a loss: the last chain closes → the night ends (Rules, as today) → the wall holds still → **Loss
+Beat Seconds** (~1) → the wolf placeholder plays for **Wolf Seconds** → **the sweep** (every climbing robot lets go) → the
+wall settles → Settled Hold Seconds → the post-run. A dawn is unchanged (sweep at once).
+
+How (Rules unchanged): the referee still counts the sweep at the end (RobotSwept inside the phase change: mastery, the
+"wolves swept" row, banking — all as today). Only the robots' fall waits: `RobotSpawner` keeps the swept robots holding
+on the wall (they stop climbing: the wall isn't moving in Ended) until `NightFlow` lets them go. Night.unity (no
+NightFlow) keeps the sweep at once. Story fit: the wolf reaches the chimney, then switches the remote off — the robots go
+limp (TASKS ▸ Open, the remote proposal).
+
+The wolf placeholder: `WolfChimneyPlaceholder` (Presentation) moves any sprite Yam assigns from a start point to an end
+point (the chimney) over Wolf Seconds, shown only then.
+
+Hygiene in the same PR: the editor steps the repo shows as done are ticked (checked in the scene / asset files); this
+table replaces stage 2's order. **NightEndView / PlayAgain stay:** Night.unity still uses them (TestNight doesn't since
+M10.C-b) — deleting them would leave missing scripts in Night.unity. They go when Night.unity does (or moves to the
+post-run). `DepthCardView` / `HoursCardView` are in no scene or prefab — candidates for the clean-up pass after G.
+
+### T2 — developer debug panel (not player UI)
+- IMGUI (`OnGUI`), toggled by F1, works in WebGL. Hidden from players: closed by default, and nothing on screen says it's
+  there. *Open:* stripped from the itch build (`Debug.isDebugBuild`), or kept behind F1 so Yam can set a tester up
+  during a session?
+- Edit the save (causes only, then re-derive — like the save rule): stone hits (so the level / evolution, reverting too),
+  peg copies (via triggers), unlocked nights (dawns), the current night.
+- Board edit mode: click a socket to cycle its peg type / level, or empty it.
+- Scenario presets: a ScriptableObject per preset = a full player state + a night; one click loads it (saves + reloads).
+
+### T3 — balance logging + scoring changes
+- Per night, one block (extends `NightLog`): per chain — score, mult, hour multiplier, total, wolves, depth, hour; the
+  night's length in seconds; wolves dropped per hour; the average wall density at throw time (robots climbing when a
+  stone is thrown).
+- *Risk:* in a browser, `Debug.Log` goes to the console — testers won't send it. The log needs a way out: copy to the
+  clipboard from the debug panel / the post-run, a download, or a POST to a sheet. *Yam: which?*
+- Miss = 0: a chain's raw gains wait until it drops its first wolf (then they go in at once); a chain that closes with
+  none adds 0. No dip in the score bar. (Its plain-hold "+1" popups still show — or are skipped: Yam?)
+- Splitter half mult: a toggle on the Scoring asset — the mult a piece's own victims (and their balls) add counts half.
+  *Yam to confirm that's the meaning* (vs the piece's peg triggers too).
+- Wolf climb speed and spawn interval multipliers in one SO (global knobs over every night).
+
+### T5 — wall materials
+Partly in place: `WallMaterialDefinition` already has `climbSpeedMultiplier` (the spawner applies it) and a hold
+`PhysicsMaterial2D` (bounciness / friction). T5 = check every hold gets its material, one neutral asset, and hide the
+barn room's materials pile in the playtest build. Small — may ride along with T3.
+
+### T8 — the browser build
+- *Risk:* WebGL's `persistentDataPath` is IndexedDB under a hash of the page URL — itch serves each upload from a new URL,
+  so **a new upload may reset every tester's save**. Test with two uploads, not just a page reload. Fix if needed: a fixed
+  save path or PlayerPrefs, plus an explicit IndexedDB sync after writing.
+- Fixed aspect: Player Settings (editor) + letterboxing in code if the browser resizes the canvas.
+- *Recommendation:* make a first WebGL build right after T1 (URP 2D, physics speed, the save) — problems found on day 6
+  can't be fixed by day 7.
 
 ## Art map (as found in the repo)
 All PPU 400; white sprites are tinted in code; code must still run with any sprite missing. Sprites go in through

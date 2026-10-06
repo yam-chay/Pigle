@@ -30,8 +30,10 @@ namespace Piglings.Simulation
     /// The night itself waits in Dusk (NightSession Start Immediately off) until the camera reaches the Night frame; then
     /// BeginNight().
     ///
-    /// Out of stones (M10.E): the Rules end the night at once and the sweep runs then; the wolf's chimney climb (a hook,
-    /// WolfClimbStarts) gets Wolf Seconds before the post-run shows. A dawn shows it as soon as the sweep has landed.
+    /// Out of stones (M10.E, order M11.T1): the Rules end the night as the last chain closes (the sweep is counted then);
+    /// the wall holds still for Loss Beat Seconds, the wolf's chimney climb (WolfChimneyPlaceholder, or any WolfClimbStarts
+    /// listener) gets Wolf Seconds, THEN the swept robots let go (Spawner) — the wolf switched the remote off — and once
+    /// they've landed, the post-run. A dawn: the robots fall at once, the post-run as soon as they've landed.
     ///
     /// The camera moves only between phases (CameraDirector). Gameplay input is already off outside the night (Dusk and
     /// Ended can't throw); the flow's own actions are refused while the camera moves (Can… false), so a button pressed
@@ -42,6 +44,9 @@ namespace Piglings.Simulation
     {
         [SerializeField] private NightSession session;
         [SerializeField] private CameraDirector director;
+        [Tooltip("The scene's RobotSpawner: on a loss, its swept robots hold on until the wolf's time is up. Empty = they fall " +
+                 "as the night ends (during the beat and the wolf).")]
+        [SerializeField] private RobotSpawner spawner;
 
         [Header("Camera moves")]
         [Tooltip("Barn room ⇄ Tower (seconds).")]
@@ -56,18 +61,22 @@ namespace Piglings.Simulation
         [SerializeField, Min(0.1f)] private float transitSpeed = 8f;
 
         [Header("After the night")]
-        [Tooltip("Out of stones: the wolf's chimney climb — how long after the night is lost before the post-run shows (the " +
-                 "sweep runs as it starts). Match it to the wolf's sequence once there is one.")]
+        [Tooltip("Out of stones: a still beat after the last chain closes, before the wolf (seconds) — the wall holds still.")]
+        [SerializeField, Min(0f)] private float lossBeatSeconds = 1f;
+        [Tooltip("Out of stones: the wolf's chimney climb (seconds), after the beat. The robots let go when it's over. Match it " +
+                 "to the wolf's sequence once there is one.")]
         [SerializeField, Min(0f)] private float wolfSeconds = 2f;
         [Tooltip("Once the sweep has landed (and the wolf's time is up), wait this long before the post-run — a beat to see how it ended.")]
         [SerializeField, Min(0f)] private float settledHoldSeconds = 0.75f;
-        [Tooltip("Safety: show the post-run after this long (on top of the wolf's time) even if something still hasn't landed " +
+        [Tooltip("Safety: show the post-run after this long (after the robots let go) even if something still hasn't landed " +
                  "(logged). Balls time out on their own, so this should never be needed.")]
         [SerializeField, Min(1f)] private float maxSettleSeconds = 10f;
 
         private float _settlingSince;
         private float _settledSince = -1f;   // Time.time the wall was first seen settled; -1 = not yet
-        private float _waitForWolf;          // this Settling's wolf time (0 at dawn)
+        private float _letGoAt;              // seconds into Settling: the robots let go (0 at dawn: they already fell)
+        private bool _wolfStarted;           // Settling: WolfClimbStarts has fired (or there's no wolf: a dawn)
+        private bool _letGo;                 // Settling: the swept robots have let go
         private int _leaveTo;                // Descending: the night index the reload goes to
         private string _leaveWhy;
 
@@ -107,8 +116,8 @@ namespace Piglings.Simulation
         private bool _leavingToDay;    // Leaving after the descent (the barn) vs a fast Retry (still night)
 
         /// <summary>
-        /// Out of stones: the wolf starts his climb to the chimney, and the post-run waits this many seconds (Wolf Seconds) for
-        /// it. The hook for the wolf's sequence (M10.E) — nothing listens yet.
+        /// Out of stones, after the beat: the wolf starts his climb to the chimney, for this many seconds (Wolf Seconds); the
+        /// robots let go when it's over. WolfChimneyPlaceholder plays it until there's a real sequence.
         /// </summary>
         public event System.Action<float> WolfClimbStarts;
 
@@ -176,6 +185,12 @@ namespace Piglings.Simulation
         }
 
         // ---------- the machine ----------
+
+        // Awake, not Start: it must be set before any night can end (the spawner reads it inside the end).
+        private void Awake()
+        {
+            if (spawner != null) spawner.HoldSweepOnLoss = true;
+        }
 
         private void Start()
         {
@@ -246,9 +261,11 @@ namespace Piglings.Simulation
                 case FlowState.Settling:
                     _settlingSince = Time.time;
                     _settledSince = -1f;
-                    // Out of stones: the wolf's climb starts now (the sweep already ran, as the night ended).
-                    _waitForWolf = session.State.Result == NightResult.Lost ? wolfSeconds : 0f;
-                    if (session.State.Result == NightResult.Lost) WolfClimbStarts?.Invoke(_waitForWolf);
+                    // Out of stones: the beat, the wolf, then the robots let go (UpdateSettling). A dawn: they already fell.
+                    bool lost = session.State.Result == NightResult.Lost;
+                    _wolfStarted = !lost;
+                    _letGo = !lost;
+                    _letGoAt = lost ? lossBeatSeconds + wolfSeconds : 0f;
                     break;
                 case FlowState.PostRun:
                     // Over the Night frame: the camera doesn't move until a button says where to go.
@@ -315,19 +332,30 @@ namespace Piglings.Simulation
                       $"({session.State.EndReason}), dawns saved on it: {dawns}. Buttons: {Primary} / {Secondary}; {next}.", this);
         }
 
-        // The wolf's time is up (a loss) and the sweep has landed (no robot off the wall, no chain open) and stayed so for a
-        // beat → the post-run, right here over the Night frame.
+        // A loss: the beat, the wolf, then the robots let go. Both outcomes: once the sweep has landed (no robot off the wall,
+        // no chain open) and stayed so for a beat → the post-run, right here over the Night frame.
         private void UpdateSettling()
         {
             float since = Time.time - _settlingSince;
+            if (!_wolfStarted && since >= lossBeatSeconds)
+            {
+                _wolfStarted = true;
+                WolfClimbStarts?.Invoke(wolfSeconds);
+            }
+            if (!_letGo)
+            {
+                if (since < _letGoAt) return;
+                _letGo = true;
+                if (spawner != null) spawner.LetGoSwept();
+            }
             if (session.WallSettled)
             {
                 if (_settledSince < 0f) _settledSince = Time.time;
-                if (since >= _waitForWolf && Time.time - _settledSince >= settledHoldSeconds) SetState(FlowState.PostRun);
+                if (Time.time - _settledSince >= settledHoldSeconds) SetState(FlowState.PostRun);
                 return;
             }
             _settledSince = -1f;
-            if (since >= _waitForWolf + maxSettleSeconds)
+            if (since >= _letGoAt + maxSettleSeconds)
             {
                 Debug.LogWarning($"NightFlow: the wall hasn't settled after {maxSettleSeconds:0.#}s (something still falling or a chain " +
                                  "still open) — showing the post-run anyway.", this);

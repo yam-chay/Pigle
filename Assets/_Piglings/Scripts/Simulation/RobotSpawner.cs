@@ -18,6 +18,13 @@ namespace Piglings.Simulation
 
         private float _timer;
         private readonly List<RobotController> _spawned = new List<RobotController>();
+        private readonly List<RobotController> _holding = new List<RobotController>();   // swept on a loss, not let go yet
+
+        /// <summary>
+        /// On a loss, the swept robots keep holding on until LetGoSwept (M11.T1): NightFlow plays the beat and the wolf first.
+        /// Set by NightFlow; off (Night.unity, no flow) = they let go at once, as at dawn.
+        /// </summary>
+        public bool HoldSweepOnLoss { get; set; }
 
         // Views that need to find a robot by its GameId (e.g. score popups) listen here.
         // Raised after Initialize, so the robot already has its Id.
@@ -32,13 +39,24 @@ namespace Piglings.Simulation
         }
 
         // Runs inside the referee's phase change (the bus is synchronous): every RobotSwept is scored
-        // before the night banks its mastery and publishes NightEnded.
+        // before the night banks its mastery and publishes NightEnded. Holding on changes only when they fall,
+        // not what's counted — so the Rules see the same sweep either way.
         private void OnPhaseChanged(NightPhaseChanged e)
         {
             if (e.To != NightPhase.Ended) return;
+            bool hold = HoldSweepOnLoss && session.State.Result == NightResult.Lost;
             foreach (var robot in _spawned)
-                if (robot != null) robot.Sweep();   // destroyed robots compare equal to null; Sweep skips non-climbers
+                // destroyed robots compare equal to null; Sweep skips non-climbers
+                if (robot != null && robot.Sweep(!hold) && hold) _holding.Add(robot);
             _spawned.Clear();
+        }
+
+        /// <summary>The swept robots still holding on let go (NightFlow, after the wolf's beat). Nothing if none are.</summary>
+        public void LetGoSwept()
+        {
+            foreach (var robot in _holding)
+                if (robot != null) robot.LetGo();
+            _holding.Clear();
         }
 
         private void Update()
