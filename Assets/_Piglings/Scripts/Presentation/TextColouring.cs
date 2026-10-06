@@ -9,6 +9,17 @@ namespace Piglings.Presentation
     /// </summary>
     public static class TextColouring
     {
+        /// <summary>
+        /// One colour of a style right now, for things that aren't text (a marker pill, a dot): Solid / OverLifetime as is,
+        /// Cycle (pulse) moving, PerLetter (rainbow) as its first letter's colour moving — so a marker beside a rainbow
+        /// text cycles through the rainbow with it.
+        /// </summary>
+        public static Color Sample(PopupColor style, float key, float life)
+        {
+            if (style == null) return Color.white;
+            return style.Evaluate(key, life, Time.time, 0f);
+        }
+
         /// <param name="key">0..1 for the style (Solid picks its colour there; Cycle starts there).</param>
         /// <param name="life">0..1 through the text's life (OverLifetime).</param>
         /// <param name="alpha">Multiplies the style's alpha (fades, dimmed rows).</param>
