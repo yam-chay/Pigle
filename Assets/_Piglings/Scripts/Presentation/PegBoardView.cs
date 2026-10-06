@@ -101,6 +101,7 @@ namespace Piglings.Presentation
             board.Rebuilt += BindSockets;
             session.Bus.Subscribe<PegPlaced>(OnPegPlaced);
             session.Bus.Subscribe<PegMerged>(OnPegMerged);
+            session.Bus.Subscribe<PegSocketSet>(OnPegSocketSet);
             session.Bus.Subscribe<PegHit>(OnPegHit);
             session.Bus.Subscribe<PegBounced>(OnPegBounced);
             session.Bus.Subscribe<StoneSplit>(OnStoneSplit);
@@ -138,6 +139,7 @@ namespace Piglings.Presentation
             if (session == null || session.Bus == null) return;
             session.Bus.Unsubscribe<PegPlaced>(OnPegPlaced);
             session.Bus.Unsubscribe<PegMerged>(OnPegMerged);
+            session.Bus.Unsubscribe<PegSocketSet>(OnPegSocketSet);
             session.Bus.Unsubscribe<PegHit>(OnPegHit);
             session.Bus.Unsubscribe<PegBounced>(OnPegBounced);
             session.Bus.Unsubscribe<StoneSplit>(OnStoneSplit);
@@ -147,6 +149,7 @@ namespace Piglings.Presentation
 
         private void OnPegPlaced(PegPlaced e) => Refresh(e.Socket);
         private void OnPegMerged(PegMerged e) => Refresh(e.Socket);
+        private void OnPegSocketSet(PegSocketSet e) => Refresh(e.Socket);
 
         // Every hit on a Bouncy peg pops it (the bonus — stones and balls, M10.S — is once per peg per hitter: the ring).
         private void OnPegHit(PegHit e)

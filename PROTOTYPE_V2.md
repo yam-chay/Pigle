@@ -487,17 +487,19 @@ Inspector); Yam rebalances after it lands. Keeps PR P's follow-up rule as it is.
 ### Decisions (with Yam, 2026-10-06)
 - **Out of scope until after the playtest:** G (HUD reshape — the playtest informs its mockup), the barn upgrade reveal
   (PR F follow-up), I (cut from this milestone), player-facing loadout selection, wall-material tuning.
-- **A miss scores 0.** A chain that drops no wolf adds nothing to the night (today it scores its stone's base).
+- ~~A miss scores 0.~~ *Dropped (2026-10-07): a miss keeps its base; Yam makes it not worth it through balance.*
 - **Stone base by level = 10 / 20 / 40 / 80** (asset values; Throwable_Stone ▸ Levels ▸ Base Score is 10/20/30/40 now).
-- **Splitter pieces at half mult**, as a toggle in a Definition asset (not final): see T3.
+- ~~Splitter pieces at half mult.~~ *Dropped (2026-10-07) until playtesters break it.*
+- **The debug panel is development-only** (editor + Development builds). The itch build waits; Yam playtests his own build first.
 - **Logging before tuning:** the M5.2 balance pass runs on T3's numbers, not on feel.
 
 ### PR order and status
 | PR | What | Status |
 |---|---|---|
-| T1 | End-of-night flow (loss: last chain → beat → wolf placeholder → sweep → post-run) + docs hygiene | this PR |
-| T2 | Developer debug panel (F1, IMGUI): edit the save, board edit mode, scenario presets | next |
-| T3 | Balance logging + the scoring changes (miss = 0, Splitter half mult) + wolf climb / spawn speed multipliers in an SO | |
+| T1 | End-of-night flow (loss: last chain → beat → wolf placeholder → sweep → post-run) + docs hygiene | ✔ merged (#50) |
+| — | Scoreboard markers follow the quality style; UI texts as templates (`UiTextsDefinition`) | ✔ merged (#51, #52) |
+| T2 | Developer debug panel (F1, IMGUI): edit the save, board edit mode, scenario presets | this PR |
+| T3 | Balance logging + wolf climb / spawn speed multipliers in an SO | next |
 | T4 | H — night select overlay (spec: Stage 2 ▸ PR H) | |
 | T5 | Wall-material plumbing: per-material SO, neutral values; selection hidden in the playtest build | |
 | T6 | Progress bars (hour gap + score) move with the chain-close popup, not during the chain | |
@@ -533,24 +535,23 @@ M10.C-b) — deleting them would leave missing scripts in Night.unity. They go w
 post-run). `DepthCardView` / `HoursCardView` are in no scene or prefab — candidates for the clean-up pass after G.
 
 ### T2 — developer debug panel (not player UI)
-- IMGUI (`OnGUI`), toggled by F1, works in WebGL. Hidden from players: closed by default, and nothing on screen says it's
-  there. *Open:* stripped from the itch build (`Debug.isDebugBuild`), or kept behind F1 so Yam can set a tester up
-  during a session?
+- IMGUI (`OnGUI`), toggled by F1, works in WebGL. **Development only** (Yam, 2026-10-07): off in release builds
+  (`Debug.isDebugBuild`). While open: the game pauses (Time.timeScale 0, optional) and the night's pointer input stands
+  down (`NightSession.GameplayInputBlocked`), so a click on the panel never throws.
 - Edit the save (causes only, then re-derive — like the save rule): stone hits (so the level / evolution, reverting too),
   peg copies (via triggers), unlocked nights (dawns), the current night.
-- Board edit mode: click a socket to cycle its peg type / level, or empty it.
-- Scenario presets: a ScriptableObject per preset = a full player state + a night; one click loads it (saves + reloads).
+  Written as the smallest cause (`Meta/ProfileEdits`, CoreCheck): stones → that threshold's hits; copies → that
+  threshold's level-1 triggers; nights won → one dawn each. Apply = save + reload, so everything derives as on a real load.
+- Board edit mode: click a socket to cycle it — empty → each of tonight's types, level 1 → its max → empty
+  (`NightReferee.SetSocket`, any phase but Ended; `PegSocketSet` event; not saved).
+- Scenario presets: `DebugScenarioDefinition` (night, nights won, stones, copies per type, start in the night); one click
+  REPLACES the save with it (records too), saves and reloads.
 
 ### T3 — balance logging + scoring changes
 - Per night, one block (extends `NightLog`): per chain — score, mult, hour multiplier, total, wolves, depth, hour; the
   night's length in seconds; wolves dropped per hour; the average wall density at throw time (robots climbing when a
   stone is thrown).
-- *Risk:* in a browser, `Debug.Log` goes to the console — testers won't send it. The log needs a way out: copy to the
-  clipboard from the debug panel / the post-run, a download, or a POST to a sheet. *Yam: which?*
-- Miss = 0: a chain's raw gains wait until it drops its first wolf (then they go in at once); a chain that closes with
-  none adds 0. No dip in the score bar. (Its plain-hold "+1" popups still show — or are skipped: Yam?)
-- Splitter half mult: a toggle on the Scoring asset — the mult a piece's own victims (and their balls) add counts half.
-  *Yam to confirm that's the meaning* (vs the piece's peg triggers too).
+- Getting logs out of a browser waits for the itch build (Yam playtests his own build first: the console is enough).
 - Wolf climb speed and spawn interval multipliers in one SO (global knobs over every night).
 
 ### T5 — wall materials

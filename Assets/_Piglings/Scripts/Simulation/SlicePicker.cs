@@ -85,7 +85,7 @@ namespace Piglings.Simulation
         private void Update()
         {
             var tower = session != null ? session.Tower : null;
-            bool active = flow != null && flow.State == FlowState.Tower && !flow.CameraMoving && session.CanEditTower
+            bool active = flow != null && flow.State == FlowState.Tower && !flow.CameraMoving && session.CanEditTower && !session.GameplayInputBlocked
                           && cam != null && tower != null;
             if (!active) { StopPlacing(tower); return; }
 

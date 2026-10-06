@@ -194,6 +194,30 @@ namespace Piglings.Rules
             return true;
         }
 
+        /// <summary>
+        /// Debug (M11.T2, board edit): put this peg type at this level into a socket, or empty it (pegId null / ""), in any
+        /// phase but Ended — no shelf, no throw, no follow-up, charged. Only types in tonight's setup (the Rules know no
+        /// others); the level is clamped to the type's max. Publishes PegSocketSet. False = refused, nothing changed.
+        /// </summary>
+        public bool SetSocket(int socket, string pegId, int level)
+        {
+            if (_state.Phase == NightPhase.Ended || socket < 0 || socket >= _state.Sockets.Length) return false;
+            var s = _state.Sockets[socket];
+            if (string.IsNullOrEmpty(pegId))
+            {
+                s.PegId = null; s.Level = 0; s.Recharge = 0f;
+                _bus.Publish(new PegSocketSet(socket, null, 0));
+                return true;
+            }
+            var type = _pegs.Find(pegId);
+            if (type == null) return false;
+            s.PegId = pegId;
+            s.Level = level < 1 ? 1 : level > type.MaxLevel ? type.MaxLevel : level;
+            s.Recharge = 0f;
+            _bus.Publish(new PegSocketSet(socket, pegId, s.Level));
+            return true;
+        }
+
         private void GiveFollowUp(string pegId, int remaining)
         {
             _state.PegFollowUp = pegId;

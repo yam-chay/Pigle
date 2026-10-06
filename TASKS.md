@@ -125,8 +125,9 @@ Mastery from use: the stone levels up from the robots it knocks loose itself (50
   - [ ] 🖥 M11.T1-b Editor (TestNight): NightFlow ▸ Spawner + Loss Beat Seconds; a `WolfChimneyPlaceholder` with any wolf sprite, Start / End points. Steps in the PR.
 - [x] ☁ M11.u UI texts as templates: `UiTextsDefinition` (Create ▸ Piglings ▸ UI Texts) on NightSession ▸ Ui Texts — every scoreboard / popup / post-run / night-sign text with `{name}` tokens and TMP rich text.
   - [ ] 🖥 M11.u-b Create the asset, assign it on NightSession (TestNight + Night.unity), edit the texts.
-- [ ] ☁+🖥 M11.T2 Developer debug panel (F1, IMGUI, works in WebGL): edit the save (stone hits / evolution incl. reverting, peg copies, unlocked nights) and re-derive; board edit mode (click a socket: cycle peg type / remove); scenario presets (SO: player state + night, one click).
-- [ ] ☁+🖥 M11.T3 Balance logging (per chain score / mult / hour / total; night seconds; wolves dropped per hour; avg wall density at throw) + a way to get it out of the browser; miss = 0; Splitter pieces at half mult (Scoring toggle); wolf climb / spawn speed multipliers in an SO.
+- [x] ☁ M11.T2 Developer debug panel (`DebugPanel`, F1, IMGUI, editor + Development builds only): edit the save (stones / evolution incl. reverting, peg copies, nights won, the night) via `ProfileEdits` (CoreCheck) and reload; board edit (click a socket: cycle type / level / empty — `NightReferee.SetSocket`, `PegSocketSet`); scenario presets (`DebugScenarioDefinition`, one click replaces the save).
+  - [ ] 🖥 M11.T2-b Editor (TestNight): a `DebugPanel` (Session, Board, Cam, Scenarios); a scenario asset or two; play-check F1. Steps in the PR.
+- [ ] ☁+🖥 M11.T3 Balance logging (per chain score / mult / hour / total; night seconds; wolves dropped per hour; avg wall density at throw) — the console for now; wolf climb / spawn speed multipliers in an SO. *(Miss = 0 and Splitter half mult dropped, 2026-10-07.)*
   - [ ] 🖥 M11.T3-b Throwable_Stone ▸ Levels ▸ Base Score = 10 / 20 / 40 / 80.
 - [ ] ☁+🖥 M11.T4 = M10.H night select overlay.
 - [ ] ☁+🖥 M11.T5 Wall-material plumbing: per-material SO (climb speed mult, hold bounciness / friction), all neutral (1.0); material selection hidden in the playtest build.

@@ -66,6 +66,7 @@ namespace Piglings.Simulation
             if (_session == null) return;
             _session.Bus.Subscribe<PegPlaced>(OnPegPlaced);
             _session.Bus.Subscribe<PegMerged>(OnPegMerged);
+            _session.Bus.Subscribe<PegSocketSet>(OnPegSocketSet);
         }
 
         private void OnDestroy()
@@ -73,10 +74,13 @@ namespace Piglings.Simulation
             if (_session == null || _session.Bus == null) return;
             _session.Bus.Unsubscribe<PegPlaced>(OnPegPlaced);
             _session.Bus.Unsubscribe<PegMerged>(OnPegMerged);
+            _session.Bus.Unsubscribe<PegSocketSet>(OnPegSocketSet);
         }
 
         private void OnPegPlaced(PegPlaced e) => ApplyMaterial(e.Socket, e.PegId, e.Level);
         private void OnPegMerged(PegMerged e) => ApplyMaterial(e.Socket, e.PegId, e.Level);
+        // Debug board edit: an emptied socket (no peg) gets its plain material back.
+        private void OnPegSocketSet(PegSocketSet e) => ApplyMaterial(e.Socket, e.PegId, e.Level);
 
         // Bounciness is the peg's physical side of Bouncy. Everything else (score) is the Rules'.
         private void ApplyMaterial(int socket, string pegId, int level)

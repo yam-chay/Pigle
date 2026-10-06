@@ -203,6 +203,16 @@ namespace Piglings.Events
         public PegPlaced(int socket, string pegId, int level) { Socket = socket; PegId = pegId; Level = level; }
     }
 
+    /// <summary>
+    /// Debug (M11.T2, the F1 panel's board edit): a socket was set directly — this peg type at this level, or emptied
+    /// (PegId null, Level 0). Not a placement: no shelf, no throw, no follow-up. Views redraw the socket.
+    /// </summary>
+    public readonly struct PegSocketSet
+    {
+        public readonly int Socket; public readonly string PegId; public readonly int Level;
+        public PegSocketSet(int socket, string pegId, int level) { Socket = socket; PegId = pegId; Level = level; }
+    }
+
     /// <summary>A peg from the shelf was thrown onto a peg of the same type, which went up a level (now Level).</summary>
     public readonly struct PegMerged
     {
