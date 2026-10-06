@@ -136,7 +136,8 @@ namespace Piglings.Meta
             };
             bool earned = row.After.Stones > row.Before.Stones;
             row.Bar = new ProgressBar(row.Before.Progress(hitsBefore), row.Before.Progress(hitsAfter), earned);
-            float from = stones.TrackPosition(row.Before.Stones), to = stones.TrackPosition(row.After.Stones);
+            // Smooth, like the stone bar: the stones plus the progress toward the next one, before tonight → now.
+            float from = stones.TrackPosition(stones.StonesWithProgress(hitsBefore)), to = stones.TrackPosition(stones.StonesWithProgress(hitsAfter));
             // Not forced full when READY: the bar ends where the stones are, on the slot of the evolution reached.
             row.EvolutionBar = new ProgressBar(from, to, false);
             row.EvolvedTonight = row.After.Level > row.Before.Level;

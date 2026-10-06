@@ -94,7 +94,7 @@ namespace Piglings.Meta
         /// spaced slots (first = 0, last = 1), and between two slots the bar moves by the stones between their Stones Needed.
         /// Below the first → 0, past the last → 1; one evolution → 1 once reached.
         /// </summary>
-        public float TrackPosition(int stones)
+        public float TrackPosition(float stones)
         {
             int n = _evolutions.Length;
             if (n <= 1) return n == 1 && stones >= _evolutions[0].StonesNeeded ? 1f : 0f;
@@ -107,6 +107,16 @@ namespace Piglings.Meta
                 return (i + within) / (n - 1);
             }
             return 1f;
+        }
+
+        /// <summary>
+        /// The stone count with its progress toward the next +1 stone as the fraction (14 stones, 40% to the 15th = 14.4) —
+        /// so the evolution bar moves a little every night, not only when a whole stone is earned. At the cap: the count.
+        /// </summary>
+        public float StonesWithProgress(int hits)
+        {
+            var status = For(hits);
+            return status.AtCap ? status.Stones : status.Stones + status.Progress(hits);
         }
 
         /// <summary>The level a stone count gives: entries reached in order (a gap stops it), at least 1.</summary>
