@@ -34,6 +34,7 @@ static void Main(){
  BarnChecks();
  PostRunChecks();
  DebugChecks();
+ BalanceChecks();
 }
 // Scoring (M10.S): each chain keeps SCORE (stone base + wolves + plain holds) and MULT (1 + one per new depth + special
 // pegs); the result = SCORE × MULT × the hour, rounded once. The raw score reaches the night's score as it comes; the

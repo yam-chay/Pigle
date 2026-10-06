@@ -127,8 +127,8 @@ Mastery from use: the stone levels up from the robots it knocks loose itself (50
   - [ ] 🖥 M11.u-b Create the asset, assign it on NightSession (TestNight + Night.unity), edit the texts.
 - [x] ☁ M11.T2 Developer debug panel (`DebugPanel`, F1, IMGUI, editor + Development builds only): edit the save (stones / evolution incl. reverting, peg copies, nights won, the night) via `ProfileEdits` (CoreCheck) and reload; board edit (click a socket: cycle type / level / empty — `NightReferee.SetSocket`, `PegSocketSet`); scenario presets (`DebugScenarioDefinition`, one click replaces the save).
   - [ ] 🖥 M11.T2-b Editor (TestNight): a `DebugPanel` (Session, Board, Cam, Scenarios); a scenario asset or two; play-check F1. Steps in the PR.
-- [ ] ☁+🖥 M11.T3 Balance logging (per chain score / mult / hour / total; night seconds; wolves dropped per hour; avg wall density at throw) — the console for now; wolf climb / spawn speed multipliers in an SO. *(Miss = 0 and Splitter half mult dropped, 2026-10-07.)*
-  - [ ] 🖥 M11.T3-b Throwable_Stone ▸ Levels ▸ Base Score = 10 / 20 / 40 / 80.
+- [x] ☁ M11.T3 Balance log: every night appends to `persistentDataPath/BalanceLogs/balance_<profile>.csv` (history kept) — a row per chain (score, mult, hour mult, total, wolves, depth, miss, wall density at the throw, stones left), per hour (seconds, chains, wolves, miss share, breaches) and a night summary; every row carries the save's origin (normal flow / scenario / debug edit, `PlayerProfile.Origin`, saved) and the knobs. F1 ▸ Open the log folder. `BalanceKnobsDefinition` (climb speed, spawn rate). CoreCheck. *(Miss = 0 and Splitter half mult dropped, 2026-10-07.)*
+  - [ ] 🖥 M11.T3-b Throwable_Stone ▸ Levels ▸ Base Score = 10 / 20 / 40 / 80; a Balance Knobs asset on NightSession (optional); play a night, open the CSV. Steps in the PR.
 - [ ] ☁+🖥 M11.T4 = M10.H night select overlay.
 - [ ] ☁+🖥 M11.T5 Wall-material plumbing: per-material SO (climb speed mult, hold bounciness / friction), all neutral (1.0); material selection hidden in the playtest build.
 - [ ] ☁ M11.T6 Progress bars (hour gap + score) animate with the chain-close popup, not during the chain.

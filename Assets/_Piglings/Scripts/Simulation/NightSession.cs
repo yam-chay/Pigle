@@ -52,6 +52,12 @@ namespace Piglings.Simulation
                  "every view. Empty = the built-in texts.")]
         [SerializeField] private UiTextsDefinition uiTexts;
 
+        [Header("Balancing (M11.T3)")]
+        [Tooltip("Global knobs over every night: wolf climb speed and spawn rate multipliers. Empty = 1 / 1.")]
+        [SerializeField] private BalanceKnobsDefinition balanceKnobs;
+        [Tooltip("Append every night's chains, hours and summary to persistentDataPath/BalanceLogs/balance_<profile>.csv.")]
+        [SerializeField] private bool writeBalanceLog = true;
+
         [Header("Save and start")]
         [Tooltip("Which save this scene uses: piglings_<name>.json. \"dev\" for Night.unity, \"campaign\" for the v2 scene — " +
                  "separate files, so testing here never advances the campaign. Letters, digits, - and _ only.")]
@@ -120,6 +126,11 @@ namespace Piglings.Simulation
         }
         private UiTextsDefinition _defaultTexts;
 
+        /// <summary>Every wolf's climb speed × this (Balance Knobs; 1 without).</summary>
+        public float ClimbSpeedMultiplier => balanceKnobs != null ? balanceKnobs.ClimbSpeedMultiplier : 1f;
+        /// <summary>Wolves spawn this many times as often (Balance Knobs; 1 without).</summary>
+        public float SpawnRateMultiplier => balanceKnobs != null ? balanceKnobs.SpawnRateMultiplier : 1f;
+
         public EventBus Bus { get; private set; }
         public NightState State { get; private set; }
         public IdAllocator Ids { get; private set; }
@@ -130,6 +141,7 @@ namespace Piglings.Simulation
         private PegEffects _pegEffects;
         private SettleTracker _settle;
         private NightLog _log;
+        private BalanceLog _balance;
         private Progression _progression;
         private ProfileFile _profileFile;
         private NightDefinition _night;            // tonight's (see Night)
@@ -290,6 +302,7 @@ namespace Piglings.Simulation
             _tally = new MasteryTally(Bus, State);
             _settle = new SettleTracker(Bus, _chains);
             _log = new NightLog(this);
+            if (writeBalanceLog) _balance = new BalanceLog(this, profileName);
             CheckPalette();
             Bus.Subscribe<NightPhaseChanged>(OnPhaseChanged);
             Bus.Subscribe<NightEnded>(OnNightEnded);
@@ -633,6 +646,7 @@ namespace Piglings.Simulation
             _progression.Reset();
             DebugEditSave(profile =>
             {
+                profile.Origin = $"scenario {scenario.name}";
                 ProfileEdits.SetNightsWon(profile, Plan, scenario.NightsWon);
                 ProfileEdits.SetCurrentNight(profile, Plan, scenario.Night - 1);
                 ProfileEdits.SetStones(profile, _night.Throwable.Id, _stones, scenario.Stones);
@@ -783,6 +797,7 @@ namespace Piglings.Simulation
             Bus?.Unsubscribe<NightPhaseChanged>(OnPhaseChanged);
             Bus?.Unsubscribe<NightEnded>(OnNightEnded);
             _log?.Dispose();
+            _balance?.Dispose();
             _settle?.Dispose();
             _progression?.Dispose();
             _pegEffects?.Dispose();

@@ -29,6 +29,10 @@ namespace Piglings.Meta
         // one-shot: the scene that reads it clears it (and saves) as it boots.
         public bool StartInNight;
 
+        // Where this save came from (M11.T3), for the balance log: "" = normal flow; set by the debug panel ("scenario X",
+        // "debug edit"). A label, not a cause — nothing in the game reads it. A new save (reset) starts as normal flow.
+        public string Origin = "";
+
         // The all-time records (M10.E). Results, not causes — the exception to the rule above: they can't be derived from
         // anything saved (no per-night history is kept). A scoring retune doesn't rewrite them.
         public readonly NightRecords Records = new NightRecords();
@@ -79,6 +83,7 @@ namespace Piglings.Meta
                 foreach (var d in Dawns) dawns.Add($"{d.Key}×{d.Value}");
                 parts.Add($"campaign night {CurrentNight + 1}, dawns {(dawns.Count == 0 ? "none" : string.Join(" ", dawns))}");
             }
+            if (!string.IsNullOrEmpty(Origin)) parts.Add($"origin: {Origin}");
             if (Records.Any) parts.Add($"records: throw {Records.BestThrow}, chain {Records.LongestChain} wolves, depth {Records.DeepestChain}, night {Records.BestNightScore}");
             return parts.Count == 0 ? "empty (no banked nights)" : string.Join(" · ", parts);
         }

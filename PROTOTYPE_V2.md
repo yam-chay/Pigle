@@ -498,8 +498,8 @@ Inspector); Yam rebalances after it lands. Keeps PR P's follow-up rule as it is.
 |---|---|---|
 | T1 | End-of-night flow (loss: last chain → beat → wolf placeholder → sweep → post-run) + docs hygiene | ✔ merged (#50) |
 | — | Scoreboard markers follow the quality style; UI texts as templates (`UiTextsDefinition`) | ✔ merged (#51, #52) |
-| T2 | Developer debug panel (F1, IMGUI): edit the save, board edit mode, scenario presets | this PR |
-| T3 | Balance logging + wolf climb / spawn speed multipliers in an SO | next |
+| T2 | Developer debug panel (F1, IMGUI): edit the save, board edit mode, scenario presets | ✔ merged (#53, #54) |
+| T3 | Balance log (CSV) + wolf climb / spawn speed multipliers in an SO | this PR |
 | T4 | H — night select overlay (spec: Stage 2 ▸ PR H) | |
 | T5 | Wall-material plumbing: per-material SO, neutral values; selection hidden in the playtest build | |
 | T6 | Progress bars (hour gap + score) move with the chain-close popup, not during the chain | |
@@ -547,7 +547,19 @@ post-run). `DepthCardView` / `HoursCardView` are in no scene or prefab — candi
 - Scenario presets: `DebugScenarioDefinition` (night, nights won, stones, copies per type, start in the night); one click
   REPLACES the save with it (records too), saves and reloads.
 
-### T3 — balance logging + scoring changes
+### T3 — balance logging (as built: Yam's changes 2026-10-07)
+- **CSV, appended** (the console clears on Play): `persistentDataPath/BalanceLogs/balance_<profile>.csv`, header once; a
+  file with other columns is moved aside. Rows: `chain` (one per closed chain), `hour` (one per hour played), `night`
+  (the summary) — one fixed set of columns, filter by `row`. Every row: when, run id, **scenario** (the save's origin:
+  "normal flow", "scenario X", "debug edit", "… (edited)"), profile, night, the knobs in force.
+- **Miss share per hour**: the hour's chain score from chains that dropped no wolf ÷ the hour's chain score — the miss →
+  hour → refill loop shows as a high share.
+- Wall density = robots climbing when the stone was thrown. Hours by the hour a chain was thrown in; an hour's seconds run
+  from its round's start (hour 1: the night's begin) to the next round / the night's end.
+- F1 ▸ BALANCE LOG ▸ Open the log folder. The console keeps a one-line `[Balance]` summary per night.
+- `BalanceKnobsDefinition` on NightSession: climb speed × and spawn rate × over every night.
+
+### T3 — the original plan
 - Per night, one block (extends `NightLog`): per chain — score, mult, hour multiplier, total, wolves, depth, hour; the
   night's length in seconds; wolves dropped per hour; the average wall density at throw time (robots climbing when a
   stone is thrown).
