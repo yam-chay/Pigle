@@ -32,7 +32,10 @@ namespace Piglings.Meta
         public int HitsBefore, HitsAfter;
         public StoneStatus Before, After;
         public ProgressBar Bar;
+        /// <summary>Along the evolution track (StoneProgression.TrackPosition): before tonight → now; READY = a new evolution tonight.</summary>
+        public ProgressBar EvolutionBar;
         public int HitsGained => HitsAfter - HitsBefore;
+        public bool EvolvedTonight;
     }
 
     /// <summary>A peg type's row — only when it triggered tonight, or tonight's dawn unlocked it.</summary>
@@ -133,6 +136,10 @@ namespace Piglings.Meta
             };
             bool earned = row.After.Stones > row.Before.Stones;
             row.Bar = new ProgressBar(row.Before.Progress(hitsBefore), row.Before.Progress(hitsAfter), earned);
+            float from = stones.TrackPosition(row.Before.Stones), to = stones.TrackPosition(row.After.Stones);
+            // Not forced full when READY: the bar ends where the stones are, on the slot of the evolution reached.
+            row.EvolutionBar = new ProgressBar(from, to, false);
+            row.EvolvedTonight = row.After.Level > row.Before.Level;
             return row;
         }
 
