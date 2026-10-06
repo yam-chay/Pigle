@@ -599,6 +599,51 @@ namespace Piglings.Simulation
             SceneManager.LoadScene(index);
         }
 
+        // ---------- the F1 debug panel (M11.T2; DebugPanel — developer builds only) ----------
+
+        /// <summary>The panel is open: the night's own pointer input (throwing, placing pegs, the tower) stands down.</summary>
+        public bool GameplayInputBlocked { get; set; }
+
+        /// <summary>The stone's progression rule (tonight's throwable): what the panel edits stones and levels against.</summary>
+        public StoneProgression StoneRule => _stones;
+
+        /// <summary>Tonight's peg types the Rules know (the shelf's): what board edit cycles through.</summary>
+        public IReadOnlyList<PegDefinition> PegTypesTonight => _pegDefs;
+
+        /// <summary>Board edit: this type at this level in a socket, or empty it (null). In any phase but Ended.</summary>
+        public bool DebugSetSocket(int socket, string pegId, int level) => _referee.SetSocket(socket, pegId, level);
+
+        /// <summary>
+        /// Change the save (the panel's edits — ProfileEdits), save, and reload, so everything derived (stones, level,
+        /// copies, unlocks, the night) is built from it like a real save. Tonight's unbanked hits are lost.
+        /// </summary>
+        public void DebugEditSave(System.Action<PlayerProfile> edit, bool startInNight, string why)
+        {
+            if (!Application.isPlaying || _progression == null) return;
+            edit?.Invoke(_progression.Profile);
+            _progression.SetStartInNight(startInNight && IsCampaign);
+            Save($"debug: {why}");
+            ReloadScene();
+        }
+
+        /// <summary>A debug scenario: the save replaced by its state (records too), then saved and reloaded.</summary>
+        public void DebugLoadScenario(DebugScenarioDefinition scenario)
+        {
+            if (scenario == null || !Application.isPlaying || _progression == null) return;
+            _progression.Reset();
+            DebugEditSave(profile =>
+            {
+                ProfileEdits.SetNightsWon(profile, Plan, scenario.NightsWon);
+                ProfileEdits.SetCurrentNight(profile, Plan, scenario.Night - 1);
+                ProfileEdits.SetStones(profile, _night.Throwable.Id, _stones, scenario.Stones);
+                foreach (var entry in scenario.Pegs)
+                    if (entry != null && entry.peg != null) ProfileEdits.SetPegCopies(profile, entry.peg.Id, ProgressionFor(entry.peg), entry.copies);
+            }, scenario.StartInNight, $"scenario {scenario.name}");
+        }
+
+        /// <summary>Debug: forget everything (a new save), and reload.</summary>
+        public void DebugResetSave() { if (_progression != null) { _progression.Reset(); DebugEditSave(null, false, "reset save"); } }
+
         [ContextMenu("Mastery/Add 10 hits")]
         private void DebugAddTenHits()
         {
