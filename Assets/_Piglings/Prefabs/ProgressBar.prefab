@@ -100,17 +100,17 @@ RectTransform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3932020125858881606}
-  m_LocalRotation: {x: -0, y: -0, z: 0.11248886, w: -0.993653}
+  m_LocalRotation: {x: -0, y: -0, z: 0.17694697, w: -0.98422045}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1868039083316014195}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: -12.918}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: -20.384}
   m_AnchorMin: {x: 1, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 23.199997, y: 15.480011}
-  m_SizeDelta: {x: 45.549, y: 22.07}
+  m_AnchoredPosition: {x: 22.2, y: 6.9}
+  m_SizeDelta: {x: 32.3, y: 22.07}
   m_Pivot: {x: 1, y: 1}
 --- !u!222 &5073210242082038284
 CanvasRenderer:
@@ -167,11 +167,11 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 20.75
+  m_fontSize: 15.85
   m_fontSizeBase: 36
   m_fontWeight: 400
   m_enableAutoSizing: 1
-  m_fontSizeMin: 18
+  m_fontSizeMin: 0
   m_fontSizeMax: 72
   m_fontStyle: 0
   m_HorizontalAlignment: 1
@@ -441,7 +441,7 @@ MonoBehaviour:
   m_FillClockwise: 1
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 2.2
+  m_PixelsPerUnitMultiplier: 0.4
 --- !u!114 &5334356203501544143
 MonoBehaviour:
   m_ObjectHideFlags: 0
