@@ -9,5 +9,8 @@ namespace Piglings.Presentation
     public static class Numbers
     {
         public static string Thousands(int value) => value.ToString("N0", CultureInfo.InvariantCulture);
+
+        /// <summary>A multiplier as written after a ×: "2", "2.5", "1.25".</summary>
+        public static string Mult(float value) => value.ToString("0.##", CultureInfo.InvariantCulture);
     }
 }

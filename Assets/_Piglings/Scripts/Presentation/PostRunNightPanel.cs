@@ -65,10 +65,11 @@ namespace Piglings.Presentation
             // The hour being played when the night ended (State.Hour moves on at a round's start; a loss has no round waiting).
             int reached = dawn ? hours : Mathf.Clamp(s.Hour, 1, hours);
 
-            if (nightTitle != null) nightTitle.text = $"NIGHT {session.NightIndex + 1}";
+            var texts = session.Texts;
+            if (nightTitle != null) nightTitle.text = UiText.Fill(texts.nightTitle, ("night", (session.NightIndex + 1).ToString()));
             if (result != null)
             {
-                result.text = dawn ? "DAWN" : "OUT OF STONES";
+                result.text = dawn ? texts.resultDawn : texts.resultOutOfStones;
                 result.color = dawn ? session.DawnColour : outOfStonesColour;
             }
 
@@ -80,14 +81,14 @@ namespace Piglings.Presentation
             {
                 int hour = i + 1;
 
-                _dots[i].SetLabel($"{hour}");
+                _dots[i].SetLabel(UiText.Fill(texts.hourDot, ("hour", hour.ToString())));
                 _dots[i].Tint(session.HourColour(hour));
                 _dots[i].SetAlpha(hour <= reached ? 1f : unreachedAlpha);
             }
-            if (hoursReached != null) hoursReached.text = $"{reached} / {hours}";
+            if (hoursReached != null) hoursReached.text = UiText.Fill(texts.hoursReached, ("reached", reached.ToString()), ("hours", hours.ToString()));
 
             if (score != null)
-                score.text = $"Total Score: {Numbers.Thousands(s.BankedScore)}";
+                score.text = UiText.Fill(texts.totalScore, ("score", Numbers.Thousands(s.BankedScore)));
 
             if (_rows.Count == 0) _rows = TemplateList.Build(hourRow, null, reached);
             int best = s.BestThrowPoints;
@@ -98,10 +99,10 @@ namespace Piglings.Presentation
                 int points = hour - 1 < s.Hours.Count ? s.Hours[hour - 1].BestThrow : 0;
                 var row = _rows[i];
                 var colour = session.HourColour(hour);
-                row.SetLabel($"H{hour}");
+                row.SetLabel(UiText.Fill(texts.hourRow, ("hour", hour.ToString())));
                 if (row.Label != null) row.Label.color = colour;
                 row.Tint(colour);
-                row.SetDetail(points > 0 ? Numbers.Thousands(points) : "—");
+                row.SetDetail(points > 0 ? Numbers.Thousands(points) : texts.nothing);
                 if (row.Bar != null)
                 {
                     row.Bar.TintGain(colour);
@@ -114,15 +115,17 @@ namespace Piglings.Presentation
             if (biggestChain != null)
             {
                 int robots = s.BiggestChainRobots;
-                string wolves = robots == 1 ? "1 wolf" : $"{robots} wolves";
-                biggestChain.text = robots <= 0 ? "—" : s.BiggestChainDepth >= 1 ? $"{wolves} · depth {s.BiggestChainDepth}" : wolves;
+                string wolves = UiText.Wolves(texts, robots);
+                biggestChain.text = robots <= 0 ? texts.nothing
+                    : s.BiggestChainDepth >= 1 ? UiText.Fill(texts.biggestChain, ("wolves", wolves), ("depth", s.BiggestChainDepth.ToString()))
+                    : wolves;
             }
             if (avgPerStone != null)
             {
                 int chainScore = Mathf.Max(0, s.Score - s.SweepScore);
-                avgPerStone.text = s.ThrowsUsed > 0 ? Numbers.Thousands(Mathf.RoundToInt(chainScore / (float)s.ThrowsUsed)) : "—";
+                avgPerStone.text = s.ThrowsUsed > 0 ? Numbers.Thousands(Mathf.RoundToInt(chainScore / (float)s.ThrowsUsed)) : texts.nothing;
             }
-            if (stones != null) stones.text = $"{s.ThrowsUsed} · {s.StonesStolen}";
+            if (stones != null) stones.text = UiText.Fill(texts.stones, ("thrown", s.ThrowsUsed.ToString()), ("stolen", s.StonesStolen.ToString()));
         }
 
         // The rainbow animates letter by letter: repainted every frame.
