@@ -18,7 +18,8 @@ namespace Piglings.Presentation
 
         private void Start()
         {
-            if (label != null) label.text = $"NIGHT {session.NightIndex + 1} · {session.ThresholdCount} HOURS";
+            if (label != null)
+                label.text = UiText.Fill(session.Texts.nightSign, ("night", (session.NightIndex + 1).ToString()), ("hours", session.ThresholdCount.ToString()));
             // Switching off the object this sits on would also stop this component: then only the label hides.
             if (panel != null && (panel == gameObject || transform.IsChildOf(panel.transform)))
             {

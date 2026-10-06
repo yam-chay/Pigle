@@ -77,7 +77,7 @@ namespace Piglings.Presentation
         private readonly Dictionary<GameId, Row> _byChain = new Dictionary<GameId, Row>();
         private readonly List<Row> _rows = new List<Row>();   // newest first
         private int _bestTotal, _bestHour, _bestScore;
-        private float _bestMult;
+        private float _bestMult, _bestHourMult = 1f;
         private Vector2 _rowTop;
         private Vector3 _rowScale;
 
@@ -85,7 +85,7 @@ namespace Piglings.Presentation
         private int _shownScore = -1, _shownHour = -1, _shownReached = -1;
         private float _climbShown, _climbTarget, _climbRate;
         private int _climbDrawn = -1;
-        private string _scoreSuffix = "", _suffixDrawn;
+        private int _scoreTo = -1, _toDrawn = -2;   // the next threshold the score line shows (-1 = dawn: none)
         private bool _shownDawn;
 
         // The bar glides: where the score is (target) vs. what's drawn (shown), each with the hour it belongs to.
@@ -134,7 +134,8 @@ namespace Piglings.Presentation
                 _rows.Insert(0, row);
             }
             row.Score = e.Score; row.Mult = e.Mult; row.HourMultiplier = e.HourMultiplier;
-            row.Slot.SetLabel($"{Numbers.Thousands(e.Score)} × {e.Mult:0.##} × H{e.Hour}");
+            row.Slot.SetLabel(UiText.Fill(session.Texts.throwRow, ("score", Numbers.Thousands(e.Score)), ("mult", Numbers.Mult(e.Mult)),
+                                          ("hour", e.Hour.ToString()), ("hourMult", Numbers.Mult(e.HourMultiplier))));
             row.Slot.SetDetail("");
         }
 
@@ -147,11 +148,11 @@ namespace Piglings.Presentation
             if (e.RobotsDropped <= 0) { _rows.Remove(row); Destroy(row.Slot.gameObject); return; }
             row.Live = false;
             row.Total = e.Total;
-            row.Slot.SetDetail($"+{Numbers.Thousands(e.Total)}");
+            row.Slot.SetDetail(UiText.Fill(session.Texts.throwResult, ("total", Numbers.Thousands(e.Total))));
             // Same rule as NightState.BestThrowPoints (most points, the first one keeps it on a tie).
             if (e.Total > _bestTotal)
             {
-                _bestTotal = e.Total; _bestHour = e.Hour; _bestScore = e.Score; _bestMult = e.Mult;
+                _bestTotal = e.Total; _bestHour = e.Hour; _bestScore = e.Score; _bestMult = e.Mult; _bestHourMult = e.HourMultiplier;
                 ShowBest();
             }
             Trim();
@@ -222,11 +223,13 @@ namespace Piglings.Presentation
             if (hourText != null)
             {
                 int hour = Mathf.Min(s.Hour, count);
-                hourText.text = s.Dawn ? "DAWN" : $"HOUR {hour} · ×{session.HourMultiplierAt(hour):0.##}";
+                hourText.text = s.Dawn ? session.Texts.dawnTitle
+                    : UiText.Fill(session.Texts.hourTitle, ("hour", hour.ToString()), ("mult", Numbers.Mult(session.HourMultiplierAt(hour))));
                 hourText.color = s.Dawn ? session.DawnColour : session.HourColour(hour);
             }
-            _scoreSuffix = s.Dawn ? "" : $" / {to}";
-            if (gapText != null) gapText.text = s.Dawn ? "" : $"hour {segment} gap: {from} -> {to}";
+            _scoreTo = s.Dawn ? -1 : to;
+            if (gapText != null)
+                gapText.text = s.Dawn ? "" : UiText.Fill(session.Texts.hourGap, ("hour", segment.ToString()), ("from", from.ToString()), ("to", to.ToString()));
             // The bar's target; GlideBar moves it there.
             _barTarget = s.Dawn ? 1f : Mathf.Clamp01((s.Score - from) / (float)Mathf.Max(1, to - from));
             _targetSegment = segment;
@@ -246,9 +249,11 @@ namespace Piglings.Presentation
             if (scoreText == null) return;
             _climbShown = Mathf.MoveTowards(_climbShown, _climbTarget, _climbRate * Time.deltaTime);
             int shown = Mathf.RoundToInt(_climbShown);
-            if (shown == _climbDrawn && _scoreSuffix == _suffixDrawn) return;
-            _climbDrawn = shown; _suffixDrawn = _scoreSuffix;
-            scoreText.text = $"{shown}{_scoreSuffix}";
+            if (shown == _climbDrawn && _scoreTo == _toDrawn) return;
+            _climbDrawn = shown; _toDrawn = _scoreTo;
+            scoreText.text = _scoreTo < 0
+                ? UiText.Fill(session.Texts.scoreAtDawn, ("score", shown.ToString()))
+                : UiText.Fill(session.Texts.scoreLine, ("score", shown.ToString()), ("target", _scoreTo.ToString()));
         }
 
         // Eases the drawn fill toward the score. A new hour: finish filling the old one first, then start the new one
@@ -277,8 +282,12 @@ namespace Piglings.Presentation
         private void ShowBest()
         {
             if (best == null) return;
-            best.SetLabel(_bestTotal > 0 ? $"{Numbers.Thousands(_bestScore)} × {_bestMult:0.##} × H{_bestHour} =" : "—");
-            best.SetDetail(_bestTotal > 0 ? $"+{Numbers.Thousands(_bestTotal)}" : "");
+            var texts = session.Texts;
+            best.SetLabel(_bestTotal > 0
+                ? UiText.Fill(texts.bestRow, ("score", Numbers.Thousands(_bestScore)), ("mult", Numbers.Mult(_bestMult)),
+                              ("hour", _bestHour.ToString()), ("hourMult", Numbers.Mult(_bestHourMult)))
+                : texts.nothing);
+            best.SetDetail(_bestTotal > 0 ? UiText.Fill(texts.bestResult, ("total", Numbers.Thousands(_bestTotal))) : "");
         }
 
         // A score's look from the Score Colours asset: its quality band (points ÷ its hour's gap) — solid, pulse or rainbow.

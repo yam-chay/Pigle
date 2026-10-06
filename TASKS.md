@@ -123,6 +123,8 @@ Mastery from use: the stone levels up from the robots it knocks loose itself (50
 **The plan: `PROTOTYPE_V2.md` ▸ Stage 3.** TestNight is the build. Deferred until after: G, the barn upgrade reveal, I, player-facing loadout, material tuning.
 - [x] ☁ M11.T1 End-of-night flow: a loss = the last chain closes → the wall holds → Loss Beat (~1 s) → the wolf placeholder (Wolf Seconds) → the sweep (the robots let go) → settled → the post-run. Dawn unchanged. Rules unchanged (the sweep still counts at the end; only the fall waits). Hygiene: done 🖥 steps ticked, PROTOTYPE_V2 PR table. NightEndView / PlayAgain kept (Night.unity uses them).
   - [ ] 🖥 M11.T1-b Editor (TestNight): NightFlow ▸ Spawner + Loss Beat Seconds; a `WolfChimneyPlaceholder` with any wolf sprite, Start / End points. Steps in the PR.
+- [x] ☁ M11.u UI texts as templates: `UiTextsDefinition` (Create ▸ Piglings ▸ UI Texts) on NightSession ▸ Ui Texts — every scoreboard / popup / post-run / night-sign text with `{name}` tokens and TMP rich text.
+  - [ ] 🖥 M11.u-b Create the asset, assign it on NightSession (TestNight + Night.unity), edit the texts.
 - [ ] ☁+🖥 M11.T2 Developer debug panel (F1, IMGUI, works in WebGL): edit the save (stone hits / evolution incl. reverting, peg copies, unlocked nights) and re-derive; board edit mode (click a socket: cycle peg type / remove); scenario presets (SO: player state + night, one click).
 - [ ] ☁+🖥 M11.T3 Balance logging (per chain score / mult / hour / total; night seconds; wolves dropped per hour; avg wall density at throw) + a way to get it out of the browser; miss = 0; Splitter pieces at half mult (Scoring toggle); wolf climb / spawn speed multipliers in an SO.
   - [ ] 🖥 M11.T3-b Throwable_Stone ▸ Levels ▸ Base Score = 10 / 20 / 40 / 80.

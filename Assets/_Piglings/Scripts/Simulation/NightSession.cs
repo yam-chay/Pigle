@@ -48,6 +48,9 @@ namespace Piglings.Simulation
         [Header("Look (both scenes)")]
         [Tooltip("Score colours: popups by depth, throws by quality. Shared by every view. Empty = the built-in defaults.")]
         [SerializeField] private ScoreColoursDefinition scoreColours;
+        [Tooltip("Every text the code writes into the UI (scoreboard, popups, post-run, night sign), as templates. Shared by " +
+                 "every view. Empty = the built-in texts.")]
+        [SerializeField] private UiTextsDefinition uiTexts;
 
         [Header("Save and start")]
         [Tooltip("Which save this scene uses: piglings_<name>.json. \"dev\" for Night.unity, \"campaign\" for the v2 scene — " +
@@ -103,6 +106,19 @@ namespace Piglings.Simulation
             }
         }
         private ScoreColoursDefinition _defaultColours;
+
+        /// <summary>The UI's text templates every view shares; the built-in texts when none is assigned.</summary>
+        public UiTextsDefinition Texts
+        {
+            get
+            {
+                if (uiTexts != null) return uiTexts;
+                // Like the colours: a private default instance, never the serialized field.
+                if (_defaultTexts == null) _defaultTexts = ScriptableObject.CreateInstance<UiTextsDefinition>();
+                return _defaultTexts;
+            }
+        }
+        private UiTextsDefinition _defaultTexts;
 
         public EventBus Bus { get; private set; }
         public NightState State { get; private set; }

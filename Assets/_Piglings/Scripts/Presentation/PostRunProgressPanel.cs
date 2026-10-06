@@ -72,27 +72,32 @@ namespace Piglings.Presentation
             if (_pegs.Count == 0) _pegs = TemplateList.Build(pegRow, null, report.Pegs.Count);
             for (int i = 0; i < _pegs.Count && i < report.Pegs.Count; i++) ShowPeg(_pegs[i], report.Pegs[i], delay + (i + 1) * rowDelay);
 
-            if (wolvesTonight != null) wolvesTonight.text = $"+{Numbers.Thousands(report.WolvesTonight)}";
-            if (wolvesTotal != null) wolvesTotal.text = $"{Numbers.Thousands(report.WolvesTotal)} all time";
+            var texts = session.Texts;
+            if (wolvesTonight != null) wolvesTonight.text = UiText.Fill(texts.wolvesTonight, ("count", Numbers.Thousands(report.WolvesTonight)));
+            if (wolvesTotal != null) wolvesTotal.text = UiText.Fill(texts.wolvesTotal, ("count", Numbers.Thousands(report.WolvesTotal)));
         }
 
         private void ShowStone(StoneProgressRow stone, float delay)
         {
             if (stone == null) return;
             var weapon = session.Night.Throwable;
+            var texts = session.Texts;
             if (stoneIcon != null && weapon.SpriteFor(stone.After.Level) != null) stoneIcon.sprite = weapon.SpriteFor(stone.After.Level);
-            if (stoneHits != null) stoneHits.text = $"+{Numbers.Thousands(stone.HitsGained)} hits";
+            if (stoneHits != null) stoneHits.text = UiText.Fill(texts.stoneHits, ("hits", Numbers.Thousands(stone.HitsGained)));
             if (stoneBar != null) stoneBar.Show(stone.Bar.Before, stone.Bar.After, stone.Bar.Ready, delay);
             // The bar along the track: the Evolution Bar field, or (as laid out in TestNight) the evolution slot's Bar when
             // it isn't inside the slot — one bar shared by every clone, so it must be driven once, here, not per slot.
             var trackBar = TrackBar();
             if (trackBar != null) trackBar.Show(stone.EvolutionBar.Before, stone.EvolutionBar.After, stone.EvolvedTonight, delay);
             if (stoneCount != null)
-                stoneCount.text = stone.After.Stones > stone.Before.Stones ? $"{stone.Before.Stones} → {stone.After.Stones} stones" : $"{stone.After.Stones} stones";
+                stoneCount.text = stone.After.Stones > stone.Before.Stones
+                    ? UiText.Fill(texts.stonesGrew, ("before", stone.Before.Stones.ToString()), ("after", stone.After.Stones.ToString()))
+                    : UiText.Fill(texts.stoneCount, ("count", stone.After.Stones.ToString()));
             // The evolution it was heading for when the night began (post_run_v5: 14 → 15 stones, "next: 15 · evolve" — the
             // stone earned tonight reaches it; the barn plays it).
             if (nextEvolution != null)
-                nextEvolution.text = stone.Before.NextEvolutionStones < 0 ? "fully evolved" : $"next: {stone.Before.NextEvolutionStones} · evolve";
+                nextEvolution.text = stone.Before.NextEvolutionStones < 0 ? texts.fullyEvolved
+                    : UiText.Fill(texts.nextEvolution, ("stones", stone.Before.NextEvolutionStones.ToString()));
 
             // The track: one slot per evolution of the night's stone (its Levels list), reached = the level the stones give now.
             var levels = weapon.Levels;
@@ -102,7 +107,7 @@ namespace Piglings.Presentation
                 int level = i + 1;
                 var slot = _evolutions[i];
                 slot.SetSprite(weapon.SpriteFor(level));
-                slot.SetLabel(levels[i] != null ? $"{levels[i].stonesNeeded}" : "");
+                slot.SetLabel(levels[i] != null ? UiText.Fill(texts.evolutionPoint, ("stones", levels[i].stonesNeeded.ToString())) : "");
                 bool reached = level <= stone.After.Level;
                 slot.SetAlpha(reached ? 1f : notReachedAlpha);
                 // The line into this slot (only a bar INSIDE the slot): full once reached; the first slot has none.
@@ -128,13 +133,16 @@ namespace Piglings.Presentation
             slot.SetLabel(peg != null ? peg.DisplayName : row.PegId);
             if (peg != null) slot.SetSprite(peg.Sprite);
             // A type unlocked tonight shows only its NEW tag and where it came from (post_run_v5): no copies, no bar yet.
+            var texts = session.Texts;
             slot.SetDetail(row.UnlockedTonight ? ""
-                : row.CopiesAfter > row.CopiesBefore ? $"{row.CopiesBefore} → {row.CopiesAfter}" : $"{row.CopiesAfter}");
+                : row.CopiesAfter > row.CopiesBefore
+                    ? UiText.Fill(texts.copiesGrew, ("before", row.CopiesBefore.ToString()), ("after", row.CopiesAfter.ToString()))
+                    : UiText.Fill(texts.copies, ("count", row.CopiesAfter.ToString())));
             slot.ShowBadge(row.UnlockedTonight);
             // The next follow-up step in the mockup's shape ("6 = …"): at that many copies, a throw of it gives this many in a row.
-            slot.SetNote(row.UnlockedTonight ? $"unlocked by dawn on night {row.UnlockedByNight}"
-                : row.InARowAtNext > 0 ? $"{row.After.NextFollowUpAt} = {row.InARowAtNext} in a row"
-                : row.After.AtMax ? "max" : "");
+            slot.SetNote(row.UnlockedTonight ? UiText.Fill(texts.pegUnlocked, ("night", row.UnlockedByNight.ToString()))
+                : row.InARowAtNext > 0 ? UiText.Fill(texts.pegNextFollowUp, ("copies", row.After.NextFollowUpAt.ToString()), ("count", row.InARowAtNext.ToString()))
+                : row.After.AtMax ? texts.pegAtMax : "");
             if (slot.Bar == null) return;
             slot.Bar.gameObject.SetActive(!row.UnlockedTonight);
             if (!row.UnlockedTonight) slot.Bar.Show(row.Bar.Before, row.Bar.After, row.Bar.Ready, delay);

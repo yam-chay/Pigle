@@ -101,18 +101,20 @@ namespace Piglings.Presentation
                 int worth = Mathf.RoundToInt(e.Score * e.Mult * e.HourMultiplier);
                 float quality = session.ThrowQuality(worth, e.Hour);
                 float scale = robotScale * (1f + scalePerDepth * Mathf.Max(0f, e.Mult - 1f));
-                Spawn(t.position + robotOffset, $"{Numbers.Thousands(e.Score)} ×{e.Mult:0.##}", StyleFor(worth, e.Hour), scale, Mathf.Clamp01(quality));
+                string text = UiText.Fill(session.Texts.popupRobot, ("score", Numbers.Thousands(e.Score)), ("mult", Numbers.Mult(e.Mult)));
+                Spawn(t.position + robotOffset, text, StyleFor(worth, e.Hour), scale, Mathf.Clamp01(quality));
             }
             else if (e.Cause == ChainGainCause.Peg && e.MultAdded > 0f)
             {
                 if (board == null || e.Socket < 0 || e.Socket >= board.SocketCount) return;
-                Spawn(board.Position(e.Socket), $"+{e.MultAdded:0.##} mult", _mult, multScale, 0.4f);
+                Spawn(board.Position(e.Socket), UiText.Fill(session.Texts.popupPegMult, ("mult", Numbers.Mult(e.MultAdded))), _mult, multScale, 0.4f);
             }
             else if (e.Cause == ChainGainCause.PlainPeg && showPlainHolds && e.ScoreAdded > 0)
             {
                 if (board == null || e.Socket < 0 || e.Socket >= board.SocketCount) return;
                 // Coloured by its hitter's depth (the stone 0, a ball its own), with the bands' looks: the deepest pulse / rainbow.
-                Spawn(board.Position(e.Socket), $"+{e.ScoreAdded}", _styles.ForDepthBand(e.Depth), plainHoldScale, 0f);
+                Spawn(board.Position(e.Socket), UiText.Fill(session.Texts.popupPlainHold, ("score", Numbers.Thousands(e.ScoreAdded))),
+                      _styles.ForDepthBand(e.Depth), plainHoldScale, 0f);
             }
             // The stone's base: no popup (the board's live row shows it).
         }
@@ -120,7 +122,8 @@ namespace Piglings.Presentation
         private void OnChainScored(ChainScored e)
         {
             if (!showChainResult || e.RobotsDropped < minRobotsForChainPopup || chainAnchor == null) return;
-            string sum = $"{Numbers.Thousands(e.Score)} ×{e.Mult:0.##} ×H{e.Hour} = {Numbers.Thousands(e.Total)}";
+            string sum = UiText.Fill(session.Texts.popupChain, ("score", Numbers.Thousands(e.Score)), ("mult", Numbers.Mult(e.Mult)),
+                                     ("hour", e.Hour.ToString()), ("hourMult", Numbers.Mult(e.HourMultiplier)), ("total", Numbers.Thousands(e.Total)));
             float size = Mathf.Clamp01(e.Total / (float)bigChainTotal);
             var popup = Spawn(chainAnchor.position, sum, StyleFor(e.Total, e.Hour), chainScale, size);
             popup.FitInto(chainArea, chainMinFontSize);

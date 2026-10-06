@@ -1,3 +1,4 @@
+using Piglings.Definitions;
 using Piglings.Meta;
 using UnityEngine;
 
@@ -20,19 +21,21 @@ namespace Piglings.Presentation
         [Tooltip("A record broken tonight: its value and its bar in this colour (the others keep the colours laid out).")]
         [SerializeField] private Color newRecordColour = new Color(1f, 0.8f, 0.25f);
 
+        /// <param name="texts">The UI Texts (NightSession.Texts).</param>
         /// <param name="delay">Seconds before the bars fill in.</param>
-        public void Show(RecordsReport records, float delay = 0f)
+        public void Show(RecordsReport records, UiTextsDefinition texts, float delay = 0f)
         {
-            if (records == null) return;
+            if (records == null || texts == null) return;
+            string none = texts.nothing;
             var now = records.After;
             var tonight = records.Tonight;
-            Fill(bestThrow, now.BestThrow > 0 ? Numbers.Thousands(now.BestThrow) : "—", records.New.BestThrow,
+            Fill(bestThrow, now.BestThrow > 0 ? Numbers.Thousands(now.BestThrow) : none, records.New.BestThrow,
                  RecordsReport.Closeness(tonight.BestThrow, now.BestThrow), delay);
-            Fill(longestChain, now.LongestChain > 0 ? (now.LongestChain == 1 ? "1 wolf" : $"{now.LongestChain} wolves") : "—", records.New.LongestChain,
+            Fill(longestChain, now.LongestChain > 0 ? UiText.Wolves(texts, now.LongestChain) : none, records.New.LongestChain,
                  RecordsReport.Closeness(tonight.LongestChain, now.LongestChain), delay);
-            Fill(deepestChain, now.DeepestChain > 0 ? $"depth {now.DeepestChain}" : "—", records.New.DeepestChain,
+            Fill(deepestChain, now.DeepestChain > 0 ? UiText.Fill(texts.recordDepth, ("depth", now.DeepestChain.ToString())) : none, records.New.DeepestChain,
                  RecordsReport.Closeness(tonight.DeepestChain, now.DeepestChain), delay);
-            Fill(bestNightScore, now.BestNightScore > 0 ? Numbers.Thousands(now.BestNightScore) : "—", records.New.BestNightScore,
+            Fill(bestNightScore, now.BestNightScore > 0 ? Numbers.Thousands(now.BestNightScore) : none, records.New.BestNightScore,
                  RecordsReport.Closeness(tonight.BestNightScore, now.BestNightScore), delay);
         }
 
