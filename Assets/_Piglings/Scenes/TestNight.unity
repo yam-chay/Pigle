@@ -3222,6 +3222,7 @@ GameObject:
   m_Component:
   - component: {fileID: 397069837}
   - component: {fileID: 397069838}
+  - component: {fileID: 397069839}
   m_Layer: 0
   m_Name: Debug
   m_TagString: Untagged
@@ -3259,6 +3260,26 @@ MonoBehaviour:
   session: {fileID: 1068153025}
   toggleKey: 94
   visibleAtStart: 0
+--- !u!114 &397069839
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 397069836}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8710f13c606368440840101d625d78d8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Piglings.Simulation::Piglings.Simulation.DebugPanel
+  session: {fileID: 1068153025}
+  board: {fileID: 1064185511}
+  cam: {fileID: 519420031}
+  scenarios:
+  - {fileID: 11400000, guid: 003f6df073a788b48a4ff462b5eeb44a, type: 2}
+  pauseWhileOpen: 1
+  socketPickRadius: 0.4
+  scale: 1.5
 --- !u!1 &418334110
 GameObject:
   m_ObjectHideFlags: 0
@@ -5194,7 +5215,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: -4.39, y: -0.81}
+  m_AnchoredPosition: {x: -4.39, y: -0.03}
   m_SizeDelta: {x: 407.7743, y: 840.9462}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &732625180
@@ -7351,6 +7372,7 @@ MonoBehaviour:
   tower: {fileID: 1064185512}
   hourPalette: {fileID: 11400000, guid: 40591b8285d66af43b1dd0d952087b0f, type: 2}
   scoreColours: {fileID: 11400000, guid: 639236544c96f6a459671cf40f905096, type: 2}
+  uiTexts: {fileID: 0}
   profileName: campaign
   startImmediately: 0
   debugNight: 2
