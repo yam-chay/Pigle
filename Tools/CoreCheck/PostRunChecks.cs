@@ -21,7 +21,14 @@ static void PostRunChecks(){
    var row=PostRunProgress.StoneRow(15,22,sp);   // 11 → 12 stones: no evolution
    Check(row.EvolutionBar.After>row.EvolutionBar.Before && !row.EvolvedTonight,"a stone earned short of the next evolution: the bar grows, no READY");
    var jump=PostRunProgress.StoneRow(45,55,sp);  // 14 → 15 stones: level 1 → 2
-   Check(jump.EvolvedTonight && Math.Abs(jump.EvolutionBar.After-1f/3f)<1e-5f,"reaching 15 stones tonight: READY, the bar ends on the 15 slot"); }
+   Check(jump.EvolvedTonight && Math.Abs(jump.EvolutionBar.After-1f/3f)<1e-5f,"reaching 15 stones tonight: READY, the bar ends on the 15 slot");
+   // Smooth: hits toward the next stone move it too (thresholds 10, 20, 30…: 25 hits = 12 stones + 50% of the 13th).
+   Check(Math.Abs(sp.StonesWithProgress(25)-12.5f)<1e-5f && sp.StonesWithProgress(10)==11f,"stones with progress: 12.5 at 25 hits; 11 right on a threshold");
+   var creep=PostRunProgress.StoneRow(21,25,sp);   // 12 stones both: 10% → 50% toward the 13th
+   Check(creep.EvolutionBar.After>creep.EvolutionBar.Before && Math.Abs(creep.EvolutionBar.Before-(2.1f/5f)/3f)<1e-4f,
+     "no stone earned, but hits gained: the bar still grows (12.1 → 12.5 stones on the track)");
+   var capped=new StoneProgression(new[]{1},10,11);
+   Check(capped.StonesWithProgress(500)==11f,"at the cap: just the count"); }
  // --- The night's facts ---
  { var n=new Night(new NightGoal(new[]{50,5000},10,0));
    n.Play(1);                        // hour 1: 20
