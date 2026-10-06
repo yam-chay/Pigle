@@ -89,6 +89,26 @@ namespace Piglings.Meta
         /// <summary>A throw's base score at this level (M10.S): the evolution's Base Score; past the list → the last.</summary>
         public int BaseScoreFor(int level) => _evolutions[level < 1 ? 0 : level > _evolutions.Length ? _evolutions.Length - 1 : level - 1].BaseScore;
 
+        /// <summary>
+        /// Where a stone count sits on the evolution track, 0..1 (the post-run's evolution bar): the evolutions are evenly
+        /// spaced slots (first = 0, last = 1), and between two slots the bar moves by the stones between their Stones Needed.
+        /// Below the first → 0, past the last → 1; one evolution → 1 once reached.
+        /// </summary>
+        public float TrackPosition(int stones)
+        {
+            int n = _evolutions.Length;
+            if (n <= 1) return n == 1 && stones >= _evolutions[0].StonesNeeded ? 1f : 0f;
+            if (stones <= _evolutions[0].StonesNeeded) return 0f;
+            for (int i = 0; i < n - 1; i++)
+            {
+                int from = _evolutions[i].StonesNeeded, to = _evolutions[i + 1].StonesNeeded;
+                if (stones >= to) continue;
+                float within = to > from ? (stones - from) / (float)(to - from) : 1f;
+                return (i + within) / (n - 1);
+            }
+            return 1f;
+        }
+
         /// <summary>The level a stone count gives: entries reached in order (a gap stops it), at least 1.</summary>
         public int LevelFor(int stones)
         {

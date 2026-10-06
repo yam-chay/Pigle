@@ -39,6 +39,9 @@ namespace Piglings.Presentation
                  "leading into it — full once reached, hidden on the first), cloned per level of the stone under a Horizontal " +
                  "Layout Group.")]
         [SerializeField] private TemplateSlot evolutionSlot;
+        [Tooltip("A bar along the evolution track (a ProgressBarView stretched from the first slot to the last): dim up to the stones " +
+                 "before tonight, bright up to now; its READY tag when tonight reached a new evolution. Optional.")]
+        [SerializeField] private ProgressBarView evolutionBar;
         [Tooltip("An evolution not reached yet: its sprite at this alpha.")]
         [SerializeField, Range(0f, 1f)] private float notReachedAlpha = 0.3f;
 
@@ -80,6 +83,7 @@ namespace Piglings.Presentation
             if (stoneIcon != null && weapon.SpriteFor(stone.After.Level) != null) stoneIcon.sprite = weapon.SpriteFor(stone.After.Level);
             if (stoneHits != null) stoneHits.text = $"+{Numbers.Thousands(stone.HitsGained)} hits";
             if (stoneBar != null) stoneBar.Show(stone.Bar.Before, stone.Bar.After, stone.Bar.Ready, delay);
+            if (evolutionBar != null) evolutionBar.Show(stone.EvolutionBar.Before, stone.EvolutionBar.After, stone.EvolvedTonight, delay);
             if (stoneCount != null)
                 stoneCount.text = stone.After.Stones > stone.Before.Stones ? $"{stone.Before.Stones} → {stone.After.Stones} stones" : $"{stone.After.Stones} stones";
             // The evolution it was heading for when the night began (post_run_v5: 14 → 15 stones, "next: 15 · evolve" — the

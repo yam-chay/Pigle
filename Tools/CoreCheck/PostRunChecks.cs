@@ -13,6 +13,15 @@ static void PostRunChecks(){
      "the stone's base by level: 10 / 20 / 40 / 80 (past the list → the last)");
    var custom=new StoneProgression(new int[0],10,25,new[]{new StoneEvolution(10,1,5),new StoneEvolution(12,2,-3)});
    Check(custom.BaseScoreFor(1)==5 && custom.BaseScoreFor(2)==0,"a level's own base; never negative"); }
+ // --- The evolution track bar (StoneProgression.TrackPosition): evenly spaced slots 10 / 15 / 20 / 25 ---
+ { var sp=new StoneProgression(new[]{10,20,30,40,50},10,25);
+   Check(sp.TrackPosition(10)==0f && Math.Abs(sp.TrackPosition(15)-1f/3f)<1e-5f && Math.Abs(sp.TrackPosition(20)-2f/3f)<1e-5f && sp.TrackPosition(25)==1f,
+     "the track: 10 → 0, 15 → ⅓, 20 → ⅔, 25 → 1 (on the slots)");
+   Check(Math.Abs(sp.TrackPosition(12)-0.4f/3f)<1e-5f && sp.TrackPosition(5)==0f && sp.TrackPosition(40)==1f,"between slots by the stones; clamped below / past");
+   var row=PostRunProgress.StoneRow(15,22,sp);   // 11 → 12 stones: no evolution
+   Check(row.EvolutionBar.After>row.EvolutionBar.Before && !row.EvolvedTonight,"a stone earned short of the next evolution: the bar grows, no READY");
+   var jump=PostRunProgress.StoneRow(45,55,sp);  // 14 → 15 stones: level 1 → 2
+   Check(jump.EvolvedTonight && Math.Abs(jump.EvolutionBar.After-1f/3f)<1e-5f,"reaching 15 stones tonight: READY, the bar ends on the 15 slot"); }
  // --- The night's facts ---
  { var n=new Night(new NightGoal(new[]{50,5000},10,0));
    n.Play(1);                        // hour 1: 20
