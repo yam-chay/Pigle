@@ -33,6 +33,9 @@ namespace Piglings.Simulation
         [Tooltip("The panel's size on screen (1 = IMGUI's default).")]
         [SerializeField, Range(0.75f, 3f)] private float scale = 1.5f;
 
+        // IMGUI needs an id per window; there's one panel. (GetInstanceID is obsolete in Unity 6.5 — an error there.)
+        private const int WindowId = 0x5017;
+
         private bool _open;
         private float _timeScaleBefore = 1f;
         private bool _boardEdit;
@@ -130,7 +133,7 @@ namespace Piglings.Simulation
         {
             if (!_open || session == null) return;
             GUI.matrix = Matrix4x4.Scale(new Vector3(scale, scale, 1f));
-            _window = GUILayout.Window(GetInstanceID(), _window, DrawWindow, "Debug (F1)");
+            _window = GUILayout.Window(WindowId, _window, DrawWindow, "Debug (F1)");
         }
 
         private void DrawWindow(int id)
