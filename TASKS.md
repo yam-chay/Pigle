@@ -134,6 +134,7 @@ Mastery from use: the stone levels up from the robots it knocks loose itself (50
 - [x] ☁ M11.T6 The scoreboard's hour bar, gap line and score number move only when a chain closes — with its popup — from one board score (`NightScoreboard._boardScore`); hold still during the chain. Presentation only: the Rules' raw score, thresholds and the balance log are unchanged.
 - [ ] ☁+🖥 M11.T7 Pitched SFX hooks (placeholder clips): throw, wolf hit pitched by depth, peg hit per type / level, stone-pile regen pitched per stone.
 - [ ] ☁+🖥 M11.T8 Minimal start screen (Play / Continue / Reset save), 2 tip cards (depth, peg placement), fixed aspect ratio; the save survives a page reload (and a new itch upload) in WebGL.
+- [x] ☁+🖥 M11.s The scoreboard in screen space (Yam, editor) + `NightHudFade`: shown only in the night (fades in on Start night, out for the post-run / the barn).
 - [ ] ☁+🖥 *(after the playtest)* Wall slices: Yam's T2 pass (every phase, debug states) showed the slices are the least developed system — what each slice changes (material, holds, layout), why a player picks one. Plan before code.
 - [ ] 🖥 M11.W First WebGL build right after T1 — URP 2D, physics speed, the save in a browser — so problems show up early.
 
