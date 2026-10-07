@@ -71,7 +71,6 @@ namespace Piglings.Simulation
         public bool HasPegInHand => _held != null && !_hops.IsHopping(_held.transform);
         public SpriteRenderer HeldPeg => _held;
         public float PegScale => pegScale;
-        public float PickRadius => pickRadius;
 
         /// <summary>The pegs sitting on the shelf (not the one in the hand), for views.</summary>
         public IEnumerable<SpriteRenderer> ShelfPegs

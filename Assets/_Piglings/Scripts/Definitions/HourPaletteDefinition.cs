@@ -33,12 +33,5 @@ namespace Piglings.Definitions
             int next = Mathf.Min(i + 1, colours.Count - 1);
             return Color.Lerp(colours[i], colours[next], at - i);
         }
-
-        /// <summary>Entry n of the list (1-based), by index; past the list → the last; an empty palette → white.</summary>
-        public Color ColourFor(int hour)
-        {
-            if (colours.Count == 0) return Color.white;
-            return colours[Mathf.Clamp(hour - 1, 0, colours.Count - 1)];
-        }
     }
 }

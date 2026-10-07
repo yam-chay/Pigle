@@ -5,7 +5,7 @@ using Piglings.Simulation;
 
 namespace Piglings.Presentation
 {
-    // Fades the bright "day" tiles in over the night tiles when the night ends (Night.unity).
+    // Fades the bright "day" tiles in over the night tiles when the night ends (a scene without NightFlow).
     // With a NightFlow (the campaign scene, M10.S) it follows the flow's Daylight instead: day in the barn, night from the
     // rise, crossfading with the camera's moves (the moon rises / sets) — the post-run stays at night.
     // Lives on a child of the scrolling background, so it scrolls along without any code of its own.
@@ -36,9 +36,6 @@ namespace Piglings.Presentation
         {
             if (flow != null) SetAlpha(flow.Daylight);
         }
-
-        // For a restart that doesn't reload the scene (see note below).
-        public void BackToNight() => FadeTo(0f);
 
         void FadeTo(float target)
         {

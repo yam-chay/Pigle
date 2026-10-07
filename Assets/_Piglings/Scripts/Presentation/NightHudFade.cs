@@ -12,7 +12,7 @@ namespace Piglings.Presentation
     /// player leaves the barn, nor vanish the moment the post-run starts arriving. A change back before the delay is up
     /// cancels it.
     /// Put it on the object with the CanvasGroup it fades. This component owns that group's alpha: don't also list it in
-    /// PostRunView ▸ Night Hud. Without a NightFlow (Night.unity) it's always shown. Reads only.
+    /// PostRunView ▸ Night Hud. Without a NightFlow it's always shown. Reads only.
     /// </summary>
     [RequireComponent(typeof(CanvasGroup))]
     public sealed class NightHudFade : MonoBehaviour

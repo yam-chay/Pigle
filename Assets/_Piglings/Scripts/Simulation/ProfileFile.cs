@@ -29,11 +29,11 @@ namespace Piglings.Simulation
     /// (Application.persistentDataPath). Engine-free on purpose — like ThrowSolver — so CoreCheck runs it on a real
     /// temp folder.
     ///
-    ///   piglings_<name>.json        the save            (name = the profile: "dev" for Night.unity, "campaign" for the v2 scene)
+    ///   piglings_<name>.json        the save            (name = the profile: "campaign" in TestNight)
     ///   piglings_<name>.prev.json   the save before the last one (the fallback)
     ///   piglings_<name>.json.tmp    a save being written; ignored on load
     ///   piglings_<name>.corrupt-*   copies of bad files, kept for us to look at
-    /// Separate profiles are separate files: testing in Night.unity never advances the campaign.
+    /// Separate profiles are separate files: a test profile never advances the real campaign.
     ///
     /// Save never leaves a half-written file: it writes the .tmp, flushes it to disk, then swaps it in with File.Replace
     /// (one rename). Before the swap the current save is copied to .prev.

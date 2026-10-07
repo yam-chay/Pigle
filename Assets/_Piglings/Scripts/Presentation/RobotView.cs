@@ -12,9 +12,6 @@ namespace Piglings.Presentation
     {
         [SerializeField] private RobotController robot;
         [SerializeField] private Animator animator;          // clips: Climb (default loop), ClimbDanger, Break
-        [SerializeField] private GameObject eyeOn;
-        [SerializeField] private GameObject eyeRed;
-        [SerializeField] private GameObject eyeX;
         [SerializeField] private GameObject[] detachables;   // arms, legs, antenna, tail roots
         [Tooltip("Breaching = out of play: the robot is drawn at this opacity, so nobody aims at it. Its stolen stone stays fully opaque.")]
         [SerializeField, Range(0f, 1f)] private float breachOpacity = 0.7f;

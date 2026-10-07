@@ -63,7 +63,7 @@ namespace Piglings.Presentation
             GUILayout.Label($"Dropped {s.RobotsDropped}   Reached top {s.RobotsReachedTop}");
             GUILayout.Label($"Last chain: {_last}");
             GUILayout.Label($"Best chain: {s.LongestChain} robots, depth {s.DeepestChain}");
-            // Where the night is. The end screen itself is NightEndView.
+            // Where the night is.
             string phase = PhaseText(s);
             if (phase != null) GUILayout.Label(phase);
             GUILayout.EndArea();

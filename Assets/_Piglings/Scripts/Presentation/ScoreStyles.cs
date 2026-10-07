@@ -25,8 +25,6 @@ namespace Piglings.Presentation
                 _depth.Add(new PopupColor { mode = PopupColorMode.Solid, gradient = PopupColor.Flat(colours != null ? colours.DepthColour(d) : Color.white) });
         }
 
-        public ScoreColoursDefinition Colours => _colours;
-
         /// <summary>Depth d's style (deeper than the list → the last).</summary>
         public PopupColor ForDepth(int depth) => _depth[Mathf.Clamp(depth, 0, _depth.Count - 1)];
 
@@ -73,9 +71,6 @@ namespace Piglings.Presentation
             }
         }
         private PopupColor _rainbow;
-
-        /// <summary>A throw quality's base colour (for a marker or an icon tint that can't animate letters).</summary>
-        public Color QualityColour(float quality) => _colours != null ? _colours.BandFor(quality).colour : Color.white;
 
         private PopupColor Build(QualityLook look, Color colour)
         {

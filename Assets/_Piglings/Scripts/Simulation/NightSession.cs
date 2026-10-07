@@ -17,13 +17,13 @@ namespace Piglings.Simulation
     /// Persistence: the disk is the home of everything that outlives a night. This owner loads the player's profile in
     /// Awake and saves it at NightEnded (after the referee has banked the night into it, and tonight's bests went into the
     /// records) — and again when the campaign's buttons write where to go (GoToNight, RetryNight), and when a fast Retry's
-    /// one-shot "start in the night" is used up at load. Play Again / Retry / Next reload the scene, so the next night
+    /// one-shot "start in the night" is used up at load. Retry / To the barn / Next reload the scene, so the next night
     /// loads it again from disk. Quitting mid-night saves nothing: that night's hits are lost.
     ///
-    /// Campaign mode (M10, the v2 scene: a Campaign is assigned): the profile decides tonight's night (its saved index),
-    /// the tower (the player's slices, or the night's own — built by TowerBuilder before anything reads the sockets), the
-    /// stones and refill (StoneProgression) and the peg shelf (unlocked types × owned copies). Without a Campaign
-    /// (Night.unity) the night, stones, refill and shelf come from the Night field, as before.
+    /// Campaign mode (M10: a Campaign is assigned — TestNight, the game): the profile decides tonight's night (its saved
+    /// index), the tower (the player's slices, or the night's own — built by TowerBuilder before anything reads the
+    /// sockets) and the peg shelf (unlocked types × owned copies). The stones and refill always come from the stone's
+    /// progression (StoneProgression, from its saved hits).
     /// </summary>
     [DefaultExecutionOrder(-1000)]
     public sealed class NightSession : MonoBehaviour
@@ -37,10 +37,10 @@ namespace Piglings.Simulation
         [Tooltip("The wall's peg sockets (PegBoard on Barn). Empty = no sockets: every threshold is just a refill pause.")]
         [SerializeField] private PegBoard board;
 
-        [Header("Campaign (v2 scene; leave empty in Night.unity)")]
+        [Header("Campaign")]
         [Tooltip("Set = campaign mode: the night, tower, stones and pegs come from the save and this campaign.")]
         [SerializeField] private CampaignDefinition campaign;
-        [Tooltip("Builds the night's tower from its slices (and moves the tower top and walls). Empty = the scene's own tower.")]
+        [Tooltip("Builds the night's tower from its slices (and moves the tower top and walls). Required: the holds come from it.")]
         [SerializeField] private TowerBuilder tower;
         [Tooltip("The night's colours, first → last (dawn gold), spread over each night's hours (scoreboard, hour dots, post-run). Optional.")]
         [SerializeField] private HourPaletteDefinition hourPalette;
@@ -59,16 +59,12 @@ namespace Piglings.Simulation
         [SerializeField] private bool writeBalanceLog = true;
 
         [Header("Save and start")]
-        [Tooltip("Which save this scene uses: piglings_<name>.json. \"dev\" for Night.unity, \"campaign\" for the v2 scene — " +
-                 "separate files, so testing here never advances the campaign. Letters, digits, - and _ only.")]
+        [Tooltip("Which save this scene uses: piglings_<name>.json (\"campaign\" in TestNight). A different name = a separate " +
+                 "save, for testing without touching the real one. Letters, digits, - and _ only.")]
         [SerializeField] private string profileName = "dev";
-        [Tooltip("On (Night.unity): the night is Running as soon as the scene loads. Off (the campaign scene): it waits in " +
-                 "Dusk — the day phase, the camera rising — until BeginNight().")]
+        [Tooltip("Off (TestNight): the night waits in Dusk — the day phase, the camera rising — until BeginNight(). On: it is " +
+                 "Running as soon as the scene loads (a scene without NightFlow).")]
         [SerializeField] private bool startImmediately = true;
-
-        [Header("Debug (campaign, play mode)")]
-        [Tooltip("For the context menu \"Campaign/Go to Debug Night\": the night (1-based) to jump to.")]
-        [SerializeField, Min(1)] private int debugNight = 2;
 
         /// <summary>Tonight's night: the Night field, or in campaign mode the one at the saved index.</summary>
         public NightDefinition Night => _night;
@@ -360,8 +356,7 @@ namespace Piglings.Simulation
             var s = StoneAtStart;
             Debug.Log($"Piglings save: {weapon.Id} tonight — level {s.Level}, {s.Stones} stones, refill {s.Refill} ({hits} hits" +
                       (s.AtCap ? ", at the cap" : $", +1 stone at {s.NextThreshold}") +
-                      (s.NextEvolutionStones < 0 ? ")" : $"; level {s.NextEvolutionLevel} at {s.NextEvolutionStones} stones)") +
-                      (IsCampaign ? "" : $"; this night's own pile ({_night.ThrowsAvailable}) and refill ({_night.StonesPerThreshold}) apply"), this);
+                      (s.NextEvolutionStones < 0 ? ")" : $"; level {s.NextEvolutionLevel} at {s.NextEvolutionStones} stones)"), this);
         }
 
         // A fast Retry left a one-shot flag in the save: this load starts straight in the night. Cleared and saved now, so a
@@ -374,21 +369,18 @@ namespace Piglings.Simulation
             Save("fast Retry: straight into the night (flag used)");
         }
 
-        // Stones and refill: the stone's progression in the campaign, the night's own numbers in Night.unity.
-        private NightGoal BuildGoal()
-        {
-            var thresholds = ToArray(_night.Thresholds);
-            return IsCampaign
-                ? new NightGoal(thresholds, StoneAtStart.Stones, StoneAtStart.Refill)
-                : new NightGoal(thresholds, _night.ThrowsAvailable, _night.StonesPerThreshold);
-        }
+        // The hours from the night; the stones and refill from the stone's progression (one owner: the Throwable).
+        private NightGoal BuildGoal() =>
+            new NightGoal(ToArray(_night.Thresholds), StoneAtStart.Stones, StoneAtStart.Refill);
 
         private void BuildTower()
         {
             _tower.Clear();
-            if (tower == null) return;
+            // The built tower is the only source of holds (no hand-placed holds since Night.unity was retired): without it the
+            // night has no sockets and nothing to bounce on, so say so loudly.
+            if (tower == null) { Debug.LogError("NightSession: no Tower Builder assigned — the night has no tower.", this); return; }
             var slices = SlicesForTonight();
-            if (slices.Count == 0) return;   // a night without slices keeps the scene's own tower
+            if (slices.Count == 0) { Debug.LogError($"NightSession: {_night.name} has no slices — the night has no tower.", _night); return; }
             _tower.AddRange(slices);
             tower.Build(_tower);
         }
@@ -563,43 +555,8 @@ namespace Piglings.Simulation
             return parts.Count == 0 ? "no weapon hits" : string.Join(", ", parts) + " tonight";
         }
 
-        // Playtest tools (right-click the component's header in play mode).
-
-        [ContextMenu("Mastery/Reset progress")]
-        private void DebugResetProgress()
-        {
-            if (!Application.isPlaying || _progression == null) { Debug.LogWarning("Reset progress works in play mode only.", this); return; }
-            _progression.Reset();
-            _savedHitsAtStart = 0;   // progress views count from the empty profile now (tonight's level stays as it started)
-            // Tonight's hits still bank at the end of this night, on top of the empty profile.
-            Save("Reset progress (the old save is in .prev until the next save)");
-        }
-
-        [ContextMenu("Campaign/Go to Debug Night")]
-        private void DebugGoToNight()
-        {
-            if (!DebugCampaignReady()) return;
-            GoToNight(debugNight - 1, "Go to Debug Night");
-        }
-
-        [ContextMenu("Campaign/Reset campaign")]
-        private void DebugResetCampaign()
-        {
-            if (!DebugCampaignReady()) return;
-            _progression.ResetCampaign();
-            Save("Reset campaign (night 1, no dawns, no tower choices; mastery kept)");
-            ReloadScene();
-        }
-
-        private bool DebugCampaignReady()
-        {
-            if (Application.isPlaying && _progression != null && IsCampaign && Plan != null && Plan.NightCount > 0) return true;
-            Debug.LogWarning("Campaign debug works in play mode, in the campaign scene (a Campaign assigned).", this);
-            return false;
-        }
-
-        // A debug jump or reset mid-night keeps only what was saved before it (tonight's hits aren't banked).
-        // Reloads by build index, like PlayAgain: the scene must be in Build Settings.
+        // A debug edit or jump mid-night keeps only what was saved before it (tonight's hits aren't banked).
+        // Reloads by build index: the scene must be in Build Settings.
         private void ReloadScene()
         {
             int index = SceneManager.GetActiveScene().buildIndex;
@@ -660,16 +617,6 @@ namespace Piglings.Simulation
 
         /// <summary>Debug: forget everything (a new save), and reload.</summary>
         public void DebugResetSave() { if (_progression != null) { _progression.Reset(); DebugEditSave(null, false, "reset save"); } }
-
-        [ContextMenu("Mastery/Add 10 hits")]
-        private void DebugAddTenHits()
-        {
-            if (!Application.isPlaying || _tally == null) { Debug.LogWarning("Add 10 hits works in play mode only.", this); return; }
-            if (State.Ended) { Debug.LogWarning("Add 10 hits: this night is already banked — play again first.", this); return; }
-            // Into tonight's tally, like real hits: they bank and save at the end of the night.
-            _tally.AddWeaponHits(_night.Throwable.Id, 10);
-            Debug.Log($"Piglings save: +10 {_night.Throwable.Id} hits added to tonight ({Tonight()}); they bank at night end.", this);
-        }
 
         private void OnPhaseChanged(NightPhaseChanged e)
         {

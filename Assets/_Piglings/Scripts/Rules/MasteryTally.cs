@@ -71,16 +71,6 @@ namespace Piglings.Rules
             _bus.Unsubscribe<NightEnded>(OnNightEnded);
         }
 
-        /// <summary>
-        /// Debug (playtesting): adds hits to tonight's tally, as if they were real — so they bank, save and show like
-        /// real ones. Ignored once the night has ended (it's already banked).
-        /// </summary>
-        public void AddWeaponHits(string weapon, int count)
-        {
-            if (count <= 0 || _state.Ended) return;
-            Add(_state.WeaponHits, weapon, count);
-        }
-
         private void OnThrow(ThrowReleased e) => _weapons[e.Throwable] = e.Weapon;
         private void OnSpawned(RobotSpawned e) => _robotTypes[e.Robot] = e.RobotType;
         private void OnThrowableRemoved(ThrowableRemoved e)

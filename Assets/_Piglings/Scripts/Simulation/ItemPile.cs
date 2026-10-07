@@ -33,7 +33,6 @@ namespace Piglings.Simulation
 
         public int Count => _items.Count;
         public IReadOnlyList<T> Items => _items;
-        public T Top => _items.Count > 0 ? _items[_items.Count - 1] : null;
 
         /// <summary>Creates one object in the next free slot; animated = it falls in from DropHeight above.</summary>
         public T Add(bool animate)

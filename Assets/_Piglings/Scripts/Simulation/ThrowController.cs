@@ -16,7 +16,7 @@ namespace Piglings.Simulation
         public readonly Vector2 Velocity;
         public readonly float Gravity;      // downward acceleration, positive
         public readonly float Duration;     // seconds of arc worth drawing
-        public readonly bool InRange;       // false = the stone won't reach Target at this speed
+        public readonly bool InRange;       // false = drawn as refused (the peg thrower: no valid socket); the stone is always true
 
         public ThrowAim(Vector2 from, Vector2 target, Vector2 velocity, float gravity, float duration, bool inRange)
         {
@@ -54,12 +54,8 @@ namespace Piglings.Simulation
         [SerializeField] private StonePile pile;
 
         [Tooltip("Launch speed. Fixed — the player picks the target, never the power.\n" +
-                 "Too low and the far corners of the wall turn out of range (the line goes red).")]
+                 "Too low and the far corners of the wall can't be reached on the direct arc (the stone lobs at 45° instead).")]
         [SerializeField, Min(0.1f)] private float throwSpeed = 7f;
-
-        [Tooltip("How many seconds of arc to show when the target is out of range, " +
-                 "since there's no point where the arc meets it to stop at.")]
-        [SerializeField, Min(0.1f)] private float outOfRangePreviewSeconds = 1.2f;
 
         public event System.Action<Vector2> Thrown;       // Presentation hooks the pig's throw anim here
 
@@ -116,16 +112,16 @@ namespace Piglings.Simulation
             float gravity = Mathf.Abs(Physics2D.gravity.y) * throwablePrefab.GravityScale;
             Vector2 delta = target - from;
 
-            bool inRange = ThrowSolver.TrySolve(delta.x, delta.y, throwSpeed, gravity, out float vx, out float vy);
+            // Out of reach, TrySolve gives the farthest throw toward the target (45°). That's fine: the roof keeps the
+            // stone in, so there's no "can't throw there" state and no red line — the line just shows where it goes.
+            ThrowSolver.TrySolve(delta.x, delta.y, throwSpeed, gravity, out float vx, out float vy);
 
-            // In range: stop the line exactly at the target, so the player sees where the stone
-            // will be. Out of range there's no such point — show a fixed length instead.
-            float duration = inRange ? ThrowSolver.TimeToCross(vx, delta.x) : outOfRangePreviewSeconds;
+            // Stop the line where the arc passes the target's x, so the player sees where the stone will be. Straight
+            // up/down has no horizontal travel (TimeToCross is 0): draw to the top of the arc instead.
+            float duration = ThrowSolver.TimeToCross(vx, delta.x);
+            if (duration <= 0f) duration = Mathf.Max(0.1f, vy / Mathf.Max(0.0001f, gravity));
 
-            // Straight up/down has no horizontal travel, so TimeToCross is 0 — fall back too.
-            if (duration <= 0f) duration = outOfRangePreviewSeconds;
-
-            return new ThrowAim(from, target, new Vector2(vx, vy), gravity, duration, inRange);
+            return new ThrowAim(from, target, new Vector2(vx, vy), gravity, duration, true);
         }
 
         [Tooltip("Seconds after a throw before the pig can aim again. Any value works — the pig's Animator restarts the throw on every release.")]

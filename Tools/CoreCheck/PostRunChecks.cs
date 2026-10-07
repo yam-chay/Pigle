@@ -108,8 +108,6 @@ static void PostRunChecks(){
    Check(ProfileJson.Read("{\"version\":1,\"campaign\":{\"startInNight\":1}}",out _,out problem)==ProfileReadResult.Corrupt,"startInNight that isn't true/false is corrupt");
    var copy=ProfileJson.Copy(p); copy.Robot("wolf").Dropped=1; copy.Records.BestThrow=1; copy.Peg("peg_bouncy").Triggers.Add(5);
    Check(p.Robots["wolf"].Dropped==950 && p.Records.BestThrow==620 && !p.Pegs.ContainsKey("peg_bouncy"),"Copy is separate: changing the copy leaves the original alone"); }
- { var bus=new EventBus(); var prog=new Progression(bus,null); prog.SetStartInNight(true); prog.SetCurrentNight(2); prog.ResetCampaign();
-   Check(!prog.Profile.StartInNight && prog.Profile.CurrentNight==0,"Reset campaign also clears a pending fast Retry"); prog.Dispose(); }
 
  // --- CampaignPlan: which night unlocks a type ---
  { var plan=new CampaignPlan(new[]{"n1","n2","n3"},new[]{"peg_bomb","peg_splitter",null},new[]{"peg_bouncy"});

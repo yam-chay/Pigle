@@ -40,18 +40,6 @@ namespace Piglings.Meta
         }
 
         /// <summary>
-        /// Debug (playtesting): back to night 1 with no dawns and no tower choices — so every unlock is locked again.
-        /// Mastery (hits, triggers, knocks) is kept. The caller saves.
-        /// </summary>
-        public void ResetCampaign()
-        {
-            Profile.CurrentNight = 0;
-            Profile.StartInNight = false;
-            Profile.Dawns.Clear();
-            Profile.Towers.Clear();
-        }
-
-        /// <summary>
         /// Tonight's bests go into the all-time records (each only if it beats the record). Returns which broke — the
         /// post-run's NEW RECORD tags. Called by the scene once the night is banked, before it saves.
         /// </summary>

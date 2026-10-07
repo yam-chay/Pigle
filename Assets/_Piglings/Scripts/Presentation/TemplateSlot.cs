@@ -26,8 +26,6 @@ namespace Piglings.Presentation
 
         public TMP_Text Label => label;
         public TMP_Text Detail => detail;
-        public TMP_Text Note => note;
-        public Graphic Marker => marker;
         public ProgressBarView Bar => bar;
 
         public void SetLabel(string text) { if (label != null) label.text = text; }

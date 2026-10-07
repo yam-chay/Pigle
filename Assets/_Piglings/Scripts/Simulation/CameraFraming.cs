@@ -89,13 +89,6 @@ namespace Piglings.Simulation
             return new CameraPose((topY + bottomY) / 2f, Math.Max(0.01f, (topY - bottomY) / 2f));
         }
 
-        /// <summary>
-        /// A hand-tuned override on top of a computed frame: a value above 0 replaces the computed one, 0 (or less) keeps
-        /// it. Each on its own (NightDefinition Camera Y / Size; 0 = auto).
-        /// </summary>
-        public static CameraPose Override(CameraPose computed, float y, float size) =>
-            new CameraPose(y > 0f ? y : computed.Y, size > 0f ? size : computed.Size);
-
         private static float Clamp01(float v) => v < 0f ? 0f : (v > 1f ? 1f : v);
     }
 }

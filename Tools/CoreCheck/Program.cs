@@ -29,7 +29,6 @@ static void Main(){
  SplitterChecks();
  BombChecks();
  CampaignChecks();
- ResetCampaignChecks();
  FlowChecks();
  BarnChecks();
  PostRunChecks();
@@ -94,7 +93,7 @@ static void ScoreChecks(){
  Check(new ScoreCurve(10,10,1,1f,0.5f,-1f).PlainHoldCooldown==0f && new ScoreCurve().PlainHoldCooldown==0.2f,"the cooldown: 0.2 s by default, never negative");
  // A special peg's mult bonus.
  { var ch=new ChainId(ids.Next()); var s=ids.Next(); bus.Publish(new ThrowReleased(ch,s,"stone"));
-   Check(tr.AddPegMult(ch,3,s,2f)==3f && tr.AddPegMult(ch,3,s,0f)==3f,"a peg bonus adds to the mult (1 + 2 = 3); 0 adds nothing");
+   Check(tr.AddPegGain(ch,3,s,0,2f)==3f && tr.AddPegGain(ch,3,s,0,0f)==3f,"a peg bonus adds to the mult (1 + 2 = 3); 0 adds nothing");
    bus.Publish(new ThrowableRemoved(s,ch)); Check(scored.Value.Total==30,"base 10 × mult 3 = 30"); }
  tr.Dispose();
  // The hour applies at the close, after score × mult; rounded once.
