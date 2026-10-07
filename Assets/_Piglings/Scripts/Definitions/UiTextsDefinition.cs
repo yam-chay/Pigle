@@ -65,7 +65,7 @@ namespace Piglings.Definitions
         public string hourDot = "{hour}";
         [Tooltip("{reached} {hours}")]
         public string hoursReached = "{reached} / {hours}";
-        [Tooltip("{score} (what the night kept)")]
+        [Tooltip("{score} (the night's real total, a loss included) {banked} (what the bank keeps: on a loss, the last threshold reached)")]
         public string totalScore = "Total Score: {score}";
         [Tooltip("BEST THROW EACH HOUR's row label: {hour}")]
         public string hourRow = "H{hour}";
