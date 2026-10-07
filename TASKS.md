@@ -129,9 +129,9 @@ Mastery from use: the stone levels up from the robots it knocks loose itself (50
   - [ ] 🖥 M11.T2-b Editor (TestNight): a `DebugPanel` (Session, Board, Cam, Scenarios); a scenario asset or two; play-check F1. Steps in the PR.
 - [x] ☁ M11.T3 Balance log: every night appends to `persistentDataPath/BalanceLogs/balance_<profile>.csv` (history kept) — a row per chain (score, mult, hour mult, total, wolves, depth, miss, wall density at the throw, stones left), per hour (seconds, chains, wolves, miss share, breaches) and a night summary; every row carries the save's origin (normal flow / scenario / debug edit, `PlayerProfile.Origin`, saved) and the knobs. F1 ▸ Open the log folder. `BalanceKnobsDefinition` (climb speed, spawn rate). CoreCheck. *(Miss = 0 and Splitter half mult dropped, 2026-10-07.)*
   - [ ] 🖥 M11.T3-b Throwable_Stone ▸ Levels ▸ Base Score = 10 / 20 / 40 / 80; a Balance Knobs asset on NightSession (optional); play a night, open the CSV. Steps in the PR.
-- [ ] ☁+🖥 M11.T4 = M10.H night select overlay.
+- [ ] ☁+🖥 *(after the playtest — the F1 panel covers night selection for now)* M11.T4 = M10.H night select overlay.
 - [ ] ☁+🖥 M11.T5 Wall-material plumbing: per-material SO (climb speed mult, hold bounciness / friction), all neutral (1.0); material selection hidden in the playtest build.
-- [ ] ☁ M11.T6 Progress bars (hour gap + score) animate with the chain-close popup, not during the chain.
+- [x] ☁ M11.T6 The scoreboard's hour bar, gap line and score number move only when a chain closes — with its popup — from one board score (`NightScoreboard._boardScore`); hold still during the chain. Presentation only: the Rules' raw score, thresholds and the balance log are unchanged.
 - [ ] ☁+🖥 M11.T7 Pitched SFX hooks (placeholder clips): throw, wolf hit pitched by depth, peg hit per type / level, stone-pile regen pitched per stone.
 - [ ] ☁+🖥 M11.T8 Minimal start screen (Play / Continue / Reset save), 2 tip cards (depth, peg placement), fixed aspect ratio; the save survives a page reload (and a new itch upload) in WebGL.
 - [ ] ☁+🖥 *(after the playtest)* Wall slices: Yam's T2 pass (every phase, debug states) showed the slices are the least developed system — what each slice changes (material, holds, layout), why a player picks one. Plan before code.
