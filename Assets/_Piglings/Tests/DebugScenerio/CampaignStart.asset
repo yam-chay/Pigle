@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c127d920bbd46714d8ddb74a46bc4521, type: 3}
+  m_Name: CampaignStart
+  m_EditorClassIdentifier: Piglings.Definitions::Piglings.Definitions.DebugScenarioDefinition
+  notes: A Fresh Campaign
+  night: 1
+  nightsWon: 0
+  stones: 5
+  pegs:
+  - peg: {fileID: 11400000, guid: d29abeb2a2ec00f468b743f864604a71, type: 2}
+    copies: 1
+  startInNight: 0

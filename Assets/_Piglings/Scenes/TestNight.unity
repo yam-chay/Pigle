@@ -3305,6 +3305,7 @@ MonoBehaviour:
   cam: {fileID: 519420031}
   scenarios:
   - {fileID: 11400000, guid: 003f6df073a788b48a4ff462b5eeb44a, type: 2}
+  - {fileID: 11400000, guid: fd682d6b2e457584a8b70b6adbfcac94, type: 2}
   pauseWhileOpen: 1
   socketPickRadius: 0.4
   scale: 1.5
@@ -3796,7 +3797,6 @@ MonoBehaviour:
   cam: {fileID: 519420031}
   pile: {fileID: 1333078232}
   throwSpeed: 8
-  outOfRangePreviewSeconds: 5
   throwCooldown: 0.3
 --- !u!1 &501042155
 GameObject:
@@ -7515,7 +7515,6 @@ MonoBehaviour:
   writeBalanceLog: 1
   profileName: campaign
   startImmediately: 0
-  debugNight: 2
 --- !u!4 &1068153026
 Transform:
   m_ObjectHideFlags: 0
@@ -14089,7 +14088,6 @@ MonoBehaviour:
   robotOffset: {x: 0, y: 0.25, z: 0}
   robotScale: 1
   scalePerDepth: 0.15
-  showPlainHolds: 1
   plainHoldScale: 1
   multColour: {r: 1, g: 0.35, b: 0.75, a: 1}
   multScale: 1.5

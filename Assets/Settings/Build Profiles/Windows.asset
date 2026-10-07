@@ -25,9 +25,6 @@ MonoBehaviour:
   - m_enabled: 1
     m_path: Assets/_Piglings/Scenes/TestNight.unity
     m_guid: af0d2c8b35da6654d93b8d3ef8dafabd
-  - m_enabled: 1
-    m_path: Assets/_Piglings/Scenes/Night.unity
-    m_guid: 8c9cfa26abfee488c85f1582747f6a02
   m_HasScriptingDefines: 0
   m_ScriptingDefines: []
   m_PlayerSettingsYaml:
