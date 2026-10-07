@@ -88,7 +88,9 @@ namespace Piglings.Presentation
             if (hoursReached != null) hoursReached.text = UiText.Fill(texts.hoursReached, ("reached", reached.ToString()), ("hours", hours.ToString()));
 
             if (score != null)
-                score.text = UiText.Fill(texts.totalScore, ("score", Numbers.Thousands(s.BankedScore)));
+                // The night's real total (Yam, M11): what was scored, a loss included — not the last threshold the bank keeps.
+                // {banked} is there for a template that wants to show the bank too.
+                score.text = UiText.Fill(texts.totalScore, ("score", Numbers.Thousands(s.Score)), ("banked", Numbers.Thousands(s.BankedScore)));
 
             if (_rows.Count == 0) _rows = TemplateList.Build(hourRow, null, reached);
             int best = s.BestThrowPoints;
