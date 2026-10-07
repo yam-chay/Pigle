@@ -20,8 +20,10 @@ namespace Piglings.Presentation
     ///  - BEST TONIGHT: the best throw's breakdown ("84 × 3 × H2 =") and its result.
     /// Colours: the Score Colours asset's quality bands (cream → amber → orange → red → magenta pulse → rainbow) by the
     /// throw's quality (its worth ÷ its hour's gap) — a live row by its worth so far.
-    /// The SCORE NUMBER moves only when a chain closes — straight to the new total, result included, with a climb; the hour
-    /// BAR follows the raw score live and takes the remainder at the close (thresholds are checked on the real totals).
+    /// The SCORE NUMBER, the hour BAR and the gap line all move only when a chain closes (M11.T6) — together with the chain's
+    /// popup above the pig, to the new total with its result: the bar glides there, the number climbs. During a chain they
+    /// hold still (the live row ticks instead). The Rules still count the raw score live (thresholds, the balance log); this
+    /// is only what the board shows.
     /// Every field is optional. Reads only.
     /// </summary>
     public sealed class NightScoreboard : MonoBehaviour
@@ -161,6 +163,10 @@ namespace Piglings.Presentation
         // The dawn sweep adds after the last chain: the number takes it too.
         private void OnNightEnded(NightEnded e) => SetScoreTarget();
 
+        // What the board shows as the night's score (M11.T6): the real score as of the last chain close (or the night's end),
+        // not the raw score growing mid-chain. The number, the bar and the gap line all read it.
+        private int _boardScore;
+
         // Resolved rows past what shows go; live ones stay (hidden) until their chain closes.
         private void Trim()
         {
@@ -210,28 +216,32 @@ namespace Piglings.Presentation
         private void ShowHour()
         {
             var s = session.State;
-            if (s.Score == _shownScore && s.Hour == _shownHour && s.ThresholdsReached == _shownReached && s.Dawn == _shownDawn) return;
-            _shownScore = s.Score; _shownHour = s.Hour; _shownReached = s.ThresholdsReached; _shownDawn = s.Dawn;
-
             int count = session.ThresholdCount;
+            // Thresholds the board's score has crossed (not the Rules' raw count: that one moves mid-chain).
+            int reached = 0;
+            while (reached < count && _boardScore >= session.ThresholdAt(reached + 1)) reached++;
+            bool dawn = count > 0 && reached >= count;
+            if (_boardScore == _shownScore && s.Hour == _shownHour && reached == _shownReached && dawn == _shownDawn) return;
+            _shownScore = _boardScore; _shownHour = s.Hour; _shownReached = reached; _shownDawn = dawn;
+
             // The hour the score is climbing through: the one after the last threshold crossed. (State.Hour only moves
             // on when that threshold's placement round starts — the header follows it, the bar doesn't wait.)
-            int segment = Mathf.Min(s.ThresholdsReached + 1, count);
+            int segment = Mathf.Min(reached + 1, count);
             int from = session.ThresholdAt(segment - 1);
             int to = session.ThresholdAt(segment);
 
             if (hourText != null)
             {
                 int hour = Mathf.Min(s.Hour, count);
-                hourText.text = s.Dawn ? session.Texts.dawnTitle
+                hourText.text = dawn ? session.Texts.dawnTitle
                     : UiText.Fill(session.Texts.hourTitle, ("hour", hour.ToString()), ("mult", Numbers.Mult(session.HourMultiplierAt(hour))));
-                hourText.color = s.Dawn ? session.DawnColour : session.HourColour(hour);
+                hourText.color = dawn ? session.DawnColour : session.HourColour(hour);
             }
-            _scoreTo = s.Dawn ? -1 : to;
+            _scoreTo = dawn ? -1 : to;
             if (gapText != null)
-                gapText.text = s.Dawn ? "" : UiText.Fill(session.Texts.hourGap, ("hour", segment.ToString()), ("from", from.ToString()), ("to", to.ToString()));
+                gapText.text = dawn ? "" : UiText.Fill(session.Texts.hourGap, ("hour", segment.ToString()), ("from", from.ToString()), ("to", to.ToString()));
             // The bar's target; GlideBar moves it there.
-            _barTarget = s.Dawn ? 1f : Mathf.Clamp01((s.Score - from) / (float)Mathf.Max(1, to - from));
+            _barTarget = dawn ? 1f : Mathf.Clamp01((_boardScore - from) / (float)Mathf.Max(1, to - from));
             _targetSegment = segment;
         }
 
@@ -240,6 +250,7 @@ namespace Piglings.Presentation
         private void SetScoreTarget()
         {
             int score = session.State.Score;
+            _boardScore = score;
             _climbRate = scoreClimbSeconds > 0f ? Mathf.Max(1f, Mathf.Abs(score - _climbShown) / scoreClimbSeconds) : float.MaxValue;
             _climbTarget = score;
         }
