@@ -1,6 +1,6 @@
 # TASKS — Piglings prototype
 
-> **Next up (2026-10-06):** M11 — the playtest build (HTML5 on itch, ~2026-10-14): T1 end-of-night flow → T2 debug panel → T3 balance logging → T4 night select (H) → T5 wall materials → T6 bars with the chain close → T7 SFX hooks → T8 start screen + WebGL save. Plan: PROTOTYPE_V2 ▸ Stage 3. After the playtest: M5.2 on T3's logs, G (its mockup from the playtest), the barn upgrade reveal. I is cut from this milestone.
+> **Next up (2026-10-07, end of day):** M11 — the playtest build (HTML5 on itch, ~2026-10-14). Done: T1, T2, T3, T6 + the debug / UI follow-ups (#50–#61). Left before the playtest: T5 wall materials (mostly in place) → T7 SFX hooks → T8 start screen + the browser save, and M11.W a first WebGL build (overdue: do it first). Yam is running balance tests on the CSV meanwhile. After the playtest: M5.2 on the logs, T4 night select, G (mockup from the playtest), the barn upgrade reveal, wall slices (design first). I is cut.
 > Why: a week to a build people outside the team play; everything that only polishes waits for what they show us.
 
 ☁ = cloud session OK (code/docs only) · 🖥 = local, needs the Unity editor (use Claude Code + unity-mcp)
@@ -124,9 +124,9 @@ Mastery from use: the stone levels up from the robots it knocks loose itself (50
 - [x] ☁ M11.T1 End-of-night flow: a loss = the last chain closes → the wall holds → Loss Beat (~1 s) → the wolf placeholder (Wolf Seconds) → the sweep (the robots let go) → settled → the post-run. Dawn unchanged. Rules unchanged (the sweep still counts at the end; only the fall waits). Hygiene: done 🖥 steps ticked, PROTOTYPE_V2 PR table. NightEndView / PlayAgain kept (Night.unity uses them).
   - [ ] 🖥 M11.T1-b Editor (TestNight): NightFlow ▸ Spawner + Loss Beat Seconds; a `WolfChimneyPlaceholder` with any wolf sprite, Start / End points. Steps in the PR.
 - [x] ☁ M11.u UI texts as templates: `UiTextsDefinition` (Create ▸ Piglings ▸ UI Texts) on NightSession ▸ Ui Texts — every scoreboard / popup / post-run / night-sign text with `{name}` tokens and TMP rich text.
-  - [ ] 🖥 M11.u-b Create the asset, assign it on NightSession (TestNight + Night.unity), edit the texts.
+  - [x] 🖥 M11.u-b Create the asset, assign it on NightSession (TestNight), edit the texts. *(Night.unity: defaults.)*
 - [x] ☁ M11.T2 Developer debug panel (`DebugPanel`, F1, IMGUI, editor + Development builds only): edit the save (stones / evolution incl. reverting, peg copies, nights won, the night) via `ProfileEdits` (CoreCheck) and reload; board edit (click a socket: cycle type / level / empty — `NightReferee.SetSocket`, `PegSocketSet`); scenario presets (`DebugScenarioDefinition`, one click replaces the save).
-  - [ ] 🖥 M11.T2-b Editor (TestNight): a `DebugPanel` (Session, Board, Cam, Scenarios); a scenario asset or two; play-check F1. Steps in the PR.
+  - [x] 🖥 M11.T2-b Editor (TestNight): a `DebugPanel` (Session, Board, Cam, Scenarios); a scenario asset or two; play-check F1. Steps in the PR.
 - [x] ☁ M11.T3 Balance log: every night appends to `persistentDataPath/BalanceLogs/balance_<profile>.csv` (history kept) — a row per chain (score, mult, hour mult, total, wolves, depth, miss, wall density at the throw, stones left), per hour (seconds, chains, wolves, miss share, breaches) and a night summary; every row carries the save's origin (normal flow / scenario / debug edit, `PlayerProfile.Origin`, saved) and the knobs. F1 ▸ Open the log folder. `BalanceKnobsDefinition` (climb speed, spawn rate). CoreCheck. *(Miss = 0 and Splitter half mult dropped, 2026-10-07.)*
   - [ ] 🖥 M11.T3-b Throwable_Stone ▸ Levels ▸ Base Score = 10 / 20 / 40 / 80; a Balance Knobs asset on NightSession (optional); play a night, open the CSV. Steps in the PR.
 - [ ] ☁+🖥 *(after the playtest — the F1 panel covers night selection for now)* M11.T4 = M10.H night select overlay.
@@ -134,7 +134,10 @@ Mastery from use: the stone levels up from the robots it knocks loose itself (50
 - [x] ☁ M11.T6 The scoreboard's hour bar, gap line and score number move only when a chain closes — with its popup — from one board score (`NightScoreboard._boardScore`); hold still during the chain. Presentation only: the Rules' raw score, thresholds and the balance log are unchanged.
 - [ ] ☁+🖥 M11.T7 Pitched SFX hooks (placeholder clips): throw, wolf hit pitched by depth, peg hit per type / level, stone-pile regen pitched per stone.
 - [ ] ☁+🖥 M11.T8 Minimal start screen (Play / Continue / Reset save), 2 tip cards (depth, peg placement), fixed aspect ratio; the save survives a page reload (and a new itch upload) in WebGL.
-- [x] ☁+🖥 M11.s The scoreboard in screen space (Yam, editor) + `NightHudFade`: shown only in the night (fades in on Start night, out for the post-run / the barn).
+- [x] ☁ M11.t Post-run Total Score = the night's real total (`{banked}` token for the bank) — #57.
+- [x] ☁+🖥 M11.v Post-run panels slide in (`PostRunView` ▸ Slides: offset + delay each, Slide Seconds) — #60. *Offered:* a Slide Curve (AnimationCurve) field; slides out on leaving.
+- [x] ☁ M11.d F1 ▸ THE NIGHT ▸ Lose night / Win night (`NightReferee.DebugEnd`, CoreCheck) — #61. *Note:* those nights bank, save and log like real ones; offered: tag them "(forced end)" in the CSV.
+- [x] ☁+🖥 M11.s The scoreboard in screen space (Yam, editor) + `NightHudFade`: shown only in the night (fades in on Start night, out for the post-run / the barn), each fade after its own delay — #58, #59.
 - [ ] ☁+🖥 *(after the playtest)* Wall slices: Yam's T2 pass (every phase, debug states) showed the slices are the least developed system — what each slice changes (material, holds, layout), why a player picks one. Plan before code.
 - [ ] 🖥 M11.W First WebGL build right after T1 — URP 2D, physics speed, the save in a browser — so problems show up early.
 
@@ -151,6 +154,8 @@ Mastery from use: the stone levels up from the robots it knocks loose itself (50
 - **IDEA** — Hidden "Pacifist" achievement: lose every stone to the wolves without throwing once (possible weapon unlock).
 - *(Decided: breaches steal stones — option A; the 5-breach limit is gone. See M7.1.)*
 - *(Decided in M10.E: empty-pile dead time — the night ends as soon as the player is out of stones with nothing in flight and no round to refill; the wolf's climb plays during a short Inspector delay before the post-run. Proposal C's "no possible action" condition is the rule.)*
+- **OPEN (after the playtest)** — The bank vs the total: the post-run shows the night's real total (M11.t), but a loss still banks only the last threshold reached. Harmless while the bank feeds nothing visible; once it does, either drop the threshold rule or show both on purpose (`{banked}`).
+- **WATCH in M5.2** — Miss share per hour (the CSV's hour rows): past ~30% in later hours, misses are paying for hours — the lever is the stone base vs the hour gaps, not the refill.
 - **WATCH in M5.2** — Bomb dominance: log how often each bomb goes off per night and what share of the score comes through explosions. If bombs carry more than ~⅓ of it, raise the cooldown before shrinking the radius (the radius is what makes it read).
 - **WATCH in M5.2** — Death spiral: every breach takes a stone, fewer stones → fewer throws → more breaches. Fine if it's readable (the pile shows it); if a bad first minute always decides the night, tune spawn rate before stone count.
 
