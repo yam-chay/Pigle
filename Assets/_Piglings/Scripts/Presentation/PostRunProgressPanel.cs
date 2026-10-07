@@ -99,15 +99,16 @@ namespace Piglings.Presentation
                 nextEvolution.text = stone.Before.NextEvolutionStones < 0 ? texts.fullyEvolved
                     : UiText.Fill(texts.nextEvolution, ("stones", stone.Before.NextEvolutionStones.ToString()));
 
-            // The track: one slot per evolution of the night's stone (its Levels list), reached = the level the stones give now.
-            var levels = weapon.Levels;
+            // The track: one slot per evolution of the night's stone (its Evolutions list), reached = the evolution the stones give now.
+            var levels = weapon.Evolutions;
             if (_evolutions.Count == 0) _evolutions = TemplateList.Build(evolutionSlot, null, levels.Count);
             for (int i = 0; i < _evolutions.Count && i < levels.Count; i++)
             {
                 int level = i + 1;
                 var slot = _evolutions[i];
                 slot.SetSprite(weapon.SpriteFor(level));
-                slot.SetLabel(levels[i] != null ? UiText.Fill(texts.evolutionPoint, ("stones", levels[i].stonesNeeded.ToString())) : "");
+                // Players read stones, not levels: the stones this evolution unlocks at.
+                slot.SetLabel(levels[i] != null ? UiText.Fill(texts.evolutionPoint, ("stones", session.StoneRule.StonesForEvolution(level).ToString())) : "");
                 bool reached = level <= stone.After.Level;
                 slot.SetAlpha(reached ? 1f : notReachedAlpha);
                 // The line into this slot (only a bar INSIDE the slot): full once reached; the first slot has none.

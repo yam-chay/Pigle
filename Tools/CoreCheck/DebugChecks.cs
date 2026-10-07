@@ -5,8 +5,8 @@ using Piglings.Events; using Piglings.Meta; using Piglings.Rules; using Piglings
 // M11.T2, the F1 debug panel: save edits written as the smallest cause (ProfileEdits), and the board edit (SetSocket).
 partial class P{
 static void DebugChecks(){
- // --- Stones: thresholds 10, 20, 30…; start 10, max 25 ---
- { var sp=new StoneProgression(new[]{10,20,30,40,50,60,70,80,90,100,110,120,130,140,150,160},10,25);
+ // --- Stones: Levels 10, 20, 30… 150; start 10, so the cap is 25 ---
+ { var sp=new StoneProgression(new[]{10,20,30,40,50,60,70,80,90,100,110,120,130,140,150},10);
    Check(ProfileEdits.HitsForStones(sp,10)==0 && ProfileEdits.HitsForStones(sp,5)==0 && ProfileEdits.HitsForStones(sp,12)==20,
      "stones → hits: the start (or less) = 0; 12 stones = the 2nd threshold (20)");
    Check(ProfileEdits.HitsForStones(sp,99)==150,"past the cap: the hits of the cap (25 stones = the 15th threshold, 150)");

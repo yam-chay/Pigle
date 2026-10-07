@@ -23,8 +23,6 @@ namespace Piglings.Presentation
         [SerializeField, Min(1)] private int minDepth = 2;
         [Tooltip("Trauma added per depth step at or past Min Depth (trauma is 0..1).")]
         [SerializeField, Range(0f, 1f)] private float traumaPerDepth = 0.25f;
-        [Tooltip("A chain worth this much or more adds Chain Trauma in full when it closes; smaller ones add less.")]
-        [SerializeField, Min(1)] private int bigChainTotal = 300;
         [SerializeField, Range(0f, 1f)] private float chainTrauma = 0.6f;
         [Tooltip("A Bomb going off adds this (its victims, falling deeper, add their own as they score).")]
         [SerializeField, Range(0f, 1f)] private float bombTrauma = 0.4f;
@@ -63,7 +61,8 @@ namespace Piglings.Presentation
             if (depth >= minDepth) AddTrauma(traumaPerDepth * (depth - minDepth + 1));
         }
 
-        private void OnChainScored(ChainScored e) => AddTrauma(chainTrauma * Mathf.Clamp01(e.Total / (float)bigChainTotal));
+        // How big a "big chain" is lives in the Visuals (shared with the chain popup), so the shake and the popup agree.
+        private void OnChainScored(ChainScored e) => AddTrauma(chainTrauma * Mathf.Clamp01(e.Total / (float)session.Visuals.BigChainTotal));
 
         private void OnBombExploded(BombExploded e) => AddTrauma(bombTrauma);
 

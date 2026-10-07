@@ -5,19 +5,19 @@ using UnityEngine;
 namespace Piglings.Presentation
 {
     /// <summary>
-    /// Turns the shared score colours (ScoreColoursDefinition) into popup styles (PopupColor): a depth → a solid colour,
+    /// Turns the shared score colours (VisualsDefinition) into popup styles (PopupColor): a depth → a solid colour,
     /// a throw's quality → its band's look (solid, pulsing, animated rainbow). A plain class owned by a view (like
     /// FxSprites), built once from the asset and cached, so a popup or a board row never allocates a style.
     /// Read at creation: a colour changed in play mode shows after a restart.
     /// </summary>
     public sealed class ScoreStyles
     {
-        private readonly ScoreColoursDefinition _colours;
+        private readonly VisualsDefinition _colours;
         private readonly List<PopupColor> _depth = new List<PopupColor>();
         private readonly Dictionary<int, PopupColor> _bands = new Dictionary<int, PopupColor>();
         private readonly PopupColor _plain = new PopupColor();
 
-        public ScoreStyles(ScoreColoursDefinition colours)
+        public ScoreStyles(VisualsDefinition colours)
         {
             _colours = colours;
             int count = colours != null ? Mathf.Max(1, colours.DepthCount) : 1;

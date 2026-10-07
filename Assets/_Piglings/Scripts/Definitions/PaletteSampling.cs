@@ -4,7 +4,7 @@ namespace Piglings.Definitions
     /// Where hour n of a night falls in a palette (M10.E): the palette is spread over the night's length, the first
     /// colour → the last, and the LAST colour is dawn's own (post_run_v5: a 6-hour night shows 6 hour dots and a 7th, gold,
     /// for dawn). So hour 1 is always the first colour, dawn always the last, and the hours between blend along the list —
-    /// any number of colours fits any night. Engine-free (CoreCheck runs it); the palette asset does the colour part.
+    /// any number of colours fits any night. Engine-free (CoreCheck runs it); VisualsDefinition does the colour part (its hour colours + the gold as the last stop).
     /// </summary>
     public static class PaletteSampling
     {

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Piglings.Definitions
 {
@@ -15,19 +16,21 @@ namespace Piglings.Definitions
         [SerializeField, Min(0f)] private float lifetime = 6f;             // safety cleanup
         [SerializeField] private PhysicsMaterial2D material;
 
-        [Tooltip("The stone's evolutions, in order (entry 0 = level 1): from Stones Needed stones the stone is that level — its " +
-                 "look, radius, trail and hourly Refill. Stones Needed must rise. Empty = one level that looks like its prefab, refill 1. " +
-                 "Default plan: 10 → lv1 +1 · 15 → lv2 +2 · 20 → lv3 +3 · 25 → lv4 +4.")]
-        [SerializeField] private List<ThrowableLevel> levels = new List<ThrowableLevel>();
+        [Tooltip("The stone's evolutions, in order (entry 0 = evolution 1): from its At Level on, the stone has that look, " +
+                 "radius, trail, base score and hourly Refill. At Level must rise (the first is usually 1). Empty = one evolution " +
+                 "that looks like its prefab, refill 1.")]
+        [FormerlySerializedAs("levels")]
+        [SerializeField] private List<ThrowableEvolution> evolutions = new List<ThrowableEvolution>();
 
         [Header("Stone progression (mastery from use)")]
-        [Tooltip("Total direct hits (saved, across nights) for each +1 stone, cumulative and strictly rising. With Start 10 and " +
-                 "Max 20, ten entries take the stone all the way. Derived from the saved hits, never stored: retune any time.")]
-        [SerializeField] private int[] stoneThresholds = { 10, 25, 45, 70, 100, 140, 190, 250, 320, 400 };
-        [Tooltip("Stones on the pile at the start of a campaign night, before any threshold.")]
+        [Tooltip("Stones on the pile at stone level 1 — the start of a campaign night before any level is earned.")]
         [SerializeField, Min(0)] private int startStones = 10;
-        [Tooltip("No more stones past this, whatever the hits.")]
-        [SerializeField, Min(1)] private int maxStones = 25;
+        [Tooltip("The LEVELS: total direct hits (saved, across nights) for each stone level after the first, cumulative and " +
+                 "strictly rising. Each level is +1 stone; the last entry is the cap (most stones = Start Stones + entries). " +
+                 "Derived from the saved hits, never stored: retune any time. (Named Stone Levels so its saved values carry over " +
+                 "from Stone Thresholds; it can become plain \"Levels\" once the asset has been saved.)")]
+        [FormerlySerializedAs("stoneThresholds")]
+        [SerializeField] private int[] stoneLevels = { 10, 25, 45, 70, 100, 140, 190, 250, 320, 400 };
 
         public string Id => id;
         public float Radius => radius;
@@ -35,19 +38,22 @@ namespace Piglings.Definitions
         public float Lifetime => lifetime;
         public PhysicsMaterial2D Material => material;
 
-        public int LevelCount => Mathf.Max(1, levels.Count);
+        public int EvolutionCount => Mathf.Max(1, evolutions.Count);
 
-        public IReadOnlyList<int> StoneThresholds => stoneThresholds;
+        /// <summary>The Levels: hits for each stone level after the first (the last = the cap).</summary>
+        public IReadOnlyList<int> StoneLevels => stoneLevels;
         public int StartStones => startStones;
-        public int MaxStones => maxStones;
-        /// <summary>The evolutions (entry 0 = level 1): look + Stones Needed + Refill. NightSession turns them into Meta's rule.</summary>
-        public IReadOnlyList<ThrowableLevel> Levels => levels;
+        /// <summary>The evolutions (entry 0 = evolution 1): look + At Level + Refill + Base Score. NightSession turns them into
+        /// Meta's rule.</summary>
+        public IReadOnlyList<ThrowableEvolution> Evolutions => evolutions;
 
-        /// <summary>This level's sprite; a level without one uses the one before. Null = keep the prefab's sprite.</summary>
+        // "level" below = the evolution number (1-based) — what the views call the weapon level (NightSession.WeaponLevel).
+
+        /// <summary>This evolution's sprite; one without uses the one before. Null = keep the prefab's sprite.</summary>
         public Sprite SpriteFor(int level)
         {
             for (int i = Index(level); i >= 0; i--)
-                if (levels[i] != null && levels[i].sprite != null) return levels[i].sprite;
+                if (evolutions[i] != null && evolutions[i].sprite != null) return evolutions[i].sprite;
             return null;
         }
 
@@ -64,22 +70,24 @@ namespace Piglings.Definitions
             return entry != null ? entry.trailColour : Color.white;
         }
 
-        // A level past the list (thresholds changed, or a missing entry) falls back to the last entry there is.
-        private ThrowableLevel Entry(int level)
+        // An evolution past the list (a missing entry) falls back to the last entry there is.
+        private ThrowableEvolution Entry(int level)
         {
             int i = Index(level);
-            return i >= 0 ? levels[i] : null;
+            return i >= 0 ? evolutions[i] : null;
         }
 
-        private int Index(int level) => levels.Count == 0 ? -1 : Mathf.Clamp(level - 1, 0, levels.Count - 1);
+        private int Index(int level) => evolutions.Count == 0 ? -1 : Mathf.Clamp(level - 1, 0, evolutions.Count - 1);
     }
 
-    /// <summary>One evolution of a weapon: from how many stones it's this level, how it looks, and its hourly refill.</summary>
+    /// <summary>One evolution of a weapon: the stone level it unlocks at, how it looks, its base score and its hourly refill.
+    /// (Was ThrowableLevel, keyed by Stones Needed — R2.)</summary>
     [System.Serializable]
-    public sealed class ThrowableLevel
+    public sealed class ThrowableEvolution
     {
-        [Tooltip("From this many stones on the pile the stone is this level. Must rise from entry to entry.")]
-        [Min(0)] public int stonesNeeded = 10;
+        [Tooltip("The stone level this evolution unlocks at (1 = from the start; e.g. evolution 2 at level 4). Must rise from " +
+                 "entry to entry. Stones at a level = Start Stones + level − 1.")]
+        [Min(1)] public int atLevel = 1;
         [Tooltip("Stones added at each hour's placement round at this level (campaign).")]
         [Min(0)] public int refill = 1;
         [Tooltip("M10.S: a throw at this level starts its chain's SCORE with this (10 / 20 / 40 / 80).")]

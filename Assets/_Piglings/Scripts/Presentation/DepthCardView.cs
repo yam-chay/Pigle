@@ -24,7 +24,7 @@ namespace Piglings.Presentation
 
         private void Start()
         {
-            var colours = session.ScoreColours;
+            var colours = session.Visuals;
             var slots = TemplateList.Build(row, arrow, rows);
             for (int depth = 0; depth < slots.Count; depth++)
             {

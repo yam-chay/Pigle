@@ -47,6 +47,12 @@ namespace Piglings.Definitions
         [FormerlySerializedAs("followUpAtCopies")]
         [SerializeField, Min(0)] private int followUpEveryCopies = 3;
 
+        [Header("Plain")]
+        [Tooltip("Plain (Peg_Plain is every empty hold): seconds before the same stone / ball scores again on the same hold — so " +
+                 "rattling or resting balls can't farm it (Max Fall Seconds still ends a stuck ball). Moved here from the " +
+                 "Scoring asset's Plain Hold Cooldown (R2).")]
+        [SerializeField, Min(0f)] private float contactCooldown = 0.2f;
+
         [Header("Splitter (whatever the level)")]
         [Tooltip("Most stones one throw can have flying at once, the original included. Splits beyond it are cut short.")]
         [SerializeField, Min(1)] private int maxStonesPerThrow = 4;
@@ -82,7 +88,7 @@ namespace Piglings.Definitions
         /// <summary>What it adds to its chain's mult when it triggers at this level (M10.S; 0 = none).</summary>
         public float MultBonusAt(int level) => Level(level)?.multBonus ?? 0f;
 
-        /// <summary>Its SCORE value at this level (M10.S): Plain per contact, special per trigger; -1 = the default.</summary>
+        /// <summary>Its SCORE value at this level (M10.S): Plain per contact, special per trigger; -1 = the default (see PegLevel).</summary>
         public int ScoreValueAt(int level) => Level(level)?.scoreValue ?? -1;
 
         /// <summary>Bouncy: the peg's physical bounciness at this level (0 = the hold's own material).</summary>
@@ -114,6 +120,7 @@ namespace Piglings.Definitions
             return entry != null && entry.masteryWeight > 0f ? entry.masteryWeight : level;
         }
 
+        public float ContactCooldown => contactCooldown;
         public int MaxStonesPerThrow => maxStonesPerThrow;
         public float PieceScale => pieceScale;
         public bool CountSplitHitsForMastery => countSplitHitsForMastery;
@@ -135,8 +142,8 @@ namespace Piglings.Definitions
         [Min(0f)] public float multBonus = 0f;
 
         [Tooltip("M10.S: this peg's SCORE value at this level — a Plain peg adds it on every contact (the plain-hold cooldown " +
-                 "applies), a special peg when it triggers. -1 = the default: the Scoring asset's Plain Peg Score for a Plain peg, " +
-                 "nothing for a special one.")]
+                 "applies), a special peg when it triggers. -1 = the default: Peg_Plain's level-1 value for a Plain peg, nothing for a " +
+                 "special one. Peg_Plain itself needs a real value (every empty hold scores it).")]
         [Min(-1)] public int scoreValue = -1;
 
         [Header("Bouncy")]

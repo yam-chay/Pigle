@@ -179,7 +179,11 @@ static void NightChecks(){
  { var c=new ScoreCurve(10,10,1,1f,0.5f);
    Check(c.HourMultiplier(0)==1f && c.HourMultiplier(1)==1.5f && c.HourMultiplier(2)==2f && c.HourMultiplier(4)==3f,"hour multiplier: x1, x1.5, x2 ... x3 in hour 5 (step 0.5)");
    Check(c.Result(25,1.5f,1.5f)==56 && c.Result(15,1.5f,1f)==23,"rounded once: 25 x1.5 x1.5 = 56.25 -> 56; 22.5 -> 23");
-   Check(new ScoreCurve(10,10,1,1f,-1f).HourMultiplier(3)==1f,"a negative step is clamped to 0"); }
+   Check(new ScoreCurve(10,10,1,1f,-1f).HourMultiplier(3)==1f,"a negative step is clamped to 0");
+   // R2: the hour multipliers belong to the night — a later night can start higher.
+   var n2=new ScoreCurve(10,10,1,1f,0.5f,0.2f,1.5f);
+   Check(n2.HourMultiplier(0)==1.5f && n2.HourMultiplier(1)==2f && new ScoreCurve(10,10,1,1f,0.5f,0.2f,0.5f).HourMultiplier(0)==1f,
+         "first hour ×1.5 (night 2): hour 1 ×1.5, hour 2 ×2; a first hour below 1 is raised to 1"); }
  // --- Running -> threshold -> PegPlacement -> Running(next hour) ---
  { var n=new Night(Hours(50,500,1000));
    Check(n.St.Phase==NightPhase.Running && n.St.Hour==1 && n.St.CanThrow && n.Ref.NextThreshold==50,"night starts Running, hour 1, can throw, next threshold 50");

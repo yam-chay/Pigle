@@ -48,7 +48,7 @@ namespace Piglings.Rules
         /// <summary>
         /// Its SCORE value at this level (every peg has one, so it can be tuned in the editor or changed by code later): a Plain
         /// peg adds it on every contact (with the plain-hold cooldown), a special peg when it triggers. Below 0 (or none set) =
-        /// the default: the scoring's Plain Peg Score for a Plain peg, nothing for a special one.
+        /// the default: the plain hold score (Peg_Plain's level-1 value, via the ScoreCurve) for a Plain peg, nothing for a special one.
         /// </summary>
         public int ScoreValueAt(int level) => At(_scoreValues, level, -1);
 

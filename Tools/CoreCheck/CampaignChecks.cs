@@ -72,10 +72,12 @@ static void CampaignChecks(){
          "the profile keeps triggers per level");
    fx.Dispose(); t.Dispose(); prog.Dispose(); }
 
- // --- Stones: start 10, +1 per threshold, cap 25; level and refill from the evolution list (stage 2, PR P) ---
+ // --- Stones: start 10, +1 per Levels entry, the last entry = the cap (25); evolution and refill from the evolutions, keyed by stone level (R2) ---
  { var th=new[]{10,20,30,40,50,60,70,80,90,100,110,120,130,140,150};
-   var sp=new StoneProgression(th,10,25);   // the default evolutions: 10 → lv1 +1 · 15 → lv2 +2 · 20 → lv3 +3 · 25 → lv4 +4
+   var sp=new StoneProgression(th,10);   // the default evolutions: at levels 1 / 6 / 11 / 16 = 10 / 15 / 20 / 25 stones, +1…+4
+   Check(sp.MaxStones==25 && sp.MaxStoneLevel==16,"15 Levels entries from 10 stones: the cap is 25 stones, stone level 16 (no separate max)");
    var a=sp.For(0);
+   Check(a.StoneLevel==1 && sp.StonesAtLevel(6)==15,"0 hits: stone level 1; level 6 = 15 stones");
    Check(a.Stones==10 && a.Level==1 && a.Refill==1 && a.NextThreshold==10 && a.PreviousThreshold==0,"0 hits: 10 stones, level 1, refill 1, next +1 at 10");
    Check(a.NextEvolutionStones==15 && a.NextEvolutionLevel==2,"0 hits: the next evolution is level 2 at 15 stones");
    var b=sp.For(49);
@@ -84,20 +86,21 @@ static void CampaignChecks(){
    Check(e.Stones==15 && e.Level==2 && e.Refill==2 && e.NextEvolutionStones==20,"50 hits: the 15th stone — level 2, refill 2; level 3 at 20");
    var l3=sp.For(100); var l4=sp.For(150);
    Check(l3.Stones==20 && l3.Level==3 && l3.Refill==3,"100 hits: 20 stones — level 3, refill 3");
-   Check(l4.Stones==25 && l4.Level==4 && l4.Refill==4 && l4.AtCap && l4.NextEvolutionStones==-1 && l4.NextEvolutionLevel==0,
+   Check(l4.Stones==25 && l4.StoneLevel==16 && l4.Level==4 && l4.Refill==4 && l4.AtCap && l4.NextEvolutionStones==-1 && l4.NextEvolutionLevel==0,
          "150 hits: 25 stones = the cap — level 4, refill 4, no evolution left");
    Check(sp.For(999999).Stones==25,"more hits change nothing past the cap");
-   var shortList=new StoneProgression(new[]{10},10,25).For(500);
+   var shortList=new StoneProgression(new[]{10},10).For(500);
    Check(shortList.Stones==11 && shortList.AtCap,"fewer thresholds than room: the list ends the progression (11, done)");
-   var lowCap=new StoneProgression(th,10,12).For(500);
+   var lowCap=new StoneProgression(new[]{10,20},10).For(500);
    Check(lowCap.Stones==12 && lowCap.AtCap && lowCap.Level==1 && lowCap.NextEvolutionStones==-1,
-         "a lower cap wins over a longer list (12 stones: level 1 for good, the next evolution out of reach)");
-   var custom=new StoneProgression(th,5,25,new[]{new StoneEvolution(5,1),new StoneEvolution(8,3)});
-   Check(custom.For(0).Level==1 && custom.For(30).Stones==8 && custom.For(30).Level==2 && custom.For(30).Refill==3,"a custom list: 5 → lv1 +1, 8 → lv2 +3");
-   var none=new StoneProgression(th,10,25,new StoneEvolution[0]).For(500);
+         "a short Levels list caps early (12 stones: evolution 1 for good, the next evolution — level 6 — out of reach)");
+   var custom=new StoneProgression(th,5,new[]{new StoneEvolution(1,1),new StoneEvolution(4,3)});
+   Check(custom.For(0).Level==1 && custom.For(30).StoneLevel==4 && custom.For(30).Stones==8 && custom.For(30).Level==2 && custom.For(30).Refill==3,
+         "a custom list: evolution 1 at level 1 (+1), evolution 2 at level 4 = 8 stones from a start of 5 (+3)");
+   var none=new StoneProgression(th,10,new StoneEvolution[0]).For(500);
    Check(none.Level==1 && none.Refill==1,"an empty list: one level, refill 1");
    Check(StoneProgression.Problem(StoneProgression.DefaultEvolutions)==null &&
-         StoneProgression.Problem(new[]{new StoneEvolution(10,1),new StoneEvolution(10,2)})!=null,"evolutions must rise (same Stones Needed twice = a problem)"); }
+         StoneProgression.Problem(new[]{new StoneEvolution(6,1),new StoneEvolution(6,2)})!=null,"evolutions must rise (the same At Level twice = a problem)"); }
 
  // --- Peg copies: 1 when unlocked, +1 per weighted-mastery threshold, up to Max Copies (8) ---
  { var pp=new PegProgression(new[]{5,15,30});
