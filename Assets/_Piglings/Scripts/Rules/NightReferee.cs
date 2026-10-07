@@ -218,6 +218,29 @@ namespace Piglings.Rules
             return true;
         }
 
+        /// <summary>
+        /// Debug (the F1 panel): end the night now — a loss (out of stones) or a dawn — so the end sequence and the post-run
+        /// can be checked without playing there. Only while the night is on (Running or a placement round). A dawn counts
+        /// every hour as reached (DawnReached published). Chains still falling just finish; the night ends as usual
+        /// (the sweep, banking, NightEnded). False = refused.
+        /// </summary>
+        public bool DebugEnd(bool dawn)
+        {
+            if (_state.Phase != NightPhase.Running && _state.Phase != NightPhase.PegPlacement) return false;
+            if (dawn)
+            {
+                if (!_state.Dawn)
+                {
+                    _state.ThresholdsReached = _goal.ThresholdCount;
+                    _state.Dawn = true;
+                    _bus.Publish(new DawnReached(_state.Score));
+                }
+                End(NightResult.Won, NightEndReason.Dawn);
+            }
+            else End(NightResult.Lost, NightEndReason.OutOfStones);
+            return true;
+        }
+
         private void GiveFollowUp(string pegId, int remaining)
         {
             _state.PegFollowUp = pegId;
