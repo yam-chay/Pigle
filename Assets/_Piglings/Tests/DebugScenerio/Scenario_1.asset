@@ -12,11 +12,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c127d920bbd46714d8ddb74a46bc4521, type: 3}
   m_Name: Scenario_1
   m_EditorClassIdentifier: Piglings.Definitions::Piglings.Definitions.DebugScenarioDefinition
-  notes: 
+  notes: 2ndLevelMidBuild
   night: 2
-  nightsWon: 5
+  nightsWon: 1
   stones: 10
   pegs:
   - peg: {fileID: 11400000, guid: d29abeb2a2ec00f468b743f864604a71, type: 2}
-    copies: 5
+    copies: 2
+  - peg: {fileID: 11400000, guid: 364b111cec0941b4982551187aa260be, type: 2}
+    copies: 1
   startInNight: 0
