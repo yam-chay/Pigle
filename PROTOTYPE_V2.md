@@ -501,8 +501,9 @@ Inspector); Yam rebalances after it lands. Keeps PR P's follow-up rule as it is.
 | T2 | Developer debug panel (F1, IMGUI): edit the save, board edit mode, scenario presets | ✔ merged (#53, #54) |
 | T3 | Balance log (CSV) + wolf climb / spawn speed multipliers in an SO | ✔ merged (#55) |
 | T4 | H — night select overlay (spec: Stage 2 ▸ PR H) | after the playtest (Yam, 2026-10-07: the F1 panel covers it) |
-| T5 | Wall-material plumbing: per-material SO, neutral values; selection hidden in the playtest build | |
-| T6 | Progress bars (hour gap + score) move with the chain-close popup, not during the chain | this PR |
+| T5 | Wall-material plumbing: per-material SO, neutral values; selection hidden in the playtest build | next (with M11.W, the first WebGL build) |
+| T6 | Progress bars (hour gap + score) move with the chain-close popup, not during the chain | ✔ merged (#56) |
+| — | Post-run real total; screen-space scoreboard + NightHudFade (delays); post-run slides; F1 Lose / Win night | ✔ merged (#57–#61) |
 | T7 | Pitched SFX hooks, placeholder clips | |
 | T8 | Minimal start screen (Play / Continue / Reset save), 2 tip cards (depth, peg placement), fixed aspect; the save survives a page reload in WebGL | |
 
