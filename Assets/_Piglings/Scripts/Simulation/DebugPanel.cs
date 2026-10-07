@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Piglings.Definitions;
+using Piglings.Events;
 using Piglings.Meta;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -213,6 +214,18 @@ namespace Piglings.Simulation
 
         private void DrawBoard()
         {
+            GUILayout.Label("<b>THE NIGHT</b>", Rich());
+            var phase = session.State.Phase;
+            if (phase == NightPhase.Running || phase == NightPhase.PegPlacement)
+            {
+                // Closing the panel first: the end sequence and the post-run play with the game running.
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Lose night")) { SetOpen(false); session.DebugEndNight(false); }
+                if (GUILayout.Button("Win night (dawn)")) { SetOpen(false); session.DebugEndNight(true); }
+                GUILayout.EndHorizontal();
+            }
+            else GUILayout.Label(phase == NightPhase.Dusk ? "Start the night to end it." : "The night is over.");
+            GUILayout.Space(8f);
             GUILayout.Label("<b>BOARD</b>  (tonight, not saved)", Rich());
             if (board == null || cam == null) { GUILayout.Label("Wire Board and Cam for board edit."); return; }
             if (session.State.Ended) { GUILayout.Label("The night is over."); return; }

@@ -623,6 +623,9 @@ namespace Piglings.Simulation
         /// <summary>Tonight's peg types the Rules know (the shelf's): what board edit cycles through.</summary>
         public IReadOnlyList<PegDefinition> PegTypesTonight => _pegDefs;
 
+        /// <summary>Debug: end the night now — a loss (out of stones) or a dawn. Only while it's on. The flow plays the end as usual.</summary>
+        public bool DebugEndNight(bool dawn) => _referee.DebugEnd(dawn);
+
         /// <summary>Board edit: this type at this level in a socket, or empty it (null). In any phase but Ended.</summary>
         public bool DebugSetSocket(int socket, string pegId, int level) => _referee.SetSocket(socket, pegId, level);
 

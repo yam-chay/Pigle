@@ -39,6 +39,17 @@ static void DebugChecks(){
      "none won: unlocks gone; a dawn outside the campaign is left alone");
    ProfileEdits.SetCurrentNight(p,plan,7); Check(p.CurrentNight==2,"the current night is kept inside the campaign (7 → the last, index 2)");
    ProfileEdits.SetCurrentNight(p,plan,-3); Check(p.CurrentNight==0,"…and never below the first"); }
+ // --- End the night now: NightReferee.DebugEnd ---
+ { var n=new Night(new NightGoal(new[]{50,500},10,0));
+   n.Play(1);
+   Check(n.Ref.DebugEnd(false) && n.Ends.Count==1 && n.Ends[0].Result==NightResult.Lost && n.Ends[0].Reason==NightEndReason.OutOfStones && n.St.Ended,
+     "Lose night: ended at once, out of stones, NightEnded published");
+   Check(!n.Ref.DebugEnd(true) && n.Ends.Count==1,"an ended night can't be ended again"); }
+ { var n=new Night(new NightGoal(new[]{50,500},10,0));
+   Check(n.Ref.DebugEnd(true) && n.Dawns.Count==1 && n.Ends[0].Result==NightResult.Won && n.St.ThresholdsReached==2 && n.Ends[0].HoursReached==2,
+     "Win night: a dawn — every hour reached, DawnReached, then Won");
+   var dusk=new Night(new NightGoal(new[]{50},10,0)); dusk.St.Phase=NightPhase.Dusk;
+   Check(!dusk.Ref.DebugEnd(false),"not before the night begins (Dusk)"); }
  // --- Board edit: NightReferee.SetSocket ---
  { var pegs=new PegSetup(new[]{(new PegType("peg_bouncy",3,true,PegEffect.Bouncy),2)},1,4);
    var n=new Night(new NightGoal(new[]{50},10,0),null,pegs);

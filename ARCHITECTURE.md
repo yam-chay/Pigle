@@ -307,6 +307,7 @@ Barn = 6 units wide. Wolf-bot ball radius = 58 px × 0.3 × 0.01 = 0.174.
 - `DebugPanel` (Simulation, IMGUI, F1): off unless `Debug.isDebugBuild` (editor, Development builds). While open it sets `NightSession.GameplayInputBlocked` (ThrowController, PegThrower and SlicePicker stand down) and, optionally, pauses with `Time.timeScale` (restored on close / disable).
 - Save edits go through `NightSession.DebugEditSave(edit, startInNight, why)` → save → reload; the edits are `Meta/ProfileEdits` (engine-free, CoreCheck): a result is written as its smallest cause (stones → hits, copies → level-1 triggers, nights won → dawns), so nothing derived is ever stored.
 - Board edit: `NightReferee.SetSocket(socket, pegId, level)` (any phase but Ended; only tonight's types; no shelf / throw / follow-up) publishes `PegSocketSet`; `PegBoardView` redraws and `PegBoard` re-applies the hold's material. Not saved.
+- End the night: `NightReferee.DebugEnd(dawn)` (Running / PegPlacement only) — a loss (out of stones) or a dawn (every hour reached, `DawnReached`); the end plays as usual (sweep, banking, the flow's beat / wolf / post-run). F1 ▸ THE NIGHT ▸ Lose night / Win night.
 - Scenarios: `DebugScenarioDefinition` assets; `NightSession.DebugLoadScenario` resets the profile, applies the scenario, saves, reloads.
 
 ## Balance log (M11.T3)
