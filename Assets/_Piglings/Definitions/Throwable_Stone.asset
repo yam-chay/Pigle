@@ -32,13 +32,13 @@ MonoBehaviour:
     trailColour: {r: 0.23137254, g: 0.6889434, b: 1, a: 1}
   - stonesNeeded: 15
     refill: 3
-    baseScore: 30
+    baseScore: 40
     sprite: {fileID: 21300000, guid: 8e6f3e7673c766046a1d48b2eb5e36e9, type: 3}
     radiusScale: 1.35
     trailColour: {r: 0.19215687, g: 0.08627451, b: 0.34117648, a: 1}
   - stonesNeeded: 25
     refill: 4
-    baseScore: 40
+    baseScore: 80
     sprite: {fileID: 21300000, guid: fb5956b027ec4f047b07dc8670cc75df, type: 3}
     radiusScale: 1.5
     trailColour: {r: 0.9254902, g: 0.78431374, b: 0.09019608, a: 1}
