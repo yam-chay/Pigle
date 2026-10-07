@@ -90,9 +90,6 @@ namespace Piglings.Rules
             return true;
         }
 
-        /// <summary>A special peg triggered for this chain: + its mult bonus. Returns the chain's mult now (1 if not open).</summary>
-        public float AddPegMult(ChainId chain, int socket, GameId hitter, float bonus) => AddPegGain(chain, socket, hitter, 0, bonus);
-
         /// <summary>
         /// A special peg triggered for this chain: + its score value and its mult bonus (each per level, PegType). Returns
         /// the chain's mult now (1 if not open).

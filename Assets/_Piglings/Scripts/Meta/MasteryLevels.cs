@@ -31,21 +31,6 @@ namespace Piglings.Meta
             return thresholds != null && level - 1 < thresholds.Count ? thresholds[level - 1] : -1;
         }
 
-        /// <summary>
-        /// How far hits have come from the start of `level` toward the level after it, 0..1 — for views ("progress is
-        /// shown, never applied"). 1 once that next threshold is reached (or past it), and at the top level.
-        /// `level` is the level the night plays at, so a threshold crossed tonight reads as full, not as 0 of the next.
-        /// </summary>
-        public static float ProgressFrom(int level, int hits, IReadOnlyList<int> thresholds)
-        {
-            if (thresholds == null || level < 1 || level - 1 >= thresholds.Count) return 1f;
-            int from = level >= 2 ? thresholds[level - 2] : 0;
-            int to = thresholds[level - 1];
-            if (to <= from) return 1f;   // a broken list (Problem() warns about it)
-            float t = (hits - from) / (float)(to - from);
-            return t < 0f ? 0f : t > 1f ? 1f : t;
-        }
-
         /// <summary>Why this list breaks the rule (each ≥ 1, strictly rising), or null if it's fine.</summary>
         public static string Problem(IReadOnlyList<int> thresholds)
         {

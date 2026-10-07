@@ -33,11 +33,11 @@
 
 ## M5 — Walls matter
 - [ ] 🖥 Wall_Straw / Wall_Brick definitions with different hold bounciness; A/B them in play.
-- [ ] 🖥 M5.2 *(after the playtest, on M11.T3's logs)* Tune the night: `thresholds`, `stonesPerThreshold`, `throwsAvailable` (the pile = the pig's life), spawn rate. Log whether the pile drains too fast to breaches.
+- [ ] 🖥 M5.2 *(after the playtest, on M11.T3's logs)* Tune the night: `thresholds`, the stone's `startStones` and each level's `refill` (Throwable_Stone — the pile = the pig's life; the night's own `throwsAvailable` / `stonesPerThreshold` are gone, R1), spawn rate. Log whether the pile drains too fast to breaches.
 - [x] ☁ Night end condition in Rules (`NightReferee`): reach `targetScore` = win (once everything in flight settles); *(loss rule since replaced by M7.1: one life, the pile)* Event: `NightEnded`. (Changed from "survive X seconds" — a timer rewards stalling; a score target rewards chains.)
 
 ## M6 — Night loop (a night that starts, ends and restarts)
-- [ ] ☁+🖥 M6.2 Real (uGUI) end panel, replacing the OnGUI placeholder: result (dawn / out of stones), hours reached, score, banked, score per stone, mastery gained, best chain. (Restarting is M6.6.) *The campaign scene has it: the M10.E post-run; Night.unity keeps the OnGUI one.*
+- [x] ☁+🖥 M6.2 Real (uGUI) end panel, replacing the OnGUI placeholder: result (dawn / out of stones), hours reached, score, banked, score per stone, mastery gained, best chain. (Restarting is M6.6.) *Done as the M10.E post-run; the OnGUI one went with Night.unity (R1).*
 - [x] ☁ M6.3 Stone readability (playtest TODO): colour/outline/trail so the stone is easy to follow. → `StoneTrail` (M9.3), wired in M9.3b.
 - [x] ☁ M6.4 Danger zone: `DangerZone` trigger (layer Zones) a little below the roof publishes `RobotEnteredDangerZone` once per robot; `RobotView` sets Animator bool `InDanger`. No robot state. Breach warning now; later the line that ends overtime.
 - [x] 🖥 M6.4b Wire the danger zone: place the trigger, add `InDanger`, bake `WolfBot_ClimbDanger` (Piglings ▸ Animation ▸ Bake WolfBot Clips — Climb + red eyes + antenna wiggle, generated), Climb → ClimbDanger on `InDanger`, Break reachable from both. Steps in PR #7 and the play-again PR.
@@ -104,7 +104,7 @@ Mastery from use: the stone levels up from the robots it knocks loose itself (50
   - [x] ☁ M10.P Progression: stone evolution list on `ThrowableDefinition.levels` (Stones Needed, look, Refill; level + refill from the stone count; cap 25); peg copies up to `maxCopies` (8); the 2-row pegboard (8 slots per type, holes file, optional hole sprite); the rug's refill badges as a list. CoreCheck.
     - [x] ☁ M10.P2 Follow-up instead of a shared pool: from `followUpAtCopies` (4) a type gives ONE same-type follow-up throw per round (`NightState.PegFollowUp`, `PegFollowUpGranted`; the shelf follows). Copy stages and `ThrowsPerHour` removed. CoreCheck.
     - [x] ☁ M10.P3 Follow-ups every N copies: `followUpEveryCopies` (3) → a chain of same-type follow-ups per round (10 copies = 4 in a row); max copies 10. CoreCheck.
-    - [ ] ☁ Clean-up pass (Yam, later): residue code the new systems made unneeded — list it before deleting (candidates: `NightEndView` / `PlayAgain` once Night.unity changes, `DepthCardView` / `HoursCardView` / `TemplateSlot` / `TemplateList` after G, the scoreboard after G).
+    - [ ] ☁ Clean-up pass (Yam, later): residue code the new systems made unneeded — list it before deleting (candidates: `DepthCardView` / `HoursCardView` / `TemplateSlot` / `TemplateList` after G, the scoreboard after G).
     - [x] 🖥 M10.P-b Editor: Throwable_Stone Levels (Stones Needed + Refill per level, lv3/lv4 sprites) + Max Stones; each peg's Max Copies / Copy Thresholds / Follow Up Every Copies; room_pegboard v2 + Holes File (+ Hole Sprite); the rug's Refill Badges. Steps in the PR.
   - [x] ☁ M10.E Post-run screen (Yam's final spec, PROTOTYPE_V2 ▸ PR E): the loss is **out of stones** (none left, nothing in flight, no round to refill — `NightEndReason.OutOfStones` replaced Caught; a breach on an empty pile takes nothing); the post-run over the Night frame after the sweep (+ Wolf Seconds and the `WolfClimbStarts` hook on a loss); buttons Retry (fast: straight into the night, `startInNight`) / To the barn / Next night ▸ (`PostRunChoices`, `PostRunButtons`; the camera goes Night → Doors before the reload); THE NIGHT (best throw per hour, biggest chain, avg per stone, thrown · stolen), ALL-TIME RECORDS (save `records`, NEW flags), PROGRESS — only what moved (`PostRunProgress` from the profile before / after tonight; stone, pegs that fired or unlocked, wolves dropped per robot type in the save, the sweep included — and the sweep's share apart, `swept`); hour colours by night progress (`HourPaletteDefinition.ColourAt`). CoreCheck.
     - [x] 🖥 M10.E-b Editor (TestNight): the post-run Canvas (CanvasGroup, dim overlay, the three panels, template rows, the bars, the two buttons + `PostRunButtons`); remove FlowButtons' old Retry / Next buttons; NightFlow ▸ Wolf Seconds; each peg's Display Name (optional). Steps in the PR.
@@ -140,6 +140,20 @@ Mastery from use: the stone levels up from the robots it knocks loose itself (50
 - [x] ☁+🖥 M11.s The scoreboard in screen space (Yam, editor) + `NightHudFade`: shown only in the night (fades in on Start night, out for the post-run / the barn), each fade after its own delay — #58, #59.
 - [ ] ☁+🖥 *(after the playtest)* Wall slices: Yam's T2 pass (every phase, debug states) showed the slices are the least developed system — what each slice changes (material, holds, layout), why a player picks one. Plan before code.
 - [ ] 🖥 M11.W First WebGL build right after T1 — URP 2D, physics speed, the save in a browser — so problems show up early.
+
+## R — Tuning surface refactor (2026-10-08)
+Every tunable value gets **one owner** (ARCHITECTURE.md ▸ "Who owns a tunable value"). One PR per phase, in order; the next phase starts only after Yam has merged and play-tested the previous one. Every value that moves between classes ships a migration or a "values to re-enter" table.
+- [x] ☁ R1 Delete and fix conflicts (code): `NightEndView`, `PlayAgain`, the scene's-own-tower fallback (the built tower is required), every read of `NightDefinition.throwsAvailable` / `stonesPerThreshold` (stones + refill always from the stone's progression); audit §1 dead members; NightSession's debug context menus; the stone's out-of-reach handling (no red line, no preview-length knob); `NightDefinition.cameraY` / `cameraSize`; ScorePopupSpawner ▸ Show Plain Holds; ChainTrackerTests on the M10.S score; ARCHITECTURE: the ownership rule + the fixes.
+  - [ ] 🖥 R1-b Editor: delete `Night.unity`, put TestNight in Build Settings; a "new campaign" debug scenario; let Unity import (missing scripts gone); play-check. Steps in the PR.
+  - [ ] Break time: `Robot_WolfBot.breakDuration` (0.35) vs `WolfBot_Break.anim` (0.6 s) — Yam picks the gameplay truth, then the other follows (or an editor warning when they differ). Ties to M3.
+- [ ] ☁ R2 Move values to their owners: robot value → RobotDefinition; plain value + cooldown → `Peg_Plain` (a real peg, the default for every hold); hour multiplier → NightDefinition; Scoring keeps the depth curve; Throwable_Stone `Levels` (hit counts, last = cap) + `Evolutions` (keyed by level); one visual SO (hour palette + score colours + the golds + one "big chain" total + the peg mult popup look).
+- [ ] ☁+🖥 R3 Campaign owns progression (nights, unlock table incl. slices, the starting loadout); NightDefinition owns one night (hours, targets, hour multiplier, spawn); peg loadout / slices / `pegThrowsPerThreshold` leave NightDefinition; the slice picker shows the Campaign's unlocked slices (locked ones as locked) and owns its own settings (out of NightFlow); document wall material = "this material", Balance Knobs = "global test multiplier".
+- [ ] 🖥 R4 Pegs: one `[Serializable]` effect class per effect via `[SerializeReference]`, each with its own fields and levels; per-peg settings out of PegBoard; a clean peg Inspector. Ships the re-entry table or a migration.
+- R5 New features (after the refactor, not part of it):
+  - [ ] Waves: the night's spawn plan as a list of waves (delay between waves, robots per wave, spawn speed inside it, robot type per wave or a mix) on NightDefinition; RobotSpawner only plays it.
+  - [ ] Right-click cancels a throw while aiming.
+  - [ ] Mult → colour mapping in the visual SO (which mult gets which colour and effect, like the other popups).
+  - [ ] Stone refill by weapon level, not by unlock count.
 
 ## Open design questions (from the GDD — don't implement until decided)
 - One robot line per run vs. mixed swarm.

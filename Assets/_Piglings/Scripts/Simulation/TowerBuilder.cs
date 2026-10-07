@@ -28,7 +28,7 @@ namespace Piglings.Simulation
         [SerializeField] private PegBoard board;
 
         [Header("Layout (world units)")]
-        [Tooltip("The first slice's position (its pivot), just above the bottom piece. Night.unity's first slice: 3.0.")]
+        [Tooltip("The first slice's position (its pivot), just above the bottom piece. (3.0)")]
         [SerializeField] private float firstSliceY = 3f;
         [SerializeField, Min(0.1f)] private float sliceHeight = 1.6f;
 
@@ -40,9 +40,9 @@ namespace Piglings.Simulation
         [SerializeField] private float topOffset = 0f;
         [Tooltip("The side walls (BoxCollider2D, layer BarnWalls). Their bottom stays put; their top follows the tower.")]
         [SerializeField] private BoxCollider2D[] walls = new BoxCollider2D[0];
-        [Tooltip("The walls' bottom edge (world y). Night.unity: -0.25.")]
+        [Tooltip("The walls' bottom edge (world y), e.g. -0.25.")]
         [SerializeField] private float wallBottom = -0.25f;
-        [Tooltip("How far the walls reach above Tower Top's position. Night.unity: 1.25.")]
+        [Tooltip("How far the walls reach above Tower Top's position, e.g. 1.25.")]
         [SerializeField] private float wallAboveTop = 1.25f;
 
         [Header("Edit-mode preview")]
@@ -87,7 +87,7 @@ namespace Piglings.Simulation
             Clear();
             if (container == null || slicePrefab == null || holdPrefab == null)
             {
-                Debug.LogWarning("TowerBuilder: set Container, Slice Prefab and Hold Prefab — the scene's own tower stays.", this);
+                Debug.LogError("TowerBuilder: set Container, Slice Prefab and Hold Prefab — no tower was built.", this);
                 return;
             }
 

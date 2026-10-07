@@ -21,10 +21,10 @@ namespace Piglings.Presentation
         [Tooltip("Points sampled along the arc. More = smoother line.")]
         [SerializeField, Min(2)] private int sampleCount = 32;
 
-        [Tooltip("Line colour when the stone will reach the target.")]
+        [Tooltip("Line colour while aiming (the stone, or a peg with a valid socket).")]
         [SerializeField] private Color inRangeColor = new Color(1f, 1f, 1f, 0.55f);
 
-        [Tooltip("Line colour when the target is out of reach — the line shows where the stone WILL go.")]
+        [Tooltip("Line colour when a peg throw is refused (no valid socket in reach). The stone never uses it.")]
         [SerializeField] private Color outOfRangeColor = new Color(1f, 0.35f, 0.3f, 0.55f);
 
         private Vector3[] _points;
@@ -63,8 +63,8 @@ namespace Piglings.Presentation
             line.positionCount = n;
             line.SetPositions(_points);
 
-            // Out of range only changes the colour: the line is still drawn so the player sees
-            // where the stone will actually go. For a peg, red = no valid socket there: releasing won't throw. The tail fades so the end doesn't read as a wall.
+            // Refused only changes the colour (the peg thrower: no valid socket there, releasing won't throw); the line is
+            // still drawn. The stone is never refused. The tail fades so the end doesn't read as a wall.
             Color c = aim.InRange ? inRangeColor : outOfRangeColor;
             line.startColor = c;
             line.endColor = new Color(c.r, c.g, c.b, c.a * 0.25f);

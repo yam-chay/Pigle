@@ -36,8 +36,7 @@ namespace Piglings.Presentation
         [Tooltip("Each depth step makes the popup this much bigger (0.2 = +20%), so deeper hits read as bigger.")]
         [SerializeField, Min(0f)] private float scalePerDepth = 0.15f;
 
-        [Header("Plain hold \"+1\"")]
-        [SerializeField] private bool showPlainHolds = true;
+        [Header("Plain hold \"+1\" (always shown)")]
         [Tooltip("The hold's \"+1\": small (they come in showers).")]
         [SerializeField, Min(0.01f)] private float plainHoldScale = 0.5f;
 
@@ -109,7 +108,7 @@ namespace Piglings.Presentation
                 if (board == null || e.Socket < 0 || e.Socket >= board.SocketCount) return;
                 Spawn(board.Position(e.Socket), UiText.Fill(session.Texts.popupPegMult, ("mult", Numbers.Mult(e.MultAdded))), _mult, multScale, 0.4f);
             }
-            else if (e.Cause == ChainGainCause.PlainPeg && showPlainHolds && e.ScoreAdded > 0)
+            else if (e.Cause == ChainGainCause.PlainPeg && e.ScoreAdded > 0)
             {
                 if (board == null || e.Socket < 0 || e.Socket >= board.SocketCount) return;
                 // Coloured by its hitter's depth (the stone 0, a ball its own), with the bands' looks: the deepest pulse / rainbow.

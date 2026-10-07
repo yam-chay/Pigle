@@ -11,7 +11,7 @@ namespace Piglings.Rules
     ///      └──out of stones: none left, nothing in flight, no round to refill (lost)─────────▶ Ended
     ///
     /// - Dusk (campaign scene only, before all of the above): the night hasn't begun — nothing climbs, nothing is thrown.
-    ///   Begin() → Running. Night.unity starts straight in Running.
+    ///   Begin() → Running. With startImmediately the night starts straight in Running.
     /// - Running: the normal night. The stones are the pig's life. A robot that breaches takes the top stone (on an empty
     ///   pile it takes nothing). OUT OF STONES is the ONLY loss (M10.E), possible until dawn: no stone left, no chain in
     ///   flight and no placement round waiting (its refill would add stones). Throwing your last stone isn't the loss yet:
@@ -64,7 +64,7 @@ namespace Piglings.Rules
         public float HourMultiplier => _chains.Curve.HourMultiplier(_state.Hour - 1);
 
         /// <param name="startImmediately">
-        /// True (Night.unity): the night is Running from the start. False (the campaign scene): it waits in Dusk — the day
+        /// True: the night is Running from the start. False (TestNight, the campaign flow): it waits in Dusk — the day
         /// phase, the camera rising — until Begin().
         /// </param>
         public NightReferee(EventBus bus, NightState state, ChainTracker chains, NightGoal goal = null, PegSetup pegs = null,

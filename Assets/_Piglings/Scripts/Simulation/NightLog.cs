@@ -9,8 +9,7 @@ namespace Piglings.Simulation
     /// Per hour: how long it lasted, what the chains thrown in it scored, how many robots breached in it — so a slow
     /// hour, or an hour that bled stones, stands out.
     ///
-    /// A plain class owned by NightSession (like ItemPile), so every scene with a night logs it — it used to live in
-    /// NightEndView's OnGUI end screen, which the campaign scene doesn't have. Reads only.
+    /// A plain class owned by NightSession (like ItemPile), so the log doesn't depend on which views a scene has. Reads only.
     /// </summary>
     public sealed class NightLog
     {

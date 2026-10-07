@@ -10,7 +10,6 @@ namespace Piglings.Runtime
     [System.Serializable]
     public sealed class NightState
     {
-        public int NightNumber = 1;
         public int ThrowsUsed;
         public int RobotsDropped;      // knocked loose inside a chain (ChainTracker); the per-type Dropped below counts every one
         public int RobotsReachedTop;

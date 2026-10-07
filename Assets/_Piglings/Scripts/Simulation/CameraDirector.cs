@@ -5,7 +5,7 @@ namespace Piglings.Simulation
     /// <summary>The named places the camera can be (PROTOTYPE_V2.md, "Camera frames").</summary>
     public enum CameraFrame
     {
-        Night,      // tonight's own frame (NightDefinition Camera Y / Size)
+        Night,      // fitted to tonight's built tower
         Doors,      // the barn's doors, from outside: the post-run
         BarnRoom,   // inside the open doorway: the day loadout
         Tower,      // the whole built tower, wide: slice placement
@@ -28,7 +28,7 @@ namespace Piglings.Simulation
         [SerializeField] private NightSession session;
         [Tooltip("The camera this moves. Empty = the Camera on this object.")]
         [SerializeField] private Camera cam;
-        [Tooltip("The built tower: the Night and Tower frames fit it. Empty (or nothing built) = the night's own Camera Y / Size.")]
+        [Tooltip("The built tower: the Night and Tower frames fit it. Empty (or nothing built) = the Night frame stays where the camera is.")]
         [SerializeField] private TowerBuilder tower;
 
         [Header("Fixed frames (centre y, orthographic size)")]
@@ -39,7 +39,7 @@ namespace Piglings.Simulation
 
         [Header("Night frame (fitted to the built tower)")]
         [Tooltip("The bottom of the Night frame (world y), the same on every night: a taller tower zooms out upward. " +
-                 "Night 1's tuned frame (y 6, size 3.5) has its bottom at 2.5. A night's Camera Y / Size above 0 overrides.")]
+                 "Night 1's tuned frame (y 6, size 3.5) has its bottom at 2.5.")]
         [SerializeField] private float nightBottomY = 2.5f;
 
         [Header("Tower frame (fitted to the built tower)")]
@@ -86,7 +86,7 @@ namespace Piglings.Simulation
             if (!_placed) SnapTo(CameraFrame.Night);
         }
 
-        /// <summary>The pose of a frame right now (Night and Tower from the built tower; a night's Camera Y / Size override).</summary>
+        /// <summary>The pose of a frame right now (Night and Tower from the built tower).</summary>
         public CameraPose PoseOf(CameraFrame frame)
         {
             switch (frame)
@@ -98,16 +98,12 @@ namespace Piglings.Simulation
             }
         }
 
-        // Fixed bottom, top at the roof of tonight's tower; the night's own Camera Y / Size (when above 0) win.
-        // Without a built tower there's nothing to fit: the night's values, or where the camera already is.
-        private CameraPose NightPose()
-        {
-            var night = session.Night;
-            var computed = tower != null && tower.SliceCount > 0
+        // Fixed bottom, top at the roof of tonight's tower: CameraDirector frames every night (no per-night override).
+        // Without a built tower there's nothing to fit (NightSession already logged why): stay where the camera is.
+        private CameraPose NightPose() =>
+            tower != null && tower.SliceCount > 0
                 ? CameraFraming.Night(nightBottomY, tower.TopY + towerAboveTop)
                 : cam != null ? Current() : new CameraPose(transform.position.y, 5f);
-            return CameraFraming.Override(computed, night.CameraY, night.CameraSize);
-        }
 
         /// <summary>How far (world units, up / down) the camera is from a frame right now — for timing a move by its speed.</summary>
         public float DistanceTo(CameraFrame frame) => cam != null ? Mathf.Abs(PoseOf(frame).Y - Current().Y) : 0f;

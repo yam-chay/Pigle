@@ -22,7 +22,7 @@ namespace Piglings.Simulation
 
         /// <summary>
         /// On a loss, the swept robots keep holding on until LetGoSwept (M11.T1): NightFlow plays the beat and the wolf first.
-        /// Set by NightFlow; off (Night.unity, no flow) = they let go at once, as at dawn.
+        /// Set by NightFlow; off (no flow) = they let go at once, as at dawn.
         /// </summary>
         public bool HoldSweepOnLoss { get; set; }
 

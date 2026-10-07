@@ -35,9 +35,6 @@ namespace Piglings.Rules
             _bus.Unsubscribe<RobotRemoved>(OnRemoved);
         }
 
-        /// <summary>Robots off the wall and not removed yet (breaking, falling, breaching).</summary>
-        public int RobotsInMotion => _moving.Count;
-
         /// <summary>Nothing left to land: no robot in motion and no chain open.</summary>
         public bool Settled => _moving.Count == 0 && _chains.OpenChainCount == 0;
 

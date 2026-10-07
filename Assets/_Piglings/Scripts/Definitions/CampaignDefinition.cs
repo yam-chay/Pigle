@@ -5,7 +5,7 @@ namespace Piglings.Definitions
 {
     /// <summary>
     /// The campaign: the nights in order, which peg type a dawn on each night unlocks, the types owned from the start, and
-    /// every slice the player may build with. Read by NightSession in the campaign scene only (Night.unity has none).
+    /// every slice the player may build with. Read by NightSession (TestNight).
     /// The save stores the player's causes (dawns per night id, the current night); unlocks are derived from this table.
     /// </summary>
     [CreateAssetMenu(menuName = "Piglings/Campaign Definition", fileName = "Campaign")]
