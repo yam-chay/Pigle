@@ -18,7 +18,7 @@ MonoBehaviour:
   wall: {fileID: 11400000, guid: ce9cccee93d7cf04d865dd675bc6bb58, type: 2}
   spawnInterval: 1
   throwsAvailable: 17
-  thresholds: 64000000fa000000f4010000e8030000d0070000
+  thresholds: f4010000e8030000d00700008813000010270000
   stonesPerThreshold: 2
   refillPauseSeconds: 1
   slices:
