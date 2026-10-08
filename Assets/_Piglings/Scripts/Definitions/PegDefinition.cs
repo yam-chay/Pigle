@@ -9,6 +9,9 @@ namespace Piglings.Definitions
     /// One peg type (GDD "שעות הלילה"). Immutable design data. Rules only ever see its id, max level, whether it merges,
     /// its effect and the per-level numbers they need (NightSession turns those into a Rules.PegType); the board stores
     /// the id as a string, never this asset.
+    ///
+    /// R4: the effect is one class per effect (PegEffectSettings, [SerializeReference]) with only its own fields and its own
+    /// levels: pick Effect, see that effect's settings. The getters below are unchanged, so nothing that reads a peg moved.
     /// </summary>
     [CreateAssetMenu(menuName = "Piglings/Peg Definition", fileName = "Peg_")]
     public sealed class PegDefinition : ScriptableObject
@@ -26,18 +29,17 @@ namespace Piglings.Definitions
         [SerializeField] private Sprite sprite;
         [Tooltip("Used only when Sprite is empty, so a peg without art still reads as different from a plain hold.")]
         [SerializeField] private Color fallbackTint = new Color(0.6f, 0.9f, 1f);
-        [Tooltip("Bomb: how it looks while spent (after going off, until it recharges). Empty = its sprite, greyed.")]
-        [SerializeField] private Sprite spentSprite;
 
-        [Tooltip("What it does when something hits it. Plain = nothing (a hold with a look).")]
+        [Header("Effect")]
+        [Tooltip("What it does when something hits it. Changing it replaces the settings below with a fresh set for the new " +
+                 "effect (the old effect's values are not kept).")]
         [SerializeField] private PegEffect effect = PegEffect.Plain;
-        [Tooltip("Strength per level (merges level a peg up). Entry 0 = level 1; a level past the list uses the last entry. " +
-                 "Each effect reads only its own fields. A new first entry starts all zeros in the Inspector — fill every field.")]
-        [SerializeField] private List<PegLevel> levels = new List<PegLevel>();
+        [Tooltip("The picked effect's own settings and levels (entry 0 = level 1; a level past the list uses the last entry).")]
+        [SerializeReference] private PegEffectSettings settings;
 
         [Header("Progression (campaign)")]
         [Tooltip("Peg mastery for each extra copy, cumulative and rising: an unlocked type owns 1 copy, +1 per threshold, up to " +
-                 "Max Copies (so Max Copies − 1 entries). Mastery = its effect's triggers × the level's Mastery Weight (Levels list).")]
+                 "Max Copies (so Max Copies − 1 entries). Mastery = its effect's triggers × the level's Mastery Weight.")]
         [SerializeField] private int[] copyThresholds = { 10, 30, 60, 100, 150, 210, 280, 360, 450 };
         [Tooltip("The most copies of this type a player can own.")]
         [SerializeField, Min(1)] private int maxCopies = 10;
@@ -47,19 +49,15 @@ namespace Piglings.Definitions
         [FormerlySerializedAs("followUpAtCopies")]
         [SerializeField, Min(0)] private int followUpEveryCopies = 3;
 
-        [Header("Plain")]
-        [Tooltip("Plain (Peg_Plain is every empty hold): seconds before the same stone / ball scores again on the same hold — so " +
-                 "rattling or resting balls can't farm it (Max Fall Seconds still ends a stuck ball). Moved here from the " +
-                 "Scoring asset's Plain Hold Cooldown (R2).")]
-        [SerializeField, Min(0f)] private float contactCooldown = 0.2f;
-
-        [Header("Splitter (whatever the level)")]
-        [Tooltip("Most stones one throw can have flying at once, the original included. Splits beyond it are cut short.")]
-        [SerializeField, Min(1)] private int maxStonesPerThrow = 4;
-        [Tooltip("A piece's size (collider and sprite) × the stone's. Gameplay: smaller pieces are harder to hit with.")]
-        [SerializeField, Range(0.3f, 1f)] private float pieceScale = 0.8f;
-        [Tooltip("On: robots a piece knocks loose itself count as stone hits for mastery, like the stone's own.")]
-        [SerializeField] private bool countSplitHitsForMastery = true;
+        // ---------- R4 legacy: the pre-R4 effect fields, kept hidden ONLY so the migration below can read them ----------
+        // When an asset has no Settings yet (saved before R4), Settings is built from these — in memory at once, and written
+        // into the asset in the editor (OnValidate + SetDirty; save the project). Deleted in R4b once every peg is saved.
+        [SerializeField, HideInInspector] private List<PegLevel> levels = new List<PegLevel>();
+        [SerializeField, HideInInspector] private Sprite spentSprite;
+        [SerializeField, HideInInspector] private float contactCooldown = 0.2f;
+        [SerializeField, HideInInspector] private int maxStonesPerThrow = 4;
+        [SerializeField, HideInInspector] private float pieceScale = 0.8f;
+        [SerializeField, HideInInspector] private bool countSplitHitsForMastery = true;
 
         public string Id => id;
 
@@ -78,90 +76,140 @@ namespace Piglings.Definitions
         public bool Mergeable => mergeable;
         public Sprite Sprite => sprite;
         public Color FallbackTint => fallbackTint;
-        public Sprite SpentSprite => spentSprite;
-        public PegEffect Effect => effect;
-        public int LevelCount => levels.Count;
+        public PegEffect Effect => Settings.Kind;
+        public int LevelCount => Settings.LevelCount;
 
-        /// <summary>This level's numbers; a level past the list uses the last entry. Null when the list is empty.</summary>
-        public PegLevel Level(int level) => levels.Count == 0 ? null : levels[Mathf.Clamp(level - 1, 0, levels.Count - 1)];
+        /// <summary>
+        /// The effect's settings: the asset's own, or — for an asset saved before R4 — built from its legacy fields (the same
+        /// values, so play is identical before the asset is re-saved). Never null.
+        /// </summary>
+        public PegEffectSettings Settings
+        {
+            get
+            {
+                if (settings != null && settings.Kind == effect) return settings;
+                if (_migrated == null || _migrated.Kind != effect) _migrated = settings == null ? FromLegacy() : PegEffectSettings.Create(effect);
+                return _migrated;
+            }
+        }
+        [System.NonSerialized] private PegEffectSettings _migrated;
 
-        /// <summary>What it adds to its chain's mult when it triggers at this level (M10.S; 0 = none).</summary>
-        public float MultBonusAt(int level) => Level(level)?.multBonus ?? 0f;
+        /// <summary>Bomb: how it looks while spent (after going off, until it recharges). Null for other effects.</summary>
+        public Sprite SpentSprite => (Settings as BombEffect)?.spentSprite;
 
-        /// <summary>Its SCORE value at this level (M10.S): Plain per contact, special per trigger; -1 = the default (see PegLevel).</summary>
-        public int ScoreValueAt(int level) => Level(level)?.scoreValue ?? -1;
+        /// <summary>What it adds to its chain's mult when it triggers at this level (M10.S; 0 = none — always for Plain).</summary>
+        public float MultBonusAt(int level) => (Settings.LevelAt(level) as SpecialPegLevel)?.multBonus ?? 0f;
 
-        /// <summary>Bouncy: the peg's physical bounciness at this level (0 = the hold's own material).</summary>
-        public float BouncinessAt(int level) => Level(level)?.bounciness ?? 0f;
+        /// <summary>Its SCORE value at this level (M10.S): Plain per contact, special per trigger; -1 = the default (see PegEffectLevel).</summary>
+        public int ScoreValueAt(int level) => Settings.LevelAt(level)?.scoreValue ?? -1;
 
-        /// <summary>Splitter: how many stones a stone becomes at this level, itself included (2 = one new piece).</summary>
-        public int PiecesAt(int level) => Level(level)?.pieces ?? 1;
+        /// <summary>Bouncy: the peg's physical bounciness at this level (0 = the hold's own material, and for other effects).</summary>
+        public float BouncinessAt(int level) => (Settings as BouncyEffect)?.Level(level)?.bounciness ?? 0f;
+
+        /// <summary>Splitter: how many stones a stone becomes at this level, itself included (2 = one new piece; 1 = no split).</summary>
+        public int PiecesAt(int level) => (Settings as SplitterEffect)?.Level(level)?.pieces ?? 1;
 
         /// <summary>Splitter: degrees between the outermost pieces' directions.</summary>
-        public float FanAngleAt(int level) => Level(level)?.fanAngle ?? 0f;
+        public float FanAngleAt(int level) => (Settings as SplitterEffect)?.Level(level)?.fanAngle ?? 0f;
 
         /// <summary>Bomb: climbing robots within this many world units of it are knocked loose.</summary>
-        public float BombRadiusAt(int level) => Level(level)?.bombRadius ?? 0f;
+        public float BombRadiusAt(int level) => (Settings as BombEffect)?.Level(level)?.bombRadius ?? 0f;
 
         /// <summary>Bomb: seconds it stays spent after going off (counted only while the wall moves).</summary>
-        public float CooldownAt(int level) => Level(level)?.cooldownSeconds ?? 0f;
+        public float CooldownAt(int level) => (Settings as BombEffect)?.Level(level)?.cooldownSeconds ?? 0f;
 
         /// <summary>Bomb: the push given to falling balls and flying stones in its radius (0 = none).</summary>
-        public float ImpulseAt(int level) => Level(level)?.impulse ?? 0f;
+        public float ImpulseAt(int level) => (Settings as BombEffect)?.Level(level)?.impulse ?? 0f;
 
-        public System.Collections.Generic.IReadOnlyList<int> CopyThresholds => copyThresholds;
+        public IReadOnlyList<int> CopyThresholds => copyThresholds;
         public int MaxCopies => maxCopies;
         public int FollowUpEveryCopies => followUpEveryCopies;
 
         /// <summary>Peg mastery weight of one trigger at this level: the entry's Mastery Weight, or the level itself when it's 0.</summary>
         public float MasteryWeightAt(int level)
         {
-            var entry = level >= 1 && level <= levels.Count ? levels[level - 1] : null;
+            var entry = level >= 1 && level <= LevelCount ? Settings.LevelAt(level) : null;
             return entry != null && entry.masteryWeight > 0f ? entry.masteryWeight : level;
         }
 
-        public float ContactCooldown => contactCooldown;
-        public int MaxStonesPerThrow => maxStonesPerThrow;
-        public float PieceScale => pieceScale;
-        public bool CountSplitHitsForMastery => countSplitHitsForMastery;
+        /// <summary>Splitter: most stones one throw can have flying at once (4 for other effects — never read).</summary>
+        public int MaxStonesPerThrow => (Settings as SplitterEffect)?.maxStonesPerThrow ?? 4;
+        /// <summary>Splitter: a piece's size × the stone's (1 for other effects).</summary>
+        public float PieceScale => (Settings as SplitterEffect)?.pieceScale ?? 1f;
+        /// <summary>Splitter: pieces' direct hits count for the stone's mastery (true for other effects — never read).</summary>
+        public bool CountSplitHitsForMastery => (Settings as SplitterEffect)?.countSplitHitsForMastery ?? true;
+        /// <summary>Plain: seconds before the same hitter scores on the same hold again (0.2 for other effects — never read).</summary>
+        public float ContactCooldown => (Settings as PlainEffect)?.contactCooldown ?? 0.2f;
+
+        // ---------- the R4 migration: the legacy fields → the picked effect's own class (same values) ----------
+
+        private PegEffectSettings FromLegacy()
+        {
+            switch (effect)
+            {
+                case PegEffect.Bouncy:
+                {
+                    var e = new BouncyEffect { levels = new List<BouncyLevel>() };
+                    foreach (var l in levels) e.levels.Add(new BouncyLevel { masteryWeight = l.masteryWeight, scoreValue = l.scoreValue, multBonus = l.multBonus, bounciness = l.bounciness });
+                    return Filled(e, e.levels.Count == 0, () => e.levels.Add(new BouncyLevel()));
+                }
+                case PegEffect.Splitter:
+                {
+                    var e = new SplitterEffect { maxStonesPerThrow = maxStonesPerThrow, pieceScale = pieceScale,
+                                                 countSplitHitsForMastery = countSplitHitsForMastery, levels = new List<SplitterLevel>() };
+                    foreach (var l in levels) e.levels.Add(new SplitterLevel { masteryWeight = l.masteryWeight, scoreValue = l.scoreValue, multBonus = l.multBonus, pieces = l.pieces, fanAngle = l.fanAngle });
+                    return Filled(e, e.levels.Count == 0, () => e.levels.Add(new SplitterLevel()));
+                }
+                case PegEffect.Bomb:
+                {
+                    var e = new BombEffect { spentSprite = spentSprite, levels = new List<BombLevel>() };
+                    foreach (var l in levels) e.levels.Add(new BombLevel { masteryWeight = l.masteryWeight, scoreValue = l.scoreValue, multBonus = l.multBonus, bombRadius = l.bombRadius, cooldownSeconds = l.cooldownSeconds, impulse = l.impulse });
+                    return Filled(e, e.levels.Count == 0, () => e.levels.Add(new BombLevel()));
+                }
+                default:
+                {
+                    var e = new PlainEffect { contactCooldown = contactCooldown, levels = new List<PlainLevel>() };
+                    foreach (var l in levels) e.levels.Add(new PlainLevel { masteryWeight = l.masteryWeight, scoreValue = l.scoreValue });
+                    return Filled(e, e.levels.Count == 0, () => e.levels.Add(new PlainLevel()));
+                }
+            }
+        }
+
+        // An effect with no legacy levels gets one default level, never an empty list.
+        private static PegEffectSettings Filled(PegEffectSettings e, bool empty, System.Action addDefault)
+        {
+            if (empty) addDefault();
+            return e;
+        }
+
+#if UNITY_EDITOR
+        // Editor only: write the migrated settings into the asset (an asset saved before R4), and give a changed Effect a
+        // fresh settings class. SetDirty so the next Save Project keeps it.
+        private void OnValidate()
+        {
+            if (settings != null && settings.Kind == effect) return;
+            settings = settings == null ? FromLegacy() : PegEffectSettings.Create(effect);
+            _migrated = null;
+            UnityEditor.EditorUtility.SetDirty(this);
+        }
+#endif
     }
 
     /// <summary>
-    /// One level of a peg's effect. Each effect reads only its own fields; the rest are ignored.
-    /// Numbers are placeholders — balance comes later.
+    /// R4 legacy: one level of the pre-R4 all-effects list. Read only by the migration (PegDefinition.FromLegacy); deleted in
+    /// R4b. Edit a peg's levels in its effect's settings instead.
     /// </summary>
     [System.Serializable]
     public sealed class PegLevel
     {
-        [Tooltip("Peg mastery per trigger at this level (a Bouncy bonus granted, a split, an explosion). 0 = the level itself " +
-                 "(level 2 counts double).")]
-        [Min(0f)] public float masteryWeight = 0f;
-
-        [Tooltip("M10.S: what this peg adds to its chain's MULT when it triggers at this level (Bouncy: a stone or ball bouncing " +
-                 "off it, once per peg per stone / ball; Splitter: a split; Bomb: an explosion). Bouncy +1 / +2…; 0 = none.")]
-        [Min(0f)] public float multBonus = 0f;
-
-        [Tooltip("M10.S: this peg's SCORE value at this level — a Plain peg adds it on every contact (the plain-hold cooldown " +
-                 "applies), a special peg when it triggers. -1 = the default: Peg_Plain's level-1 value for a Plain peg, nothing for a " +
-                 "special one. Peg_Plain itself needs a real value (every empty hold scores it).")]
-        [Min(-1)] public int scoreValue = -1;
-
-        [Header("Bouncy")]
-        [Tooltip("Physical bounciness of the peg (0..1+). Balls and stones visibly pop off it. 0 = the hold's own material.")]
-        [Min(0f)] public float bounciness = 0.8f;
-
-        [Header("Splitter")]
-        [Tooltip("A thrown stone that hits the needle becomes this many stones, itself included (2, 3…). Robot balls never split.")]
-        [Min(1)] public int pieces = 2;
-        [Tooltip("Degrees between the outermost pieces, fanned around the stone's direction after the bounce. Same speed.")]
-        [Range(0f, 180f)] public float fanAngle = 30f;
-
-        [Header("Bomb")]
-        [Tooltip("A stone or falling ball that hits it knocks every CLIMBING robot within this radius (world units) loose.")]
-        [Min(0f)] public float bombRadius = 1f;
-        [Tooltip("Seconds it stays spent (a plain hold) after going off. Counts only while the wall moves.")]
-        [Min(0f)] public float cooldownSeconds = 8f;
-        [Tooltip("Push given to falling balls and flying stones in the radius, away from the bomb (0 = none).")]
-        [Min(0f)] public float impulse = 0.5f;
+        public float masteryWeight;
+        public float multBonus;
+        public int scoreValue = -1;
+        public float bounciness;
+        public int pieces = 1;
+        public float fanAngle;
+        public float bombRadius;
+        public float cooldownSeconds;
+        public float impulse;
     }
 }
