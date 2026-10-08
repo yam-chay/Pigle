@@ -158,6 +158,7 @@ Every tunable value gets **one owner** (ARCHITECTURE.md ▸ "Who owns a tunable 
   - [ ] Stone refill by weapon level, not by unlock count.
 
 - [x] ☁ V1 Colour + effect by the rules everywhere (Yam, 2026-10-08): every popup's effect strength = its band's rank; the peg "+N mult" by Mult Bands; the post-run's hour rows by quality vs that hour's gap (no forced rainbow on the night's best), "4/6" in the last reached hour's colour (gold on a dawn), "+N wolves" by Record Bands vs a new most-wolves record (save `records.mostWolves`, additive). CoreCheck.
+  - [x] ☁ V1.1 The post-run hour bar = the hour's best throw ÷ that hour's target (was ÷ the night's best, so the best hour was always full) — Yam, 2026-10-08.
   - [ ] 🖥 V1-b Play-check the post-run and popups (steps in the PR); set the quality bands' rainbow start if 100% of an hour is too hard (e.g. 0.95).
 
 ## Open design questions (from the GDD — don't implement until decided)
