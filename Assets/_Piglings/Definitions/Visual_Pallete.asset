@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7426bb2fa2731bf4b83ec4b9aabe5bae, type: 3}
-  m_Name: ScoreColours
+  m_Name: Visual_Pallete
   m_EditorClassIdentifier: Piglings.Definitions::Piglings.Definitions.ScoreColoursDefinition
   depthColours:
   - {r: 1, g: 0.95, b: 0.82, a: 1}
@@ -42,6 +42,18 @@ MonoBehaviour:
   - minQuality: 0.9
     colour: {r: 1, g: 1, b: 1, a: 1}
     look: 2
+  hourColours:
+  - {r: 0.30980393, g: 0.37254903, b: 0.72156864, a: 1}
+  - {r: 0.43921572, g: 0.34509805, b: 0.7372549, a: 1}
+  - {r: 0.6039216, g: 0.33333334, b: 0.6901961, a: 1}
+  - {r: 0.75294125, g: 0.33333334, b: 0.6039216, a: 1}
+  - {r: 0.87843144, g: 0.40784317, b: 0.3529412, a: 1}
+  - {r: 0.9333334, g: 0.56078434, b: 0.27058825, a: 1}
+  - {r: 0.9490197, g: 0.70980394, b: 0.26666668, a: 1}
+  gold: {r: 1, g: 0.85, b: 0.42, a: 1}
+  bigChainTotal: 300
+  pegMultColour: {r: 1, g: 0.35, b: 0.75, a: 1}
+  pegMultScale: 1
   pulseAmount: 0.45
   pulsesPerSecond: 2
   rainbowSpeed: 0.8

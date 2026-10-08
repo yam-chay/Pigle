@@ -4031,7 +4031,6 @@ MonoBehaviour:
   session: {fileID: 1068153025}
   minDepth: 2
   traumaPerDepth: 0.2
-  bigChainTotal: 300
   chainTrauma: 0.6
   bombTrauma: 0.4
   maxOffset: 0.15
@@ -4999,7 +4998,6 @@ MonoBehaviour:
   longestChain: {fileID: 892160547}
   deepestChain: {fileID: 51913459}
   bestNightScore: {fileID: 215907557}
-  newRecordColour: {r: 1, g: 0.8, b: 0.25, a: 1}
 --- !u!1 &698291720
 GameObject:
   m_ObjectHideFlags: 0
@@ -7392,7 +7390,6 @@ MonoBehaviour:
   popSeconds: 0.3
   popAmount: 0.4
   bonusRing: {fileID: 21300000, guid: a47aa05c22925d145a3deb34bad83512, type: 3}
-  bonusRingColour: {r: 1, g: 0.8, b: 0.25, a: 1}
   bonusRingMotion:
     seconds: 0.5
     startScale: 0.2
@@ -7505,11 +7502,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Piglings.Simulation::Piglings.Simulation.NightSession
   night: {fileID: 11400000, guid: 3f672aa5176394a47ab6bce1dd0f859c, type: 2}
   scoring: {fileID: 11400000, guid: fa51ede7d84858d4b928e1018f74218c, type: 2}
+  plainPeg: {fileID: 11400000, guid: b80a14b5d419add45884af4520021e9a, type: 2}
   board: {fileID: 1064185511}
   campaign: {fileID: 11400000, guid: 98e9b1484e9cdba40844b8b48e6415ad, type: 2}
   tower: {fileID: 1064185512}
-  hourPalette: {fileID: 11400000, guid: 40591b8285d66af43b1dd0d952087b0f, type: 2}
-  scoreColours: {fileID: 11400000, guid: 639236544c96f6a459671cf40f905096, type: 2}
+  visuals: {fileID: 11400000, guid: 639236544c96f6a459671cf40f905096, type: 2}
   uiTexts: {fileID: 11400000, guid: 15e852b6b98aaad489d45f2bb41c0591, type: 2}
   balanceKnobs: {fileID: 11400000, guid: 2f768f4542d17914b92bbf55edac84e1, type: 2}
   writeBalanceLog: 1
@@ -9054,7 +9051,6 @@ MonoBehaviour:
     rise: 0
     spin: 120
   restColour: {r: 1, g: 1, b: 1, a: 1}
-  goldColour: {r: 1, g: 0.8, b: 0.25, a: 1}
   pulseRate: 1.5
   pulseStrength: 0.8
   ringColour: {r: 1, g: 0.85, b: 0.35, a: 1}
@@ -14089,14 +14085,11 @@ MonoBehaviour:
   robotScale: 1
   scalePerDepth: 0.15
   plainHoldScale: 1
-  multColour: {r: 1, g: 0.35, b: 0.75, a: 1}
-  multScale: 1.5
   showChainResult: 1
   chainAnchor: {fileID: 315329951}
   chainScale: 1.7
   chainArea: {x: 4, y: 0.7}
   chainMinFontSize: 18
-  bigChainTotal: 300
   minRobotsForChainPopup: 2
 --- !u!1 &2040407676
 GameObject:

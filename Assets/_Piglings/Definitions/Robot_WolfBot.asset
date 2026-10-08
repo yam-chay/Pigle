@@ -13,8 +13,10 @@ MonoBehaviour:
   m_Name: Robot_WolfBot
   m_EditorClassIdentifier: Piglings.Definitions::Piglings.Definitions.RobotDefinition
   id: wolfbot_basic
+  scoreValue: 10
   climbSpeed: 0.5
   breakDuration: 0.35
+  breakClip: {fileID: 7400000, guid: fa38233304adcf7459423e144a66a8a6, type: 2}
   ballRadius: 0.174
   ballMass: 1
   ballMaterial: {fileID: 6200000, guid: 0480178cfe783694d99eff3656d98f5d, type: 2}
