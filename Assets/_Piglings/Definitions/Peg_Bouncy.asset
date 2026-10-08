@@ -18,8 +18,12 @@ MonoBehaviour:
   mergeable: 1
   sprite: {fileID: 21300000, guid: c7110a1d893275b479d2bb3920a9733b, type: 3}
   fallbackTint: {r: 0.6, g: 0.9, b: 1, a: 1}
-  spentSprite: {fileID: 0}
   effect: 1
+  settings:
+    rid: 7123189532910682409
+  copyThresholds: 0a0000001e0000003c0000006400000096000000d200000018010000
+  maxCopies: 8
+  followUpEveryCopies: 3
   levels:
   - masteryWeight: 0
     multBonus: 1
@@ -48,9 +52,27 @@ MonoBehaviour:
     bombRadius: 1
     cooldownSeconds: 8
     impulse: 0.5
-  copyThresholds: 0a0000001e0000003c0000006400000096000000d200000018010000
-  maxCopies: 8
-  followUpEveryCopies: 3
+  spentSprite: {fileID: 0}
+  contactCooldown: 0.2
   maxStonesPerThrow: 4
   pieceScale: 0.8
   countSplitHitsForMastery: 1
+  references:
+    version: 2
+    RefIds:
+    - rid: 7123189532910682409
+      type: {class: BouncyEffect, ns: Piglings.Definitions, asm: Piglings.Definitions}
+      data:
+        levels:
+        - masteryWeight: 0
+          scoreValue: 1
+          multBonus: 1
+          bounciness: 0.8
+        - masteryWeight: 0
+          scoreValue: 10
+          multBonus: 2
+          bounciness: 1
+        - masteryWeight: 0
+          scoreValue: 20
+          multBonus: 3
+          bounciness: 1.2

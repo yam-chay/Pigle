@@ -75,6 +75,16 @@ MonoBehaviour:
   - minQuality: 0.95
     colour: {r: 1, g: 1, b: 1, a: 1}
     look: 2
+  pegLevelBands:
+  - minQuality: 1
+    colour: {r: 1, g: 0.76, b: 0.25, a: 1}
+    look: 0
+  - minQuality: 2
+    colour: {r: 1, g: 0.52156866, b: 0.14901961, a: 1}
+    look: 0
+  - minQuality: 3
+    colour: {r: 1, g: 0.2509804, b: 0.20000002, a: 1}
+    look: 1
   multBands:
   - minQuality: 0
     colour: {r: 1, g: 0.7607844, b: 0.2509804, a: 1}

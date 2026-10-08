@@ -5697,7 +5697,7 @@ MonoBehaviour:
   session: {fileID: 1068153025}
   director: {fileID: 519420034}
   spawner: {fileID: 1317582554}
-  picker: {fileID: 0}
+  picker: {fileID: 769251740}
   towerSeconds: 1
   doorsCloseSeconds: 0.2
   riseSeconds: 2.5

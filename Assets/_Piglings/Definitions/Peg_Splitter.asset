@@ -18,8 +18,12 @@ MonoBehaviour:
   mergeable: 1
   sprite: {fileID: 21300000, guid: 51390f13ebad05e49b32d582bfc361e8, type: 3}
   fallbackTint: {r: 0.6, g: 0.9, b: 1, a: 1}
-  spentSprite: {fileID: 0}
   effect: 2
+  settings:
+    rid: 7123189532910682408
+  copyThresholds: 0a0000001e0000003c0000006400000096000000d200000018010000
+  maxCopies: 8
+  followUpEveryCopies: 3
   levels:
   - masteryWeight: 0
     multBonus: 0
@@ -48,9 +52,33 @@ MonoBehaviour:
     bombRadius: 0
     cooldownSeconds: 0
     impulse: 0
-  copyThresholds: 0a0000001e0000003c0000006400000096000000d200000018010000
-  maxCopies: 8
-  followUpEveryCopies: 3
+  spentSprite: {fileID: 0}
+  contactCooldown: 0.2
   maxStonesPerThrow: 12
   pieceScale: 1
   countSplitHitsForMastery: 1
+  references:
+    version: 2
+    RefIds:
+    - rid: 7123189532910682408
+      type: {class: SplitterEffect, ns: Piglings.Definitions, asm: Piglings.Definitions}
+      data:
+        maxStonesPerThrow: 12
+        pieceScale: 1
+        countSplitHitsForMastery: 1
+        levels:
+        - masteryWeight: 0
+          scoreValue: 1
+          multBonus: 0
+          pieces: 2
+          fanAngle: 30
+        - masteryWeight: 0
+          scoreValue: 3
+          multBonus: 0
+          pieces: 3
+          fanAngle: 40
+        - masteryWeight: 0
+          scoreValue: 9
+          multBonus: 0
+          pieces: 4
+          fanAngle: 60
