@@ -52,8 +52,39 @@ MonoBehaviour:
   - {r: 0.9490197, g: 0.70980394, b: 0.26666668, a: 1}
   gold: {r: 1, g: 0.85, b: 0.42, a: 1}
   bigChainTotal: 300
-  pegMultColour: {r: 1, g: 0.35, b: 0.75, a: 1}
-  pegMultScale: 1
+  pegMultScale: 1.5
+  recordBands:
+  - minQuality: 0
+    colour: {r: 1, g: 0.95, b: 0.82, a: 1}
+    look: 0
+  - minQuality: 0.15
+    colour: {r: 1, g: 0.76, b: 0.25, a: 1}
+    look: 0
+  - minQuality: 0.3
+    colour: {r: 1, g: 0.52, b: 0.15, a: 1}
+    look: 0
+  - minQuality: 0.5
+    colour: {r: 1, g: 0.25, b: 0.2, a: 1}
+    look: 0
+  - minQuality: 0.7
+    colour: {r: 1, g: 0.3, b: 0.85, a: 1}
+    look: 1
+  - minQuality: 0.85
+    colour: {r: 0.26666668, g: 0, b: 0.5019608, a: 1}
+    look: 1
+  - minQuality: 0.95
+    colour: {r: 1, g: 1, b: 1, a: 1}
+    look: 2
+  multBands:
+  - minQuality: 0
+    colour: {r: 1, g: 0.7607844, b: 0.2509804, a: 1}
+    look: 0
+  - minQuality: 2
+    colour: {r: 1, g: 0.52156866, b: 0.14901961, a: 1}
+    look: 0
+  - minQuality: 3
+    colour: {r: 1, g: 0.2509804, b: 0.20000002, a: 1}
+    look: 1
   pulseAmount: 0.45
   pulsesPerSecond: 2
   rainbowSpeed: 0.8
