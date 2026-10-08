@@ -57,6 +57,11 @@ namespace Piglings.Simulation
                 enabled = false;
                 return;
             }
+            if (!CheckLayout())
+            {
+                enabled = false;
+                return;
+            }
             _store = new ProfileStore(campaign.SaveName);
             ReadSave();
             Wire(play, Play);
@@ -68,6 +73,52 @@ namespace Piglings.Simulation
             ShowTip(-1);
             if (confirmPanel != null) confirmPanel.SetActive(false);
             Refresh();
+        }
+
+        // The panels are switched on and off whole, so one that holds a thing it must not hide (the Canvas itself as the
+        // Confirm Panel, a tip card around the buttons…) blanks the screen. Said once, clearly, instead.
+        private bool CheckLayout()
+        {
+            var menuButtons = new Component[] { play, continueGame, resetSave };
+            bool ok = true;
+            ok &= NotInside(confirmPanel, "Confirm Panel", "Play / Continue / Reset save (only Yes and Cancel go inside it)", menuButtons);
+            ok &= NotInside(confirmPanel, "Confirm Panel", "the Menu or a tip card", menu, tipCards.ToArray());
+            ok &= NotInside(menu, "Menu", "Next or the tip cards (the Menu is hidden while they show)", nextTip, tipCards.ToArray());
+            ok &= NotInside(menu, "Menu", "the Confirm Panel", confirmPanel);
+            foreach (var card in tipCards)
+            {
+                ok &= NotInside(card, "a tip card", "Play / Continue / Reset save", menuButtons);
+                ok &= NotInside(card, "a tip card", "the Menu, the Confirm Panel or another card", menu, confirmPanel);
+                foreach (var other in tipCards)
+                    if (other != card) ok &= NotInside(card, "a tip card", "another tip card", other);
+            }
+            return ok;
+        }
+
+        private bool NotInside(GameObject panel, string panelName, string what, params Object[] things)
+        {
+            if (panel == null) return true;
+            foreach (var thing in things)
+            {
+                var t = thing is GameObject go ? go.transform : thing is Component c ? c.transform : null;
+                if (t == null || panel.transform == t || !t.IsChildOf(panel.transform)) continue;
+                Debug.LogError($"TitleScreen: {panelName} ({panel.name}) holds {thing.name} — it must not hold {what}. It is " +
+                               "switched on and off whole, so the screen would go blank. Give it its own child object.", this);
+                return false;
+            }
+            if (panel.GetComponent<Canvas>() != null && panel.transform.parent == null)
+            {
+                Debug.LogError($"TitleScreen: {panelName} is the Canvas itself — hiding it hides everything. Use a child panel.", this);
+                return false;
+            }
+            return true;
+        }
+
+        private bool NotInside(GameObject panel, string panelName, string what, Object first, Object[] rest)
+        {
+            var all = new List<Object> { first };
+            all.AddRange(rest);
+            return NotInside(panel, panelName, what, all.ToArray());
         }
 
         // Load also writes the save when there's none yet (a first launch) — harmless, the night would do the same.
