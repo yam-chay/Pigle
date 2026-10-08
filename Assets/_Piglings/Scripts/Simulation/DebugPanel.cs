@@ -164,7 +164,7 @@ namespace Piglings.Simulation
             {
                 var status = rule.For(ProfileEdits.HitsForStones(rule, _stones));
                 _stones = Stepper("Stones", _stones, rule.StartStones, rule.MaxStones);
-                GUILayout.Label($"   → level {status.Level}, refill +{status.Refill}");
+                GUILayout.Label($"   → stone level {status.StoneLevel}, evolution {status.Level}, refill +{status.Refill}");
                 GUILayout.BeginHorizontal();
                 GUILayout.Label("   Evolution:", GUILayout.Width(90f));
                 for (int level = 1; level <= rule.Evolutions.Count; level++)

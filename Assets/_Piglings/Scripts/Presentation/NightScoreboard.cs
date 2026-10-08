@@ -18,7 +18,7 @@ namespace Piglings.Presentation
     ///    row keeps that label and reveals its result next to it ("+360"), staying as one of the last throws. Newest on top; older rows step down,
     ///    shrink and dim; at most Row Brightness's length show. Misses (no wolf) leave no row.
     ///  - BEST TONIGHT: the best throw's breakdown ("84 × 3 × H2 =") and its result.
-    /// Colours: the Score Colours asset's quality bands (cream → amber → orange → red → magenta pulse → rainbow) by the
+    /// Colours: the Visuals asset's quality bands (cream → amber → orange → red → magenta pulse → rainbow) by the
     /// throw's quality (its worth ÷ its hour's gap) — a live row by its worth so far.
     /// The SCORE NUMBER, the hour BAR and the gap line all move only when a chain closes (M11.T6) — together with the chain's
     /// popup above the pig, to the new total with its result: the bar glides there, the number climbs. During a chain they
@@ -96,7 +96,7 @@ namespace Piglings.Presentation
 
         private void Start()
         {
-            _styles = new ScoreStyles(session.ScoreColours);
+            _styles = new ScoreStyles(session.Visuals);
             if (throwRow != null)
             {
                 _rowTop = throwRow.GetComponent<RectTransform>().anchoredPosition;
@@ -301,7 +301,7 @@ namespace Piglings.Presentation
             best.SetDetail(_bestTotal > 0 ? UiText.Fill(texts.bestResult, ("total", Numbers.Thousands(_bestTotal))) : "");
         }
 
-        // A score's look from the Score Colours asset: its quality band (points ÷ its hour's gap) — solid, pulse or rainbow.
+        // A score's look from the Visuals asset: its quality band (points ÷ its hour's gap) — solid, pulse or rainbow.
         // The marker follows the same style (pulsing, cycling the rainbow), not the band's flat colour — the rainbow band's
         // flat colour is white, which made the best rows' dots white.
         private void Paint(TemplateSlot slot, TMPro.TMP_Text text, int points, int hour)

@@ -37,7 +37,6 @@ namespace Piglings.Presentation
 
         [Header("Upgrade ready")]
         [SerializeField] private Color restColour = Color.white;
-        [SerializeField] private Color goldColour = new Color(1f, 0.8f, 0.25f, 1f);
         [Tooltip("Pulses per second.")]
         [SerializeField, Min(0.1f)] private float pulseRate = 1.5f;
         [Tooltip("How far toward gold the pulse goes at its peak (1 = fully gold).")]
@@ -88,7 +87,7 @@ namespace Piglings.Presentation
                 _pulsing = true;
                 // 0 → 1 → 0, eased, so it breathes rather than blinks.
                 float wave = 0.5f - 0.5f * Mathf.Cos(Time.time * pulseRate * 2f * Mathf.PI);
-                Tint(Color.Lerp(restColour, goldColour, wave * pulseStrength));
+                Tint(Color.Lerp(restColour, session.Visuals.Gold, wave * pulseStrength));
             }
         }
 

@@ -12,8 +12,8 @@ namespace Piglings.Meta
     public static class ProfileEdits
     {
         /// <summary>
-        /// The fewest total hits that give this many stones (StartStones or less = 0; past MaxStones or the thresholds = the
-        /// last that counts).
+        /// The fewest total hits that give this many stones (StartStones or less = 0; past the cap — the last Levels entry —
+        /// = the last that counts).
         /// </summary>
         public static int HitsForStones(StoneProgression stone, int stones)
         {
@@ -24,12 +24,12 @@ namespace Piglings.Meta
             return t[Math.Min(extra, t.Count) - 1];
         }
 
-        /// <summary>The stones an evolution level needs (level 1 or below = the start; past the list = the last).</summary>
+        /// <summary>The stones an evolution needs (evolution 1 or below = the start, or its own level if later; past the list =
+        /// the last).</summary>
         public static int StonesForLevel(StoneProgression stone, int level)
         {
-            var e = stone.Evolutions;
-            if (level <= 1 || e.Count == 0) return Math.Max(stone.StartStones, e.Count > 0 ? e[0].StonesNeeded : 0);
-            return e[Math.Min(level, e.Count) - 1].StonesNeeded;
+            if (stone.Evolutions.Count == 0) return stone.StartStones;
+            return Math.Max(stone.StartStones, stone.StonesForEvolution(level <= 1 ? 1 : level));
         }
 
         /// <summary>Set the weapon's saved hits so a night starts with this many stones (the level and refill follow).</summary>

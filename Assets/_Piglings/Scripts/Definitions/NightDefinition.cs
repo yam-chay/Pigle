@@ -23,6 +23,12 @@ namespace Piglings.Definitions
                  "a stone refill and a peg-placement round. Crossing the last one is dawn: the night is won. " +
                  "A value not above the one before is raised to it + 1.")]
         [SerializeField] private int[] thresholds = { 500, 1500, 3000, 5000, 8000 };
+        [Tooltip("HOUR: what chains thrown in hour 1 are multiplied by (at least 1). Balanced against the thresholds above — " +
+                 "a later night can start higher (e.g. 1.5). Fixed when the stone is thrown; never applied to the dawn sweep.")]
+        [SerializeField, Min(1f)] private float firstHourMultiplier = 1f;
+        [Tooltip("HOUR: each hour after the first adds this: 1 / 0.5 → hour 1 ×1, hour 2 ×1.5, hour 3 ×2… " +
+                 "(Moved here from the Scoring asset, R2.)")]
+        [SerializeField, Min(0f)] private float hourMultiplierStep = 0.5f;
         [Tooltip("How long a placement round lasts when nothing can be placed (empty shelf, no valid socket): " +
                  "long enough to watch the refill land on the pile.")]
         [SerializeField, Min(0f)] private float refillPauseSeconds = 1f;
@@ -46,6 +52,8 @@ namespace Piglings.Definitions
         public WallMaterialDefinition Wall => wall;
         public float SpawnInterval => spawnInterval;
         public IReadOnlyList<int> Thresholds => thresholds;
+        public float FirstHourMultiplier => firstHourMultiplier;
+        public float HourMultiplierStep => hourMultiplierStep;
         public float RefillPauseSeconds => refillPauseSeconds;
         public IReadOnlyList<PegLoadoutEntry> PegLoadout => pegLoadout;
         public int PegThrowsPerThreshold => pegThrowsPerThreshold;

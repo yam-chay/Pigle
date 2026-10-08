@@ -14,7 +14,7 @@ namespace Piglings.Presentation
     ///  - The result fits the Chain Area box (the font shrinks; ScorePopup.FitInto).
     ///  - The chain's close: above the pig (Chain Anchor = ChainPopupAnchor), "120 ×3 ×H1 = 360" — the only place the result
     ///    shows on the board (with the camera shake / big-hit juice).
-    /// Colours: the Score Colours asset's quality bands (cream → amber → orange → red → magenta pulse → rainbow) by quality —
+    /// Colours: the Visuals asset's quality bands (cream → amber → orange → red → magenta pulse → rainbow) by quality —
     /// the chain's worth so far (or its result) ÷ its hour's gap; so a chain's popups warm up as it grows.
     ///
     /// Only listens and spawns visuals — never touches game state. ChainGained carries a GameId / socket, not a position
@@ -40,10 +40,6 @@ namespace Piglings.Presentation
         [Tooltip("The hold's \"+1\": small (they come in showers).")]
         [SerializeField, Min(0.01f)] private float plainHoldScale = 0.5f;
 
-        [Header("Special peg \"+1 mult\"")]
-        [SerializeField] private Color multColour = new Color(1f, 0.35f, 0.75f);
-        [SerializeField, Min(0.01f)] private float multScale = 0.7f;
-
         [Header("Chain close (above the pig)")]
         [SerializeField] private bool showChainResult = true;
         [Tooltip("ChainPopupAnchor, above the pig: where the result appears, always in the same place.")]
@@ -54,8 +50,6 @@ namespace Piglings.Presentation
         [SerializeField] private Vector2 chainArea = new Vector2(3f, 0.6f);
         [Tooltip("The smallest font the result may shrink to.")]
         [SerializeField, Min(0.1f)] private float chainMinFontSize = 2f;
-        [Tooltip("A chain worth this much (or more) gets the full treatment: longest life, strongest shake.")]
-        [SerializeField, Min(1)] private int bigChainTotal = 300;
         [Tooltip("Smallest chain that gets the result popup (robots dropped); 0 = misses too.")]
         [SerializeField, Min(0)] private int minRobotsForChainPopup = 1;
 
@@ -69,8 +63,9 @@ namespace Piglings.Presentation
         // Start, not Awake/OnEnable: the session's bus is created in its Awake.
         private void Start()
         {
-            _styles = new ScoreStyles(session.ScoreColours);
-            _mult = new PopupColor { mode = PopupColorMode.Solid, gradient = PopupColor.Flat(multColour) };
+            _styles = new ScoreStyles(session.Visuals);
+            // The special peg's "+1 mult" look and "a big chain" live in the Visuals (one visual SO, R2).
+            _mult = new PopupColor { mode = PopupColorMode.Solid, gradient = PopupColor.Flat(session.Visuals.PegMultColour) };
             session.Bus.Subscribe<ChainGained>(OnGained);
             session.Bus.Subscribe<ChainScored>(OnChainScored);
             session.Bus.Subscribe<RobotRemoved>(OnRobotRemoved);
@@ -87,7 +82,7 @@ namespace Piglings.Presentation
         private void OnSpawned(RobotController robot) => _robots[robot.Id] = robot.transform;
         private void OnRobotRemoved(RobotRemoved e) => _robots.Remove(e.Robot);
 
-        /// <summary>A score's look: its quality band from the Score Colours asset (points ÷ its hour's gap).</summary>
+        /// <summary>A score's look: its quality band from the Visuals asset (points ÷ its hour's gap).</summary>
         private PopupColor StyleFor(int points, int hour) => _styles.ForQuality(session.ThrowQuality(points, hour));
 
         // The bus is synchronous: this runs inside the hit, so the robot / peg is still exactly where it happened.
@@ -106,7 +101,7 @@ namespace Piglings.Presentation
             else if (e.Cause == ChainGainCause.Peg && e.MultAdded > 0f)
             {
                 if (board == null || e.Socket < 0 || e.Socket >= board.SocketCount) return;
-                Spawn(board.Position(e.Socket), UiText.Fill(session.Texts.popupPegMult, ("mult", Numbers.Mult(e.MultAdded))), _mult, multScale, 0.4f);
+                Spawn(board.Position(e.Socket), UiText.Fill(session.Texts.popupPegMult, ("mult", Numbers.Mult(e.MultAdded))), _mult, session.Visuals.PegMultScale, 0.4f);
             }
             else if (e.Cause == ChainGainCause.PlainPeg && e.ScoreAdded > 0)
             {
@@ -123,7 +118,7 @@ namespace Piglings.Presentation
             if (!showChainResult || e.RobotsDropped < minRobotsForChainPopup || chainAnchor == null) return;
             string sum = UiText.Fill(session.Texts.popupChain, ("score", Numbers.Thousands(e.Score)), ("mult", Numbers.Mult(e.Mult)),
                                      ("hour", e.Hour.ToString()), ("hourMult", Numbers.Mult(e.HourMultiplier)), ("total", Numbers.Thousands(e.Total)));
-            float size = Mathf.Clamp01(e.Total / (float)bigChainTotal);
+            float size = Mathf.Clamp01(e.Total / (float)session.Visuals.BigChainTotal);
             var popup = Spawn(chainAnchor.position, sum, StyleFor(e.Total, e.Hour), chainScale, size);
             popup.FitInto(chainArea, chainMinFontSize);
         }
@@ -147,7 +142,7 @@ namespace Piglings.Presentation
                 Spawn(origin + new Vector3(-2.5f + i, -1.2f, 0f), $"{points} ×2", StyleFor(points, 1), robotScale, qualities[i]);
                 Spawn(origin + new Vector3(-2.5f + i, 0f, 0f), $"= {points}", StyleFor(points, 1), chainScale * 0.6f, qualities[i]);
             }
-            Spawn(origin + new Vector3(3.5f, -1.2f, 0f), "+1 mult", _mult, multScale, 0.4f);
+            Spawn(origin + new Vector3(3.5f, -1.2f, 0f), "+1 mult", _mult, session.Visuals.PegMultScale, 0.4f);
         }
 
         private ScorePopup Spawn(Vector3 position, string text, PopupColor color, float scale, float intensity)

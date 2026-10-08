@@ -17,12 +17,17 @@ namespace Piglings.Definitions
     }
 
     /// <summary>
-    /// The score colours every view shares (M10.D): popups by DEPTH, and closed throws by QUALITY (points ÷ the gap of
-    /// the hour they were thrown in — NightGoal.ThrowQuality). The scoreboard, the chain popup and the post-run all read
-    /// this one asset (through NightSession), so a colour is changed in one place. Unassigned = these defaults.
+    /// The one visual definition (R2: Score Colours + Hour Palette + the scattered golds and effect numbers, merged): every
+    /// colour and effect the views share, read through NightSession.Visuals, so a look is changed in one place.
+    /// - Score colours (M10.D): popups by DEPTH, and closed throws by QUALITY (points ÷ the gap of the hour they were thrown
+    ///   in — NightGoal.ThrowQuality).
+    /// - The night's hour colours, first → last, then the GOLD — dawn's colour, and every "gold" moment (a Bouncy bonus
+    ///   ring, the stone pile's upgrade pulse, a broken record).
+    /// - Effects: what counts as a big chain (popup size, camera shake), the special peg's "+1 mult" popup.
+    /// Unassigned = these defaults.
     /// </summary>
-    [CreateAssetMenu(menuName = "Piglings/Score Colours", fileName = "ScoreColours")]
-    public sealed class ScoreColoursDefinition : ScriptableObject
+    [CreateAssetMenu(menuName = "Piglings/Visuals", fileName = "Visuals")]
+    public sealed class VisualsDefinition : ScriptableObject
     {
         [Tooltip("Index = depth (0 = hit by the stone). Deeper than the list → the last colour. " +
                  "A new entry in the Inspector starts transparent — set its alpha.")]
@@ -46,6 +51,23 @@ namespace Piglings.Definitions
             new QualityBand { minQuality = 1f,    colour = Color.white, look = QualityLook.Rainbow },               // ≥ a whole hour
         };
 
+        [Header("Hours and gold")]
+        [Tooltip("The night's hour colours, hour 1 first. Spread over each night's hours with the Gold as the last stop (dawn): " +
+                 "hour 1 = the first colour, the hours between blend along the list (8 stops = 7 hours + dawn, one each). " +
+                 "A new entry in the Inspector starts transparent — set its alpha. (Was the Hour Palette asset, minus its last colour.)")]
+        [SerializeField] private List<Color> hourColours = new List<Color>();
+        [Tooltip("THE gold: dawn's colour (scoreboard DAWN, the post-run), a Bouncy peg's bonus ring, the stone pile's upgrade " +
+                 "pulse, a broken record.")]
+        [SerializeField] private Color gold = new Color(1f, 0.85f, 0.42f, 1f);
+
+        [Header("Effects")]
+        [Tooltip("A chain result this big counts as a full-size chain: the chain popup's growth and the camera shake both scale " +
+                 "up to it.")]
+        [SerializeField, Min(1)] private int bigChainTotal = 300;
+        [Tooltip("A special peg's \"+1 mult\" popup: its colour and size.")]
+        [SerializeField] private Color pegMultColour = new Color(1f, 0.35f, 0.75f, 1f);
+        [SerializeField, Min(0.01f)] private float pegMultScale = 0.7f;
+
         [Header("Animated looks")]
         [Tooltip("Pulse: how far the colour swings toward white (0..1), and how many pulses per second.")]
         [SerializeField, Range(0f, 1f)] private float pulseAmount = 0.45f;
@@ -58,7 +80,37 @@ namespace Piglings.Definitions
         public float PulsesPerSecond => pulsesPerSecond;
         public float RainbowSpeed => rainbowSpeed;
         public float RainbowSpread => rainbowSpread;
+        public Color Gold => gold;
+        public int BigChainTotal => bigChainTotal;
+        public Color PegMultColour => pegMultColour;
+        public float PegMultScale => pegMultScale;
         public int DepthCount => depthColours.Count;
+
+        /// <summary>Stops the hours are spread over: the hour colours + the gold (dawn).</summary>
+        public int HourStops => hourColours.Count + 1;
+
+        /// <summary>
+        /// Hour n's colour on a night of <paramref name="hours"/> hours: the hour colours + the gold sampled first → last over
+        /// the night and its dawn (PaletteSampling), blending between stops. No hour colours → white (NightSession warns).
+        /// </summary>
+        public Color ColourAt(int hour, int hours) =>
+            hourColours.Count == 0 ? Color.white : Stop(PaletteSampling.Position(hour, hours, HourStops));
+
+        public int HourColourCount => hourColours.Count;
+
+        /// <summary>Dawn's colour: the gold.</summary>
+        public Color DawnColour => gold;
+
+        // Stop i of [hour colours…, gold].
+        private Color Stop(float at)
+        {
+            int last = HourStops - 1;
+            int i = Mathf.Min(Mathf.FloorToInt(at), last);
+            int next = Mathf.Min(i + 1, last);
+            return Color.Lerp(StopAt(i), StopAt(next), at - i);
+        }
+
+        private Color StopAt(int i) => i < hourColours.Count ? hourColours[i] : gold;
         public int BandCount => qualityBands.Count;
 
         /// <summary>Depth d's colour; past the list → the last; an empty list → white.</summary>

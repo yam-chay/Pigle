@@ -18,14 +18,16 @@ namespace Piglings.Presentation
         [SerializeField] private TemplateSlot longestChain;
         [SerializeField] private TemplateSlot deepestChain;
         [SerializeField] private TemplateSlot bestNightScore;
-        [Tooltip("A record broken tonight: its value and its bar in this colour (the others keep the colours laid out).")]
-        [SerializeField] private Color newRecordColour = new Color(1f, 0.8f, 0.25f);
+        private Color _gold = Color.white;
 
         /// <param name="texts">The UI Texts (NightSession.Texts).</param>
+        /// <param name="gold">A record broken tonight: its value and its bar in this colour — the Visuals' gold (the others
+        /// keep the colours laid out).</param>
         /// <param name="delay">Seconds before the bars fill in.</param>
-        public void Show(RecordsReport records, UiTextsDefinition texts, float delay = 0f)
+        public void Show(RecordsReport records, UiTextsDefinition texts, Color gold, float delay = 0f)
         {
             if (records == null || texts == null) return;
+            _gold = gold;
             string none = texts.nothing;
             var now = records.After;
             var tonight = records.Tonight;
@@ -44,9 +46,9 @@ namespace Piglings.Presentation
             if (row == null) return;
             row.SetDetail(value);
             row.ShowBadge(broken);
-            if (broken && row.Detail != null) row.Detail.color = newRecordColour;
+            if (broken && row.Detail != null) row.Detail.color = _gold;
             if (row.Bar == null) return;
-            if (broken) row.Bar.TintGain(newRecordColour);
+            if (broken) row.Bar.TintGain(_gold);
             row.Bar.Show(0f, broken ? 1f : closeness, false, delay);
         }
     }

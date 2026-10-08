@@ -6,6 +6,7 @@ using Piglings.Rules;
 using Piglings.Runtime;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.Serialization;
 
 namespace Piglings.Simulation
 {
@@ -32,7 +33,11 @@ namespace Piglings.Simulation
         [SerializeField] private NightDefinition night;
 
         // Read once in Awake — edit the asset outside play mode (or restart play) to try a new curve.
+        [Tooltip("The global formula only: the MULT step per new depth.")]
         [SerializeField] private ScoringDefinition scoring;
+        [Tooltip("Peg_Plain: the peg every empty hold acts as — its level-1 Score Value is what a plain hold adds per contact, " +
+                 "its Contact Cooldown how often the same stone / ball can score on it.")]
+        [SerializeField] private PegDefinition plainPeg;
 
         [Tooltip("The wall's peg sockets (PegBoard on Barn). Empty = no sockets: every threshold is just a refill pause.")]
         [SerializeField] private PegBoard board;
@@ -42,12 +47,12 @@ namespace Piglings.Simulation
         [SerializeField] private CampaignDefinition campaign;
         [Tooltip("Builds the night's tower from its slices (and moves the tower top and walls). Required: the holds come from it.")]
         [SerializeField] private TowerBuilder tower;
-        [Tooltip("The night's colours, first → last (dawn gold), spread over each night's hours (scoreboard, hour dots, post-run). Optional.")]
-        [SerializeField] private HourPaletteDefinition hourPalette;
 
-        [Header("Look (both scenes)")]
-        [Tooltip("Score colours: popups by depth, throws by quality. Shared by every view. Empty = the built-in defaults.")]
-        [SerializeField] private ScoreColoursDefinition scoreColours;
+        [Header("Look")]
+        [Tooltip("Every colour and effect the views share: score colours (depth, quality), the hour colours and the gold, the " +
+                 "big-chain size, the peg mult popup. Empty = the built-in defaults (hours white).")]
+        [FormerlySerializedAs("scoreColours")]
+        [SerializeField] private VisualsDefinition visuals;
         [Tooltip("Every text the code writes into the UI (scoreboard, popups, post-run, night sign), as templates. Shared by " +
                  "every view. Empty = the built-in texts.")]
         [SerializeField] private UiTextsDefinition uiTexts;
@@ -87,27 +92,26 @@ namespace Piglings.Simulation
         public bool StartsInNight { get; private set; }
 
         /// <summary>
-        /// Hour n's colour: the palette sampled over tonight's hours, first → last (white without a palette). The palette's
-        /// last colour is dawn's (DawnColour), on every night.
+        /// Hour n's colour: the Visuals' hour colours + gold sampled over tonight's hours, first → last (white without hour
+        /// colours). The gold is dawn's (DawnColour), on every night.
         /// </summary>
-        public Color HourColour(int hour) =>
-            hourPalette != null ? hourPalette.ColourAt(hour, _referee != null ? ThresholdCount : hour) : Color.white;
+        public Color HourColour(int hour) => Visuals.ColourAt(hour, _referee != null ? ThresholdCount : hour);
 
-        /// <summary>Dawn's colour: the palette's last (the gold); white without a palette.</summary>
-        public Color DawnColour => hourPalette != null ? hourPalette.DawnColour : Color.white;
+        /// <summary>Dawn's colour: the gold.</summary>
+        public Color DawnColour => Visuals.DawnColour;
 
-        /// <summary>The score colours (depth, throw quality) every view shares; the defaults when none is assigned.</summary>
-        public ScoreColoursDefinition ScoreColours
+        /// <summary>Every colour and effect the views share (R2: one visual SO); the defaults when none is assigned.</summary>
+        public VisualsDefinition Visuals
         {
             get
             {
-                if (scoreColours != null) return scoreColours;
+                if (visuals != null) return visuals;
                 // The defaults live in a private instance, never in the serialized field (that would dirty the scene in edit mode).
-                if (_defaultColours == null) _defaultColours = ScriptableObject.CreateInstance<ScoreColoursDefinition>();
-                return _defaultColours;
+                if (_defaultVisuals == null) _defaultVisuals = ScriptableObject.CreateInstance<VisualsDefinition>();
+                return _defaultVisuals;
             }
         }
-        private ScoreColoursDefinition _defaultColours;
+        private VisualsDefinition _defaultVisuals;
 
         /// <summary>The UI's text templates every view shares; the built-in texts when none is assigned.</summary>
         public UiTextsDefinition Texts
@@ -340,23 +344,24 @@ namespace Piglings.Simulation
         private void FixStone()
         {
             var weapon = _night.Throwable;
-            // The evolutions: one per entry of the weapon's Levels list (its look stays in the definition).
+            // The evolutions: one per entry of the weapon's Evolutions list (its look stays in the definition).
             var evolutions = new List<StoneEvolution>();
-            foreach (var level in weapon.Levels)
-                if (level != null) evolutions.Add(new StoneEvolution(level.stonesNeeded, level.refill, level.baseScore));
-            _stones = new StoneProgression(weapon.StoneThresholds, weapon.StartStones, weapon.MaxStones, evolutions);
-            var problem = MasteryLevels.Problem(weapon.StoneThresholds);
-            if (problem != null) Debug.LogWarning($"{weapon.name}: stone thresholds — {problem}.", weapon);
+            foreach (var evolution in weapon.Evolutions)
+                if (evolution != null) evolutions.Add(new StoneEvolution(evolution.atLevel, evolution.refill, evolution.baseScore));
+            _stones = new StoneProgression(weapon.StoneLevels, weapon.StartStones, evolutions);
+            var problem = MasteryLevels.Problem(weapon.StoneLevels);
+            if (problem != null) Debug.LogWarning($"{weapon.name}: Stone Levels — {problem}.", weapon);
             var evolutionProblem = StoneProgression.Problem(evolutions);
             if (evolutionProblem != null)
-                Debug.LogWarning($"{weapon.name}: Levels — {evolutionProblem}. Fill each level's Stones Needed (rising) and Refill.", weapon);
+                Debug.LogWarning($"{weapon.name}: Evolutions — {evolutionProblem}. Fill each evolution's At Level (rising) and Refill.", weapon);
             int hits = _progression.Profile.DirectHits(weapon.Id);
             _savedHitsAtStart = hits;
             StoneAtStart = _stones.For(hits);
             var s = StoneAtStart;
-            Debug.Log($"Piglings save: {weapon.Id} tonight — level {s.Level}, {s.Stones} stones, refill {s.Refill} ({hits} hits" +
+            Debug.Log($"Piglings save: {weapon.Id} tonight — stone level {s.StoneLevel}/{_stones.MaxStoneLevel}, evolution {s.Level}, " +
+                      $"{s.Stones} stones, refill {s.Refill} ({hits} hits" +
                       (s.AtCap ? ", at the cap" : $", +1 stone at {s.NextThreshold}") +
-                      (s.NextEvolutionStones < 0 ? ")" : $"; level {s.NextEvolutionLevel} at {s.NextEvolutionStones} stones)"), this);
+                      (s.NextEvolutionStones < 0 ? ")" : $"; evolution {s.NextEvolutionLevel} at {s.NextEvolutionStones} stones)"), this);
         }
 
         // A fast Retry left a one-shot flag in the save: this load starts straight in the night. Cleared and saved now, so a
@@ -479,7 +484,7 @@ namespace Piglings.Simulation
             return result;
         }
 
-        // One colour per hour + dawn's (the last) is the intent (8 colours = 7 hours + dawn). A night with more hours than
+        // One Hour Colour per hour, then the gold for dawn, is the intent (7 colours + gold = 7 hours + dawn). A night with more hours than
         // that still plays — the hours blend between colours — but it says so. Checked at load, and in the editor (OnValidate).
         private void CheckPalette() => PaletteProblems(true);
 
@@ -487,10 +492,10 @@ namespace Piglings.Simulation
 
         private void PaletteProblems(bool atLoad)
         {
-            if (hourPalette == null) return;
-            if (hourPalette.Count == 0)
+            if (visuals == null) return;
+            if (visuals.HourColourCount == 0)
             {
-                Debug.LogWarning($"{hourPalette.name} has no colours: every hour is white.", hourPalette);
+                Debug.LogWarning($"{visuals.name} has no Hour Colours: every hour is white.", visuals);
                 return;
             }
             if (atLoad) { WarnIfShort(_night); return; }
@@ -501,12 +506,12 @@ namespace Piglings.Simulation
 
         private void WarnIfShort(NightDefinition n)
         {
-            if (n == null || hourPalette == null) return;
-            int needed = n.Thresholds.Count + 1;   // its hours + dawn
-            if (needed > hourPalette.Count)
-                Debug.LogWarning($"{n.name}: {n.Thresholds.Count} hours + dawn need {needed} colours, but {hourPalette.name} has " +
-                                 $"{hourPalette.Count} — some hours will blend between colours. Add colours (the last stays dawn's gold).",
-                                 hourPalette);
+            if (n == null || visuals == null) return;
+            int needed = n.Thresholds.Count;   // one hour colour per hour; dawn is the gold
+            if (needed > visuals.HourColourCount)
+                Debug.LogWarning($"{n.name}: {needed} hours need {needed} Hour Colours, but {visuals.name} has " +
+                                 $"{visuals.HourColourCount} — some hours will blend between colours. Add colours (dawn is the Gold).",
+                                 visuals);
         }
 
         // ---------- the save ----------
@@ -727,19 +732,34 @@ namespace Piglings.Simulation
             return a;
         }
 
-        // The stone's base comes from tonight's level (fixed when the night starts), the rest from the scoring asset. Without
-        // one the night still plays on ScoreCurve's defaults (wolves 10, holds 1, +1 per depth, hours +0.5), but says so —
-        // silently scoring on values nobody chose would make tuning confusing.
+        // Each number from its owner (R2): the stone's base from tonight's level (fixed when the night starts), the wolf
+        // value from the night's robot, the plain hold's score and cooldown from Peg_Plain, the depth step from the Scoring
+        // asset, the hour multipliers from the night. A missing owner falls back to ScoreCurve's default for that number
+        // (holds 1 / 0.2 s, +1 per depth), but says so — silently scoring on values nobody chose would make tuning confusing.
         private ScoreCurve BuildCurve()
         {
+            var defaults = new ScoreCurve();
             int stoneBase = _stones.BaseScoreFor(StoneAtStart.Level);
-            if (scoring == null)
+            int wolfValue = _night.Robot != null ? _night.Robot.ScoreValue : defaults.WolfValue;
+
+            float multPerNewDepth = defaults.MultPerNewDepth;
+            if (scoring != null) multPerNewDepth = scoring.MultPerNewDepth;
+            else Debug.LogWarning("NightSession: no Scoring asset assigned — +1 mult per new depth (the default).", this);
+
+            int plainScore = defaults.PlainPegScore;
+            float plainCooldown = defaults.PlainHoldCooldown;
+            if (plainPeg == null)
+                Debug.LogWarning("NightSession: no Plain Peg assigned — plain holds score the default (+1, 0.2 s cooldown).", this);
+            else
             {
-                Debug.LogWarning("NightSession: no ScoringDefinition assigned, using default scoring.", this);
-                return new ScoreCurve(stoneBase);
+                plainCooldown = plainPeg.ContactCooldown;
+                if (plainPeg.ScoreValueAt(1) >= 0) plainScore = plainPeg.ScoreValueAt(1);
+                else Debug.LogWarning($"{plainPeg.name}: no level-1 Score Value — plain holds score the default (+1). " +
+                                      "Add a Levels entry with its Score Value.", plainPeg);
             }
-            return new ScoreCurve(stoneBase, scoring.WolfValue, scoring.PlainPegScore, scoring.MultPerNewDepth, scoring.HourMultiplierStep,
-                                  scoring.PlainHoldCooldown);
+
+            return new ScoreCurve(stoneBase, wolfValue, plainScore, multPerNewDepth, _night.HourMultiplierStep, plainCooldown,
+                                  _night.FirstHourMultiplier);
         }
 
         private void OnDestroy()

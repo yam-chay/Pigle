@@ -8,13 +8,13 @@ using Piglings.Definitions; using Piglings.Events; using Piglings.Meta; using Pi
 partial class P{
 static void PostRunChecks(){
  // --- The stone's base by evolution level (M10.S) ---
- { var sp=new StoneProgression(new[]{10,20,30},10,25);
+ { var sp=new StoneProgression(new[]{10,20,30},10);
    Check(sp.BaseScoreFor(1)==10 && sp.BaseScoreFor(2)==20 && sp.BaseScoreFor(3)==40 && sp.BaseScoreFor(4)==80 && sp.BaseScoreFor(9)==80 && sp.BaseScoreFor(0)==10,
      "the stone's base by level: 10 / 20 / 40 / 80 (past the list → the last)");
-   var custom=new StoneProgression(new int[0],10,25,new[]{new StoneEvolution(10,1,5),new StoneEvolution(12,2,-3)});
+   var custom=new StoneProgression(new int[0],10,new[]{new StoneEvolution(1,1,5),new StoneEvolution(3,2,-3)});
    Check(custom.BaseScoreFor(1)==5 && custom.BaseScoreFor(2)==0,"a level's own base; never negative"); }
  // --- The evolution track bar (StoneProgression.TrackPosition): evenly spaced slots 10 / 15 / 20 / 25 ---
- { var sp=new StoneProgression(new[]{10,20,30,40,50},10,25);
+ { var sp=new StoneProgression(new[]{10,20,30,40,50},10);
    Check(sp.TrackPosition(10)==0f && Math.Abs(sp.TrackPosition(15)-1f/3f)<1e-5f && Math.Abs(sp.TrackPosition(20)-2f/3f)<1e-5f && sp.TrackPosition(25)==1f,
      "the track: 10 → 0, 15 → ⅓, 20 → ⅔, 25 → 1 (on the slots)");
    Check(Math.Abs(sp.TrackPosition(12)-0.4f/3f)<1e-5f && sp.TrackPosition(5)==0f && sp.TrackPosition(40)==1f,"between slots by the stones; clamped below / past");
@@ -27,7 +27,7 @@ static void PostRunChecks(){
    var creep=PostRunProgress.StoneRow(21,25,sp);   // 12 stones both: 10% → 50% toward the 13th
    Check(creep.EvolutionBar.After>creep.EvolutionBar.Before && Math.Abs(creep.EvolutionBar.Before-(2.1f/5f)/3f)<1e-4f,
      "no stone earned, but hits gained: the bar still grows (12.1 → 12.5 stones on the track)");
-   var capped=new StoneProgression(new[]{1},10,11);
+   var capped=new StoneProgression(new[]{1},10);
    Check(capped.StonesWithProgress(500)==11f,"at the cap: just the count"); }
  // --- The night's facts ---
  { var n=new Night(new NightGoal(new[]{50,5000},10,0));
@@ -118,7 +118,7 @@ static void PostRunChecks(){
  { var plan=new CampaignPlan(new[]{"n1","n2","n3"},new[]{"peg_bomb","peg_splitter",null},new[]{"peg_bouncy"});
    var types=new[]{"peg_bouncy","peg_bomb","peg_splitter"};
    Func<string,PegProgression> rule=id=>id=="peg_unknown"?null:new PegProgression(new[]{4,10,20},null,1,10,3);
-   var stones=new StoneProgression(new[]{10,20,30,40},10,25);
+   var stones=new StoneProgression(new[]{10,20,30,40},10);
    var before=new PlayerProfile(); before.Weapon("stone").DirectHits=15; before.Peg("peg_bouncy").Triggers.Add(2);
    before.Robot("wolf").Dropped=100; before.Records.BestThrow=500;
    // Tonight: 7 stone hits (15 -> 22: a stone earned), Bouncy fired twice (2 -> 4: a copy earned), the dawn on night 1 unlocked the

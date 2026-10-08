@@ -59,7 +59,7 @@ namespace Piglings.Presentation
         public void Show(float delay)
         {
             var s = session.State;
-            if (_styles == null) _styles = new ScoreStyles(session.ScoreColours);
+            if (_styles == null) _styles = new ScoreStyles(session.Visuals);
             int hours = session.ThresholdCount;
             bool dawn = s.Result == NightResult.Won;
             // The hour being played when the night ended (State.Hour moves on at a round's start; a loss has no round waiting).

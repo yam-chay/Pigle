@@ -106,7 +106,7 @@ namespace Piglings.Presentation
             _filled = true;
             if (nightPanel != null) nightPanel.Show(barsDelay);
             var report = session.BuildPostRunReport();
-            if (recordsPanel != null) recordsPanel.Show(report.Records, session.Texts, barsDelay);
+            if (recordsPanel != null) recordsPanel.Show(report.Records, session.Texts, session.Visuals.Gold, barsDelay);
             if (progressPanel != null) progressPanel.Show(report, barsDelay);
             if (primaryLabel != null) primaryLabel.text = Label(flow.Primary);
             if (secondaryLabel != null) secondaryLabel.text = Label(flow.Secondary);

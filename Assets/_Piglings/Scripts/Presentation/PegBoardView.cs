@@ -43,7 +43,6 @@ namespace Piglings.Presentation
         [SerializeField, Range(0f, 1f)] private float popAmount = 0.3f;
         [Tooltip("fx_burst_ring: the small gold ring when a ball gets the bonus. Empty = no ring.")]
         [SerializeField] private Sprite bonusRing;
-        [SerializeField] private Color bonusRingColour = new Color(1f, 0.8f, 0.25f, 1f);
         [SerializeField] private FxMotion bonusRingMotion = new FxMotion { seconds = 0.35f, startScale = 0.2f, endScale = 0.9f };
 
         [Header("Splitter")]
@@ -161,7 +160,7 @@ namespace Piglings.Presentation
         {
             if (e.Socket >= _sockets.Length || _sockets[e.Socket].Peg == null) return;
             var peg = _sockets[e.Socket].Peg;
-            _fx.Spawn(bonusRing, peg.transform.position, bonusRingColour, bonusRingMotion, peg.sortingLayerID, peg.sortingOrder + 3);
+            _fx.Spawn(bonusRing, peg.transform.position, session.Visuals.Gold, bonusRingMotion, peg.sortingLayerID, peg.sortingOrder + 3);
         }
 
         private void OnBombExploded(BombExploded e)
