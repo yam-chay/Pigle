@@ -11,7 +11,7 @@ namespace Piglings.Definitions
     /// the id as a string, never this asset.
     ///
     /// R4: the effect is one class per effect (PegEffectSettings, [SerializeReference]) with only its own fields and its own
-    /// levels: pick Effect, see that effect's settings. The getters below are unchanged, so nothing that reads a peg moved.
+    /// levels: pick Effect, see that effect's settings. Callers read it through the getters below, never the classes.
     /// </summary>
     [CreateAssetMenu(menuName = "Piglings/Peg Definition", fileName = "Peg_")]
     public sealed class PegDefinition : ScriptableObject
@@ -49,16 +49,6 @@ namespace Piglings.Definitions
         [FormerlySerializedAs("followUpAtCopies")]
         [SerializeField, Min(0)] private int followUpEveryCopies = 3;
 
-        // ---------- R4 legacy: the pre-R4 effect fields, kept hidden ONLY so the migration below can read them ----------
-        // When an asset has no Settings yet (saved before R4), Settings is built from these — in memory at once, and written
-        // into the asset in the editor (OnValidate + SetDirty; save the project). Deleted in R4b once every peg is saved.
-        [SerializeField, HideInInspector] private List<PegLevel> levels = new List<PegLevel>();
-        [SerializeField, HideInInspector] private Sprite spentSprite;
-        [SerializeField, HideInInspector] private float contactCooldown = 0.2f;
-        [SerializeField, HideInInspector] private int maxStonesPerThrow = 4;
-        [SerializeField, HideInInspector] private float pieceScale = 0.8f;
-        [SerializeField, HideInInspector] private bool countSplitHitsForMastery = true;
-
         public string Id => id;
 
         /// <summary>The name players read: Display Name, or the id without "peg_", capitalised.</summary>
@@ -80,19 +70,19 @@ namespace Piglings.Definitions
         public int LevelCount => Settings.LevelCount;
 
         /// <summary>
-        /// The effect's settings: the asset's own, or — for an asset saved before R4 — built from its legacy fields (the same
-        /// values, so play is identical before the asset is re-saved). Never null.
+        /// The effect's settings. Never null: an asset whose settings are missing or don't match its Effect (edited outside the
+        /// Inspector) plays with a fresh set for its Effect — the editor writes one in on the next validate.
         /// </summary>
         public PegEffectSettings Settings
         {
             get
             {
                 if (settings != null && settings.Kind == effect) return settings;
-                if (_migrated == null || _migrated.Kind != effect) _migrated = settings == null ? FromLegacy() : PegEffectSettings.Create(effect);
-                return _migrated;
+                if (_fallback == null || _fallback.Kind != effect) _fallback = PegEffectSettings.Create(effect);
+                return _fallback;
             }
         }
-        [System.NonSerialized] private PegEffectSettings _migrated;
+        [System.NonSerialized] private PegEffectSettings _fallback;
 
         /// <summary>Bomb: how it looks while spent (after going off, until it recharges). Null for other effects.</summary>
         public Sprite SpentSprite => (Settings as BombEffect)?.spentSprite;
@@ -141,75 +131,16 @@ namespace Piglings.Definitions
         /// <summary>Plain: seconds before the same hitter scores on the same hold again (0.2 for other effects — never read).</summary>
         public float ContactCooldown => (Settings as PlainEffect)?.contactCooldown ?? 0.2f;
 
-        // ---------- the R4 migration: the legacy fields → the picked effect's own class (same values) ----------
-
-        private PegEffectSettings FromLegacy()
-        {
-            switch (effect)
-            {
-                case PegEffect.Bouncy:
-                {
-                    var e = new BouncyEffect { levels = new List<BouncyLevel>() };
-                    foreach (var l in levels) e.levels.Add(new BouncyLevel { masteryWeight = l.masteryWeight, scoreValue = l.scoreValue, multBonus = l.multBonus, bounciness = l.bounciness });
-                    return Filled(e, e.levels.Count == 0, () => e.levels.Add(new BouncyLevel()));
-                }
-                case PegEffect.Splitter:
-                {
-                    var e = new SplitterEffect { maxStonesPerThrow = maxStonesPerThrow, pieceScale = pieceScale,
-                                                 countSplitHitsForMastery = countSplitHitsForMastery, levels = new List<SplitterLevel>() };
-                    foreach (var l in levels) e.levels.Add(new SplitterLevel { masteryWeight = l.masteryWeight, scoreValue = l.scoreValue, multBonus = l.multBonus, pieces = l.pieces, fanAngle = l.fanAngle });
-                    return Filled(e, e.levels.Count == 0, () => e.levels.Add(new SplitterLevel()));
-                }
-                case PegEffect.Bomb:
-                {
-                    var e = new BombEffect { spentSprite = spentSprite, levels = new List<BombLevel>() };
-                    foreach (var l in levels) e.levels.Add(new BombLevel { masteryWeight = l.masteryWeight, scoreValue = l.scoreValue, multBonus = l.multBonus, bombRadius = l.bombRadius, cooldownSeconds = l.cooldownSeconds, impulse = l.impulse });
-                    return Filled(e, e.levels.Count == 0, () => e.levels.Add(new BombLevel()));
-                }
-                default:
-                {
-                    var e = new PlainEffect { contactCooldown = contactCooldown, levels = new List<PlainLevel>() };
-                    foreach (var l in levels) e.levels.Add(new PlainLevel { masteryWeight = l.masteryWeight, scoreValue = l.scoreValue });
-                    return Filled(e, e.levels.Count == 0, () => e.levels.Add(new PlainLevel()));
-                }
-            }
-        }
-
-        // An effect with no legacy levels gets one default level, never an empty list.
-        private static PegEffectSettings Filled(PegEffectSettings e, bool empty, System.Action addDefault)
-        {
-            if (empty) addDefault();
-            return e;
-        }
-
 #if UNITY_EDITOR
-        // Editor only: write the migrated settings into the asset (an asset saved before R4), and give a changed Effect a
-        // fresh settings class. SetDirty so the next Save Project keeps it.
+        // Editor only: a new asset, or a changed Effect, gets a fresh settings class for it (one sensible level). SetDirty so
+        // the next Save Project keeps it.
         private void OnValidate()
         {
             if (settings != null && settings.Kind == effect) return;
-            settings = settings == null ? FromLegacy() : PegEffectSettings.Create(effect);
-            _migrated = null;
+            settings = PegEffectSettings.Create(effect);
+            _fallback = null;
             UnityEditor.EditorUtility.SetDirty(this);
         }
 #endif
-    }
-
-    /// <summary>
-    /// R4 legacy: one level of the pre-R4 all-effects list. Read only by the migration (PegDefinition.FromLegacy); deleted in
-    /// R4b. Edit a peg's levels in its effect's settings instead.
-    /// </summary>
-    [System.Serializable]
-    public sealed class PegLevel
-    {
-        public float masteryWeight;
-        public float multBonus;
-        public int scoreValue = -1;
-        public float bounciness;
-        public int pieces = 1;
-        public float fanAngle;
-        public float bombRadius;
-        public float cooldownSeconds;
-        public float impulse;
     }
 }

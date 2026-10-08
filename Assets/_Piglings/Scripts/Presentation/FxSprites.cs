@@ -1,21 +1,9 @@
 using System.Collections.Generic;
+using Piglings.Definitions;
 using UnityEngine;
 
 namespace Piglings.Presentation
 {
-    /// <summary>How one effect sprite moves over its life: grows from StartScale to EndScale, rises Rise units, fades out.</summary>
-    [System.Serializable]
-    public struct FxMotion
-    {
-        [Min(0.01f)] public float seconds;
-        [Min(0f)] public float startScale;
-        [Min(0f)] public float endScale;
-        [Tooltip("World units it drifts up over its life.")]
-        public float rise;
-        [Tooltip("Degrees per second (a little spin reads as sparkle).")]
-        public float spin;
-    }
-
     /// <summary>
     /// One-shot effect sprites (a hit star, a rising sparkle, a burst ring): spawned, animated, destroyed. Plain class
     /// owned by a view, like ItemPile — the view keeps the Inspector settings and calls Update each frame.
