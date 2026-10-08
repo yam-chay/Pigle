@@ -20,12 +20,12 @@ namespace Piglings.Meta
     ///   "robots":  { "wolfbot_basic": { "ballKnocks": 412, "knockedByBall": 300, "dropped": 950, "swept": 210 } },
     ///   "pegs":    { "peg_bomb":      { "knocks": 12, "triggers": [9, 2, 0] } },
     ///   "campaign": { "night": 1, "dawns": { "night_01": 3 }, "startInNight": false },
-    ///   "towers":  { "night_02": ["slice_barn", "slice_wood", "slice_barn"] },
+    ///   "tower":   ["slice_barn", "slice_wood", "slice_barn"],
     ///   "records": { "bestThrow": 620, "longestChain": 9, "deepestChain": 3, "bestNightScore": 4100, "mostWolves": 94 },
     ///   "debug":   { "origin": "scenario Scenario_Night3" }
     /// }
     /// ("debug" — M11.T3, written only when the save came from the debug panel — is one more of those additions.)
-    /// ("pegs", "triggers", "campaign", "towers", and M10.E's "dropped", "swept", "startInNight" and "records" came later, inside
+    /// ("pegs", "triggers", "campaign", "tower" (R3; the per-night "towers" before it is ignored), and M10.E's "dropped", "swept", "startInNight" and "records" came later, inside
     /// version 1: an older build reads the file fine and ignores them — but would drop them if it then saved.)
     /// </code>
     /// One object per id (not a bare number), so a later field (feats…) is an addition, not a new version.
@@ -65,8 +65,6 @@ namespace Piglings.Meta
             var dawns = new JObject();
             foreach (var d in profile.Dawns) dawns[d.Key] = d.Value;
 
-            var towers = new JObject();
-            foreach (var t in profile.Towers) towers[t.Key] = new JArray(t.Value);
 
             var root = new JObject
             {
@@ -75,7 +73,7 @@ namespace Piglings.Meta
                 ["robots"] = robots,
                 ["pegs"] = pegs,
                 ["campaign"] = new JObject { ["night"] = profile.CurrentNight, ["dawns"] = dawns, ["startInNight"] = profile.StartInNight },
-                ["towers"] = towers,
+                ["tower"] = new JArray(profile.Tower),
                 ["records"] = new JObject
                 {
                     ["bestThrow"] = profile.Records.BestThrow, ["longestChain"] = profile.Records.LongestChain,
@@ -157,19 +155,18 @@ namespace Piglings.Meta
                     }
             }
 
-            if (!ReadSection(root, "towers", out var towers, ref problem)) return ProfileReadResult.Corrupt;
-            if (towers != null)
-                foreach (var entry in towers.Properties())
+            // R3: one tower for the campaign. The old per-night "towers" section is no longer read (ignored like any unknown
+            // field), so an older save starts with no tower choice.
+            var tower = root["tower"];
+            if (tower != null && tower.Type != JTokenType.Null)
+            {
+                if (!(tower is JArray slices)) { problem = "tower isn't a list"; return ProfileReadResult.Corrupt; }
+                foreach (var slice in slices)
                 {
-                    if (entry.Name.Length == 0 || !(entry.Value is JArray slices)) { problem = $"towers.\"{entry.Name}\" isn't a list"; return ProfileReadResult.Corrupt; }
-                    var list = new System.Collections.Generic.List<string>();
-                    foreach (var slice in slices)
-                    {
-                        if (slice.Type != JTokenType.String || ((string)slice).Length == 0) { problem = $"towers.{entry.Name} has a slice that isn't an id"; return ProfileReadResult.Corrupt; }
-                        list.Add((string)slice);
-                    }
-                    result.Towers[entry.Name] = list;
+                    if (slice.Type != JTokenType.String || ((string)slice).Length == 0) { problem = "tower has a slice that isn't an id"; return ProfileReadResult.Corrupt; }
+                    result.Tower.Add((string)slice);
                 }
+            }
 
             if (!ReadSection(root, "records", out var records, ref problem)) return ProfileReadResult.Corrupt;
             if (records != null)

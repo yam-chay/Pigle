@@ -37,7 +37,7 @@ namespace Piglings.Presentation
         private void Start()
         {
             if (anchor == null) { Debug.LogWarning("RugStonesView: set Anchor (where the pile sits on the rug).", this); return; }
-            var throwable = session.Night.Throwable;
+            var throwable = session.Weapon;
             var stone = session.StoneAtStart;
             var sprite = throwable.SpriteFor(stone.Level);
             if (sprite == null) { Debug.LogWarning($"RugStonesView: {throwable.name} has no sprite for level {stone.Level}.", this); return; }

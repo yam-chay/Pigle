@@ -99,7 +99,7 @@ namespace Piglings.Simulation
             var t = pile != null ? pile.ReleaseHeld(container) : Instantiate(throwablePrefab, aim.From, Quaternion.identity, container);
             if (t == null) return;
             t.transform.position = aim.From;
-            t.Launch(session, session.Night.Throwable, launch);
+            t.Launch(session, session.Weapon, launch);
             Thrown?.Invoke(aim.Velocity.normalized);
             readyAt = Time.time + throwCooldown;
 

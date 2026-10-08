@@ -47,6 +47,9 @@ namespace Piglings.Simulation
         [Tooltip("The scene's RobotSpawner: on a loss, its swept robots hold on until the wolf's time is up. Empty = they fall " +
                  "as the night ends (during the beat and the wolf).")]
         [SerializeField] private RobotSpawner spawner;
+        [Tooltip("The day phase's slice picker: the flow starts it once the camera reaches the Tower frame and ends it when the " +
+                 "Tower state is left. Its own settings are on it. Empty = no slice placement.")]
+        [SerializeField] private SlicePicker picker;
 
         [Header("Camera moves")]
         [Tooltip("Barn room ⇄ Tower (seconds).")]
@@ -284,6 +287,14 @@ namespace Piglings.Simulation
 
         private void Update()
         {
+            // The slice picker runs while the Tower frame is reached and still: the flow decides WHEN, the picker HOW.
+            bool placing = State == FlowState.Tower && !CameraMoving;
+            if (picker != null && placing != picker.IsPlacing)
+            {
+                if (placing) picker.Begin();
+                else picker.End();
+            }
+
             switch (State)
             {
                 case FlowState.Boot:

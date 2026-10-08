@@ -79,7 +79,7 @@ namespace Piglings.Simulation
         private void ReadSave()
         {
             var profile = session.Profile;
-            _stones = session.StoneRule != null ? session.StoneRule.For(profile.DirectHits(session.Night.Throwable.Id)).Stones : 0;
+            _stones = session.StoneRule != null ? session.StoneRule.For(profile.DirectHits(session.Weapon.Id)).Stones : 0;
             _nightsWon = ProfileEdits.NightsWon(profile, session.Plan);
             _night = session.NightIndex + 1;
             _startInNight = false;
@@ -195,7 +195,7 @@ namespace Piglings.Simulation
         {
             int stones = _stones, nightsWon = _nightsWon, night = _night;
             var copies = new Dictionary<PegDefinition, int>(_copies);
-            var weapon = session.Night.Throwable.Id;
+            var weapon = session.Weapon.Id;
             var rule = session.StoneRule;
             var plan = session.Plan;
             bool startInNight = _startInNight;

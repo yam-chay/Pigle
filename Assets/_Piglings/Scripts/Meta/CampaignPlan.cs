@@ -4,19 +4,25 @@ namespace Piglings.Meta
 {
     /// <summary>
     /// The campaign as plain values (Meta can't read the CampaignDefinition asset; NightSession builds this from it):
-    /// the nights in order (by NightDefinition id), which peg type a dawn on each night unlocks, and the types owned from
-    /// the start. Unlocks are DERIVED from the profile's dawns, never stored — so the unlock table can change freely.
+    /// the nights in order (by NightDefinition id), what a dawn on each night unlocks (a peg type; slices — R3), and what's
+    /// owned from the start (peg types, slices). Unlocks are DERIVED from the profile's dawns, never stored — so the unlock
+    /// table can change freely.
     /// </summary>
     public sealed class CampaignPlan
     {
         private readonly string[] _nights;
         private readonly string[] _unlocks;        // per night: the peg type a dawn on it unlocks (null = none)
         private readonly List<string> _starting;
+        private readonly List<string> _startingSlices = new List<string>();
+        private readonly List<string>[] _sliceUnlocks;   // per night: the slices a dawn on it unlocks
 
         public int NightCount => _nights.Length;
         public IReadOnlyList<string> StartingPegs => _starting;
 
-        public CampaignPlan(IReadOnlyList<string> nightIds, IReadOnlyList<string> unlocksOnDawn = null, IReadOnlyList<string> startingPegs = null)
+        /// <param name="startingSlices">Slice ids owned from the start (R3).</param>
+        /// <param name="slicesOnDawn">Per night (same order as the nights): the slice ids a dawn on it unlocks; null = none.</param>
+        public CampaignPlan(IReadOnlyList<string> nightIds, IReadOnlyList<string> unlocksOnDawn = null, IReadOnlyList<string> startingPegs = null,
+                            IReadOnlyList<string> startingSlices = null, IReadOnlyList<IReadOnlyList<string>> slicesOnDawn = null)
         {
             _nights = new string[nightIds?.Count ?? 0];
             _unlocks = new string[_nights.Length];
@@ -27,6 +33,15 @@ namespace Piglings.Meta
             }
             _starting = new List<string>();
             if (startingPegs != null) foreach (var p in startingPegs) if (!string.IsNullOrEmpty(p) && !_starting.Contains(p)) _starting.Add(p);
+            if (startingSlices != null)
+                foreach (var s in startingSlices) if (!string.IsNullOrEmpty(s) && !_startingSlices.Contains(s)) _startingSlices.Add(s);
+            _sliceUnlocks = new List<string>[_nights.Length];
+            for (int i = 0; i < _nights.Length; i++)
+            {
+                _sliceUnlocks[i] = new List<string>();
+                if (slicesOnDawn == null || i >= slicesOnDawn.Count || slicesOnDawn[i] == null) continue;
+                foreach (var s in slicesOnDawn[i]) if (!string.IsNullOrEmpty(s) && !_sliceUnlocks[i].Contains(s)) _sliceUnlocks[i].Add(s);
+            }
         }
 
         public string NightId(int index) => index >= 0 && index < _nights.Length ? _nights[index] : null;
@@ -86,15 +101,60 @@ namespace Piglings.Meta
             return false;
         }
 
-        /// <summary>
-        /// The slices for a night's tower: the player's saved choice, or the night's own (bottom → top). A saved choice
-        /// with a different number of slices (the night was re-authored since) is ignored: the tower's height is the night's.
-        /// </summary>
-        public static IReadOnlyList<string> TowerFor(PlayerProfile profile, string nightId, IReadOnlyList<string> authored)
+        // ---------- slices (R3) ----------
+
+        public bool IsSliceUnlocked(PlayerProfile profile, string sliceId)
         {
-            int count = authored?.Count ?? 0;
-            if (nightId != null && profile.Towers.TryGetValue(nightId, out var chosen) && chosen.Count == count && count > 0) return chosen;
-            return authored;
+            if (string.IsNullOrEmpty(sliceId)) return false;
+            if (_startingSlices.Contains(sliceId)) return true;
+            for (int i = 0; i < _nights.Length; i++)
+                if (_sliceUnlocks[i].Contains(sliceId) && HasDawn(profile, i)) return true;
+            return false;
+        }
+
+        /// <summary>Every slice the player owns: the starting ones, then those unlocked, in campaign order.</summary>
+        public List<string> UnlockedSlices(PlayerProfile profile)
+        {
+            var list = new List<string>(_startingSlices);
+            for (int i = 0; i < _nights.Length; i++)
+                if (HasDawn(profile, i))
+                    foreach (var s in _sliceUnlocks[i]) if (!list.Contains(s)) list.Add(s);
+            return list;
+        }
+
+        /// <summary>Every slice the campaign has, in its order (starting first, then by the night that unlocks it).</summary>
+        public List<string> AllSlices()
+        {
+            var list = new List<string>(_startingSlices);
+            foreach (var night in _sliceUnlocks) foreach (var s in night) if (!list.Contains(s)) list.Add(s);
+            return list;
+        }
+
+        /// <summary>The night (1-based) whose dawn unlocks this slice; 0 = a starting slice or unknown.</summary>
+        public int SliceUnlockNightOf(string sliceId)
+        {
+            if (string.IsNullOrEmpty(sliceId) || _startingSlices.Contains(sliceId)) return 0;
+            for (int i = 0; i < _sliceUnlocks.Length; i++)
+                if (_sliceUnlocks[i].Contains(sliceId)) return i + 1;
+            return 0;
+        }
+
+        /// <summary>
+        /// Tonight's tower, bottom → top, <paramref name="height"/> slices: the player's tower (one for the campaign, carried
+        /// over from night to night), slot by slot. A slot past what was built, or holding a slice that isn't owned (any more),
+        /// gets the first owned slice. No owned slice at all → an empty list (nothing to build with).
+        /// </summary>
+        public List<string> TowerFor(PlayerProfile profile, int height)
+        {
+            var result = new List<string>();
+            var owned = UnlockedSlices(profile);
+            if (owned.Count == 0 || height < 1) return result;
+            for (int i = 0; i < height; i++)
+            {
+                string saved = i < profile.Tower.Count ? profile.Tower[i] : null;
+                result.Add(saved != null && owned.Contains(saved) ? saved : owned[0]);
+            }
+            return result;
         }
     }
 }

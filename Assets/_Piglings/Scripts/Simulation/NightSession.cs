@@ -21,17 +21,15 @@ namespace Piglings.Simulation
     /// one-shot "start in the night" is used up at load. Retry / To the barn / Next reload the scene, so the next night
     /// loads it again from disk. Quitting mid-night saves nothing: that night's hits are lost.
     ///
-    /// Campaign mode (M10: a Campaign is assigned — TestNight, the game): the profile decides tonight's night (its saved
-    /// index), the tower (the player's slices, or the night's own — built by TowerBuilder before anything reads the
-    /// sockets) and the peg shelf (unlocked types × owned copies). The stones and refill always come from the stone's
-    /// progression (StoneProgression, from its saved hits).
+    /// The campaign (required since R3; TestNight is the game): the profile decides tonight's night (its saved index), the
+    /// tower (the night's Tower Height, filled from the player's one carried-over tower and the owned slices — built by
+    /// TowerBuilder before anything reads the sockets) and the peg shelf (unlocked types × owned copies). The weapon and the
+    /// peg throws per round are the Campaign's; the stones and refill come from the weapon's progression (StoneProgression,
+    /// from its saved hits).
     /// </summary>
     [DefaultExecutionOrder(-1000)]
     public sealed class NightSession : MonoBehaviour
     {
-        [Tooltip("The night to play. In campaign mode, only the fallback when the Campaign has no nights.")]
-        [SerializeField] private NightDefinition night;
-
         // Read once in Awake — edit the asset outside play mode (or restart play) to try a new curve.
         [Tooltip("The global formula only: the MULT step per new depth.")]
         [SerializeField] private ScoringDefinition scoring;
@@ -42,8 +40,9 @@ namespace Piglings.Simulation
         [Tooltip("The wall's peg sockets (PegBoard on Barn). Empty = no sockets: every threshold is just a refill pause.")]
         [SerializeField] private PegBoard board;
 
-        [Header("Campaign")]
-        [Tooltip("Set = campaign mode: the night, tower, stones and pegs come from the save and this campaign.")]
+        [Header("Campaign (required)")]
+        [Tooltip("The campaign (R3: required — TestNight is the game): tonight's night comes from the save's index into its " +
+                 "nights; the slices, pegs, weapon and peg throws from its starting loadout and unlocks.")]
         [SerializeField] private CampaignDefinition campaign;
         [Tooltip("Builds the night's tower from its slices (and moves the tower top and walls). Required: the holds come from it.")]
         [SerializeField] private TowerBuilder tower;
@@ -71,8 +70,10 @@ namespace Piglings.Simulation
                  "Running as soon as the scene loads (a scene without NightFlow).")]
         [SerializeField] private bool startImmediately = true;
 
-        /// <summary>Tonight's night: the Night field, or in campaign mode the one at the saved index.</summary>
+        /// <summary>Tonight's night: the campaign's night at the saved index.</summary>
         public NightDefinition Night => _night;
+        /// <summary>The weapon thrown tonight (Campaign ▸ Weapon; a weapon-select screen will choose later).</summary>
+        public ThrowableDefinition Weapon => campaign != null ? campaign.Weapon : null;
         public bool IsCampaign => campaign != null;
         public CampaignDefinition Campaign => campaign;
         /// <summary>The campaign as plain values (unlocks, next night). Null outside campaign mode.</summary>
@@ -147,7 +148,7 @@ namespace Piglings.Simulation
         private NightDefinition _night;            // tonight's (see Night)
         private readonly List<WallSliceDefinition> _tower = new List<WallSliceDefinition>();   // tonight's slices as built
         private readonly List<PegDefinition> _pegDefs = new List<PegDefinition>();   // tonight's shelf types, for FindPeg
-        private StoneProgression _stones;          // the stone's progression rule (Night.Throwable), read once
+        private StoneProgression _stones;          // the stone's progression rule (the Campaign's Weapon), read once
         private int _savedHitsAtStart;             // the stone's saved hits when this night started (tonight's are in State)
 
         // When the current placement round started (Time.time), for the refill pause.
@@ -188,7 +189,7 @@ namespace Piglings.Simulation
         /// The level the saved hits give right now. Before the night ends it's WeaponLevel; after NightEnded (banked) it's
         /// the level the next night starts at — the pile shows it then.
         /// </summary>
-        public int BankedWeaponLevel => _stones.For(_progression.Profile.DirectHits(_night.Throwable.Id)).Level;
+        public int BankedWeaponLevel => _stones.For(_progression.Profile.DirectHits(Weapon.Id)).Level;
 
         // For views (M9.3): progress is shown during the night, never applied (the stone stays as it started).
 
@@ -197,7 +198,7 @@ namespace Piglings.Simulation
         {
             get
             {
-                State.WeaponHits.TryGetValue(_night.Throwable.Id, out int tonight);
+                State.WeaponHits.TryGetValue(Weapon.Id, out int tonight);
                 return _savedHitsAtStart + tonight;
             }
         }
@@ -260,7 +261,7 @@ namespace Piglings.Simulation
                 BestThrow = State.BestThrowPoints, LongestChain = State.LongestChain, DeepestChain = State.DeepestChain,
                 BestNightScore = State.Score,
             };
-            return PostRunProgress.Build(ProfileBeforeTonight, Profile, _night.Throwable.Id, _stones, Plan, types, id =>
+            return PostRunProgress.Build(ProfileBeforeTonight, Profile, Weapon.Id, _stones, Plan, types, id =>
             {
                 var peg = campaign != null ? campaign.FindPeg(id) : null;
                 return peg != null ? ProgressionFor(peg) : null;
@@ -283,6 +284,14 @@ namespace Piglings.Simulation
 
         private void Awake()
         {
+            // R3: the campaign is required — every night, slice, peg and the weapon come from it. Say so once, clearly,
+            // rather than letting every view fail on its own.
+            if (campaign == null || campaign.Nights.Count == 0 || campaign.NightAt(0) == null || campaign.Weapon == null)
+            {
+                Debug.LogError("NightSession: assign a Campaign with at least one night and a Weapon — the night can't start without it.", this);
+                enabled = false;
+                return;
+            }
             Bus = new EventBus();
             State = new NightState();
             Ids = new IdAllocator();
@@ -312,24 +321,31 @@ namespace Piglings.Simulation
 
         private void ChooseNight()
         {
-            _night = night;
-            if (campaign == null) return;
-
             var ids = new List<string>();
             var unlocks = new List<string>();
+            var sliceUnlocks = new List<IReadOnlyList<string>>();
             foreach (var entry in campaign.Nights)
             {
                 ids.Add(entry != null && entry.night != null ? entry.night.Id : null);
                 unlocks.Add(entry != null && entry.unlocksOnDawn != null ? entry.unlocksOnDawn.Id : null);
+                var slices = new List<string>();
+                if (entry != null) foreach (var slice in entry.slicesOnDawn) if (slice != null) slices.Add(slice.Id);
+                sliceUnlocks.Add(slices);
             }
             var starting = new List<string>();
             foreach (var peg in campaign.StartingPegs) if (peg != null) starting.Add(peg.Id);
-            Plan = new CampaignPlan(ids, unlocks, starting);
+            var startingSlices = new List<string>();
+            foreach (var slice in campaign.StartingSlices) if (slice != null) startingSlices.Add(slice.Id);
+            Plan = new CampaignPlan(ids, unlocks, starting, startingSlices, sliceUnlocks);
 
             NightIndex = Plan.CurrentNight(_progression.Profile);
-            var picked = campaign.NightAt(NightIndex);
-            if (picked != null) _night = picked;
-            else Debug.LogWarning($"NightSession: {campaign.name} has no night {NightIndex + 1}; playing {night.name}.", campaign);
+            _night = campaign.NightAt(NightIndex);
+            if (_night == null)
+            {
+                Debug.LogError($"NightSession: {campaign.name} has no night at {NightIndex + 1}; playing its first night.", campaign);
+                NightIndex = 0;
+                _night = campaign.NightAt(0);
+            }
             // Copies per type too, so the shelf can be checked without counting it.
             var pegs = new List<string>();
             foreach (var id in Plan.UnlockedPegs(_progression.Profile))
@@ -343,14 +359,14 @@ namespace Piglings.Simulation
         // The stone's progression, from the saved hits: tonight's stones, level and refill (fixed for the night).
         private void FixStone()
         {
-            var weapon = _night.Throwable;
+            var weapon = Weapon;
             // The evolutions: one per entry of the weapon's Evolutions list (its look stays in the definition).
             var evolutions = new List<StoneEvolution>();
             foreach (var evolution in weapon.Evolutions)
                 if (evolution != null) evolutions.Add(new StoneEvolution(evolution.atLevel, evolution.refill, evolution.baseScore));
-            _stones = new StoneProgression(weapon.StoneLevels, weapon.StartStones, evolutions);
-            var problem = MasteryLevels.Problem(weapon.StoneLevels);
-            if (problem != null) Debug.LogWarning($"{weapon.name}: Stone Levels — {problem}.", weapon);
+            _stones = new StoneProgression(weapon.Levels, weapon.StartStones, evolutions);
+            var problem = MasteryLevels.Problem(weapon.Levels);
+            if (problem != null) Debug.LogWarning($"{weapon.name}: Levels — {problem}.", weapon);
             var evolutionProblem = StoneProgression.Problem(evolutions);
             if (evolutionProblem != null)
                 Debug.LogWarning($"{weapon.name}: Evolutions — {evolutionProblem}. Fill each evolution's At Level (rising) and Refill.", weapon);
@@ -385,7 +401,7 @@ namespace Piglings.Simulation
             // night has no sockets and nothing to bounce on, so say so loudly.
             if (tower == null) { Debug.LogError("NightSession: no Tower Builder assigned — the night has no tower.", this); return; }
             var slices = SlicesForTonight();
-            if (slices.Count == 0) { Debug.LogError($"NightSession: {_night.name} has no slices — the night has no tower.", _night); return; }
+            if (slices.Count == 0) { Debug.LogError($"NightSession: {campaign.name} has no Starting Slices — the night has no tower.", campaign); return; }
             _tower.AddRange(slices);
             tower.Build(_tower);
         }
@@ -397,21 +413,32 @@ namespace Piglings.Simulation
         /// <summary>The tower builder (the slice picker asks it where the slices are). Null in a scene without one.</summary>
         public TowerBuilder Tower => tower;
 
-        /// <summary>Slices can be swapped: the campaign scene, a built tower, slices to choose from, and the night not begun.</summary>
-        public bool CanEditTower => IsCampaign && tower != null && _tower.Count > 0 && campaign.Slices.Count > 0
-                                    && State.Phase == NightPhase.Dusk;
+        /// <summary>Slices can be swapped: a built tower, and the night not begun.</summary>
+        public bool CanEditTower => tower != null && _tower.Count > 0 && State.Phase == NightPhase.Dusk;
 
         /// <summary>
-        /// The slices the player can build with tonight: the campaign's, with the same hold count as tonight's tower (a
-        /// night's sockets were counted at load and can't change). The day phase's tray shows these.
+        /// The slices the player can build with tonight: the campaign's OWNED ones (starting + unlocked by dawns), with the
+        /// same hold count as tonight's tower (a night's sockets were counted at load and can't change). The tray shows these.
         /// </summary>
-        public List<WallSliceDefinition> SlicesToChoose()
+        public List<WallSliceDefinition> SlicesToChoose() => CampaignSlices(owned: true);
+
+        /// <summary>The campaign's slices not owned yet (the tray shows them locked, like the barn's locked pegs).</summary>
+        public List<WallSliceDefinition> LockedSlices() => CampaignSlices(owned: false);
+
+        /// <summary>The night (1-based) whose dawn unlocks this slice; 0 = owned from the start.</summary>
+        public int SliceUnlockNight(WallSliceDefinition slice) => slice != null && Plan != null ? Plan.SliceUnlockNightOf(slice.Id) : 0;
+
+        private List<WallSliceDefinition> CampaignSlices(bool owned)
         {
             var list = new List<WallSliceDefinition>();
-            if (!IsCampaign || _tower.Count == 0) return list;
+            if (Plan == null || _tower.Count == 0) return list;
             int holds = _tower[0].Holds.Length;
-            foreach (var slice in campaign.Slices)
-                if (slice != null && slice.Holds.Length == holds && !list.Contains(slice)) list.Add(slice);
+            foreach (var id in Plan.AllSlices())
+            {
+                var slice = campaign.FindSlice(id);
+                if (slice == null || slice.Holds.Length != holds || list.Contains(slice)) continue;
+                if (Plan.IsSliceUnlocked(Profile, id) == owned) list.Add(slice);
+            }
             return list;
         }
 
@@ -437,14 +464,15 @@ namespace Piglings.Simulation
             return true;
         }
 
-        // The tower changed: rebuild it now (TowerBuilder → PegBoard re-binds its holds) and save the night's choice.
+        // The tower changed: rebuild it now (TowerBuilder → PegBoard re-binds its holds) and save it as the player's tower
+        // (one for the campaign: tonight's slots overwrite its bottom, anything built higher on a taller night is kept).
         private void ApplyTower(string why)
         {
             tower.Build(_tower);
             var ids = new List<string>();
             foreach (var slice in _tower) ids.Add(slice.Id);
-            _progression.SetTower(_night.Id, ids);
-            Save($"{why} ({_night.Id}: {string.Join(", ", ids)})");
+            _progression.SetTower(ids);
+            Save($"{why} (tower: {string.Join(", ", ids)})");
         }
 
         /// <summary>
@@ -464,22 +492,18 @@ namespace Piglings.Simulation
         /// <summary>Is this peg type the player's (a starting type, or unlocked by a dawn)?</summary>
         public bool IsPegUnlocked(PegDefinition peg) => peg != null && Plan != null && Plan.IsUnlocked(Profile, peg.Id);
 
-        /// <summary>Tonight's slices, bottom → top: the player's saved choice (campaign), or the night's own.</summary>
+        /// <summary>
+        /// Tonight's slices, bottom → top (R3): the night's Tower Height, filled from the player's tower — one for the
+        /// campaign, carried over between nights. A slot above what was built, or a slice not owned (any more), gets the
+        /// first owned slice (CampaignPlan.TowerFor). The player re-picks freely in the day phase before every night.
+        /// </summary>
         public List<WallSliceDefinition> SlicesForTonight()
         {
-            var authored = new List<WallSliceDefinition>();
-            foreach (var slice in _night.Slices) if (slice != null) authored.Add(slice);
-            if (!IsCampaign) return authored;
-
-            var authoredIds = new List<string>();
-            foreach (var slice in authored) authoredIds.Add(slice.Id);
-            var chosen = CampaignPlan.TowerFor(_progression.Profile, _night.Id, authoredIds);
             var result = new List<WallSliceDefinition>();
-            for (int i = 0; i < chosen.Count; i++)
+            foreach (var id in Plan.TowerFor(_progression.Profile, _night.TowerHeight))
             {
-                var slice = campaign.FindSlice(chosen[i]);
-                // A saved slice the campaign no longer has: the night's own at that height.
-                result.Add(slice != null ? slice : authored[i]);
+                var slice = campaign.FindSlice(id);
+                if (slice != null) result.Add(slice);
             }
             return result;
         }
@@ -499,7 +523,6 @@ namespace Piglings.Simulation
                 return;
             }
             if (atLoad) { WarnIfShort(_night); return; }
-            WarnIfShort(night);
             if (campaign != null)
                 foreach (var entry in campaign.Nights) if (entry != null) WarnIfShort(entry.night);
         }
@@ -549,7 +572,7 @@ namespace Piglings.Simulation
         {
             var error = _profileFile.Save(_progression.Profile);
             if (error == null) Debug.Log($"Piglings save: saved after {why} — {_progression.Profile.Describe()}; " +
-                                         $"next night {_night.Throwable.Id}: {_stones.For(_progression.Profile.DirectHits(_night.Throwable.Id)).Stones} stones, " +
+                                         $"next night {Weapon.Id}: {_stones.For(_progression.Profile.DirectHits(Weapon.Id)).Stones} stones, " +
                                          $"level {BankedWeaponLevel}", this);
             else Debug.LogError($"Piglings save: NOT saved after {why} — {error}. The previous save is untouched.", this);
         }
@@ -616,7 +639,7 @@ namespace Piglings.Simulation
                 profile.Origin = $"scenario {scenario.name}";
                 ProfileEdits.SetNightsWon(profile, Plan, scenario.NightsWon);
                 ProfileEdits.SetCurrentNight(profile, Plan, scenario.Night - 1);
-                ProfileEdits.SetStones(profile, _night.Throwable.Id, _stones, scenario.Stones);
+                ProfileEdits.SetStones(profile, Weapon.Id, _stones, scenario.Stones);
                 foreach (var entry in scenario.Pegs)
                     if (entry != null && entry.peg != null) ProfileEdits.SetPegCopies(profile, entry.peg.Id, ProgressionFor(entry.peg), entry.copies);
             }, scenario.StartInNight, $"scenario {scenario.name}");
@@ -644,40 +667,28 @@ namespace Piglings.Simulation
         }
 
         // One socket per Hold (PegBoard). No board = no sockets: every round is then just a refill pause.
-        // The shelf: in the campaign, every unlocked type × the copies its mastery owns; otherwise the night's loadout.
+        // The shelf: every unlocked type × the copies its mastery owns (the Campaign's; R3 removed the night's own loadout).
         private PegSetup BuildPegs()
         {
             var loadout = new List<(PegType, int)>();
             _pegDefs.Clear();
-            if (IsCampaign)
+            // A type earns one same-type follow-up per N copies; the referee gives the chain once per round.
+            var followUps = new List<string>();
+            foreach (var id in Plan.UnlockedPegs(_progression.Profile))
             {
-                // A type earns one same-type follow-up per N copies; the referee gives the chain once per round.
-                var followUps = new List<string>();
-                foreach (var id in Plan.UnlockedPegs(_progression.Profile))
-                {
-                    var peg = campaign.FindPeg(id);
-                    if (peg == null) continue;
-                    var status = PegStatusFor(peg);
-                    _pegDefs.Add(peg);
-                    if (status.FollowUps > 0) followUps.Add($"{peg.Id} +{status.FollowUps}");
-                    if (status.Copies > 0) loadout.Add((ToPegType(peg, status.FollowUps), status.Copies));
-                }
-                Debug.Log($"Piglings campaign: {_night.PegThrowsPerThreshold} peg throw(s) per round; same-type follow-ups: " +
-                          (followUps.Count == 0 ? "none yet" : string.Join(", ", followUps)), this);
+                var peg = campaign.FindPeg(id);
+                if (peg == null) continue;
+                var status = PegStatusFor(peg);
+                _pegDefs.Add(peg);
+                if (status.FollowUps > 0) followUps.Add($"{peg.Id} +{status.FollowUps}");
+                if (status.Copies > 0) loadout.Add((ToPegType(peg, status.FollowUps), status.Copies));
             }
-            else
-            {
-                foreach (var entry in _night.PegLoadout)
-                {
-                    if (entry == null || entry.peg == null) continue;
-                    _pegDefs.Add(entry.peg);
-                    loadout.Add((ToPegType(entry.peg), entry.count));
-                }
-            }
-            var pegs = new PegSetup(loadout, _night.PegThrowsPerThreshold, board != null ? board.SocketCount : 0);
+            Debug.Log($"Piglings campaign: {campaign.PegThrowsPerRound} peg throw(s) per round; same-type follow-ups: " +
+                      (followUps.Count == 0 ? "none yet" : string.Join(", ", followUps)), this);
+            var pegs = new PegSetup(loadout, campaign.PegThrowsPerRound, board != null ? board.SocketCount : 0);
             if (pegs.DroppedTypes > 0)
-                Debug.LogWarning($"NightSession: {_night.name} brings more than {PegSetup.ShelfCapacity} peg types; " +
-                                 $"{pegs.DroppedTypes} ignored (the shelf holds {PegSetup.ShelfCapacity}).", _night);
+                Debug.LogWarning($"NightSession: the player owns more than {PegSetup.ShelfCapacity} peg types; " +
+                                 $"{pegs.DroppedTypes} ignored (the shelf holds {PegSetup.ShelfCapacity}).", campaign);
             return pegs;
         }
 

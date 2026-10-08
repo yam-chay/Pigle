@@ -46,7 +46,10 @@ namespace Piglings.Simulation
         [SerializeField] private float wallAboveTop = 1.25f;
 
         [Header("Edit-mode preview")]
+        [Tooltip("Preview: this night's Tower Height…")]
         [SerializeField] private NightDefinition previewNight;
+        [Tooltip("…filled with this slice (nights don't own slices since R3 — the player's tower does).")]
+        [SerializeField] private WallSliceDefinition previewSlice;
 
         private readonly List<GameObject> _built = new List<GameObject>();
         private readonly List<SpriteRenderer> _looks = new List<SpriteRenderer>();   // slice i's look (null for a missing slice)
@@ -175,8 +178,10 @@ namespace Piglings.Simulation
         private void PreviewTower()
         {
             if (Application.isPlaying) { Debug.LogWarning("Preview tower is for edit mode; in play the night builds its own.", this); return; }
-            if (previewNight == null) { Debug.LogWarning("Set Preview Night first.", this); return; }
-            Build(previewNight.Slices, preview: true);
+            if (previewNight == null || previewSlice == null) { Debug.LogWarning("Set Preview Night and Preview Slice first.", this); return; }
+            var slices = new List<WallSliceDefinition>();
+            for (int i = 0; i < previewNight.TowerHeight; i++) slices.Add(previewSlice);
+            Build(slices, preview: true);
             Debug.Log($"TowerBuilder: previewing {previewNight.name} — {SliceCount} slices, top at {TopY:0.##}. " +
                       "Tower Top and the walls moved with it (they're scene objects: undo or rebuild to put them back).", this);
         }

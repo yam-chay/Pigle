@@ -94,7 +94,7 @@ namespace Piglings.Presentation
         private void ShowStone(StoneProgressRow stone, float delay)
         {
             if (stone == null) return;
-            var weapon = session.Night.Throwable;
+            var weapon = session.Weapon;
             var texts = session.Texts;
             if (stoneIcon != null && weapon.SpriteFor(stone.After.Level) != null) stoneIcon.sprite = weapon.SpriteFor(stone.After.Level);
             if (stoneHits != null) stoneHits.text = UiText.Fill(texts.stoneHits, ("hits", Numbers.Thousands(stone.HitsGained)));

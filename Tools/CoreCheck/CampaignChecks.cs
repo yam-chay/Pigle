@@ -180,27 +180,44 @@ static void CampaignChecks(){
    Check(!plan.CanGoNext(p,2),"the last night: no Next night");
    prog.SetCurrentNight(7); Check(plan.CurrentNight(p)==2,"a saved night past the campaign lands on the last night");
    prog.SetCurrentNight(-3); Check(p.CurrentNight==0,"a negative night index → 0");
-   var authored=new[]{"a","b","c"};
-   Check(ReferenceEquals(CampaignPlan.TowerFor(p,"night_02",authored),authored),"no saved tower: the night's own slices");
-   prog.SetTower("night_02",new[]{"a","x","c"});
-   Check(CampaignPlan.TowerFor(p,"night_02",authored)[1]=="x","a saved tower: the player's choice");
-   Check(ReferenceEquals(CampaignPlan.TowerFor(p,"night_02",new[]{"a","b"}),null)==false && CampaignPlan.TowerFor(p,"night_02",new[]{"a","b"}).Count==2,
-         "a saved tower with a different slice count (re-authored night): the night's own");
-   prog.SetTower("night_02",null); Check(!p.Towers.ContainsKey("night_02"),"clearing a tower choice");
+   prog.Dispose(); }
+
+ // --- Slices (R3): owned from the start or unlocked by a dawn; ONE tower for the campaign, carried over between nights ---
+ { var plan=new CampaignPlan(new[]{"n1","n2","n3"},null,null,new[]{"barn","wood"},
+                             new System.Collections.Generic.List<System.Collections.Generic.IReadOnlyList<string>>{new[]{"straw"},new string[0],new[]{"brick","straw"}});
+   var bus=new EventBus(); var prog=new Progression(bus,null); var p=prog.Profile;
+   Check(plan.IsSliceUnlocked(p,"barn") && plan.IsSliceUnlocked(p,"wood") && !plan.IsSliceUnlocked(p,"straw") && !plan.IsSliceUnlocked(p,"brick"),
+         "starting slices are owned; the others wait for their dawn");
+   Check(string.Join(",",plan.AllSlices())=="barn,wood,straw,brick" && plan.SliceUnlockNightOf("straw")==1 && plan.SliceUnlockNightOf("brick")==3
+         && plan.SliceUnlockNightOf("barn")==0,"every slice in campaign order (starting first, a repeat once); straw by night 1, brick by night 3");
+   Check(string.Join(",",plan.TowerFor(p,3))=="barn,barn,barn","nothing built yet: every slot gets the first owned slice");
+   prog.SetTower(new[]{"wood","barn"});
+   Check(string.Join(",",plan.TowerFor(p,3))=="wood,barn,barn","a taller night keeps what was built and fills the new slot on top");
+   prog.SetTower(new[]{"barn","wood","wood"}); prog.SetTower(new[]{"wood"});
+   Check(string.Join(",",p.Tower)=="wood,wood,wood" && string.Join(",",plan.TowerFor(p,2))=="wood,wood",
+         "a shorter night overwrites only its bottom slots: the higher ones are kept for the next taller night");
+   p.Tower[1]="straw";
+   Check(plan.TowerFor(p,2)[1]=="barn","a saved slice that isn't owned (yet / any more): the first owned one");
+   prog.RecordNightResult("n1",dawn:true);
+   Check(plan.IsSliceUnlocked(p,"straw") && plan.TowerFor(p,2)[1]=="straw" && string.Join(",",plan.UnlockedSlices(p))=="barn,wood,straw",
+         "a dawn on night 1 unlocks straw: the saved slot comes back, and it's owned (in campaign order)");
+   Check(new CampaignPlan(new[]{"n1"}).TowerFor(p,3).Count==0,"no owned slice at all: nothing to build (NightSession says so)");
    prog.Dispose(); }
 
  // --- The save: new sections round-trip; bad ones are corrupt; old saves still load ---
  { var p=new PlayerProfile();
    p.Peg("peg_bouncy").Triggers.AddRange(new[]{9,2,0}); p.Peg("peg_bouncy").Knocks=0;
-   p.CurrentNight=1; p.Dawns["night_01"]=3; p.Towers["night_02"]=new System.Collections.Generic.List<string>{"slice_barn","slice_wood","slice_barn"};
+   p.CurrentNight=1; p.Dawns["night_01"]=3; p.Tower.AddRange(new[]{"slice_barn","slice_wood","slice_barn"});
    var json=ProfileJson.Write(p);
    Check(ProfileJson.Read(json,out var back,out _)==ProfileReadResult.Ok && back.CurrentNight==1 && back.DawnsOn("night_01")==3
-         && back.Pegs["peg_bouncy"].TriggersAt(2)==2 && back.Towers["night_02"][1]=="slice_wood" && ProfileJson.Write(back)==json,
-         "round trip: night, dawns, triggers per level, towers");
+         && back.Pegs["peg_bouncy"].TriggersAt(2)==2 && back.Tower[1]=="slice_wood" && ProfileJson.Write(back)==json,
+         "round trip: night, dawns, triggers per level, the tower");
+   Check(ProfileJson.Read("{\"version\":1,\"towers\":{\"night_02\":[\"slice_wood\"]}}",out var oldTowers,out _)==ProfileReadResult.Ok && oldTowers.Tower.Count==0,
+         "an older save's per-night towers: ignored (no tower choice yet), still a good save");
    bool Bad(string body)=>ProfileJson.Read("{\"version\":1,"+body+"}",out _,out _)==ProfileReadResult.Corrupt;
    Check(Bad("\"pegs\":{\"peg_bomb\":{\"triggers\":[1,-2]}}") && Bad("\"pegs\":{\"peg_bomb\":{\"triggers\":3}}"),"bad triggers (negative, not a list) are corrupt");
    Check(Bad("\"campaign\":{\"night\":-1}") && Bad("\"campaign\":{\"dawns\":{\"night_01\":\"x\"}}") && Bad("\"campaign\":[]"),"a bad campaign section is corrupt");
-   Check(Bad("\"towers\":{\"night_01\":[1]}") && Bad("\"towers\":{\"night_01\":\"a\"}") && Bad("\"towers\":{\"night_01\":[\"\"]}"),"a bad tower (not a list of ids) is corrupt");
+   Check(Bad("\"tower\":[1]") && Bad("\"tower\":\"a\"") && Bad("\"tower\":[\"\"]") && Bad("\"tower\":{}"),"a bad tower (not a list of ids) is corrupt");
    Check(ProfileJson.Read("{\"version\":1,\"weapons\":{\"stone\":{\"directHits\":4}}}",out var old,out _)==ProfileReadResult.Ok && old.CurrentNight==0 && old.Dawns.Count==0,
          "a save from before the campaign still loads (night 0, no dawns)"); }
 
