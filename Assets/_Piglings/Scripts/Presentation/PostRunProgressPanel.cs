@@ -11,12 +11,13 @@ namespace Piglings.Presentation
     /// gain (bright, filling in as the panel appears); a bar tonight completed shows READY. Upgrades aren't played here —
     /// the barn room does that (the footer, laid out by Yam, says so).
     ///  - The stone (always): its icon at its level, "+52 hits", the bar to the next +1 stone, "14 → 15 stones", the
-    ///    evolution it was heading for tonight ("next: 15 · evolve"), and the evolution track (one slot per level: its
-    ///    Stones Needed, stone sprite and the line into it; reached ones full, the rest faded).
+    ///    evolution it was heading for tonight ("next: 15 · evolve"), and the evolution track (one slot per evolution: the
+    ///    stones it unlocks at, stone sprite and the line into it; reached ones full, the rest faded).
     ///  - A row per peg type that fired tonight or was unlocked tonight: name + sprite, copies "5 → 6", the bar to the next
     ///    copy, the next follow-up step ("6 = 3 in a row"); unlocked tonight: the NEW badge + "unlocked by dawn on night n",
     ///    no copies, no bar. Unused types have no row.
-    ///  - Wolves dropped (always): "+141" tonight and "1,204 all time".
+    ///  - Wolves dropped (always): "+141" tonight — coloured by the record rule (tonight ÷ your most-wolves night, Visuals ▸
+    ///    Record Bands) — and "1,204 all time".
     /// The rows come from NightSession.BuildPostRunReport (Meta's PostRunProgress). Every field is optional. Filled once,
     /// by PostRunView. Reads only.
     /// </summary>
@@ -62,6 +63,8 @@ namespace Piglings.Presentation
         [SerializeField, Min(0f)] private float rowDelay = 0.15f;
 
         private List<TemplateSlot> _evolutions = new List<TemplateSlot>();
+        private ScoreStyles _styles;
+        private PopupColor _wolvesStyle;   // "+N" against your most-wolves night: repainted every frame (pulse / rainbow)
         private List<TemplateSlot> _pegs = new List<TemplateSlot>();
 
         public void Show(PostRunReport report, float delay)
@@ -73,8 +76,19 @@ namespace Piglings.Presentation
             for (int i = 0; i < _pegs.Count && i < report.Pegs.Count; i++) ShowPeg(_pegs[i], report.Pegs[i], delay + (i + 1) * rowDelay);
 
             var texts = session.Texts;
-            if (wolvesTonight != null) wolvesTonight.text = UiText.Fill(texts.wolvesTonight, ("count", Numbers.Thousands(report.WolvesTonight)));
+            if (wolvesTonight != null)
+            {
+                wolvesTonight.text = UiText.Fill(texts.wolvesTonight, ("count", Numbers.Thousands(report.WolvesTonight)));
+                // Coloured by the record rule: tonight ÷ your most-wolves night before tonight (≥ 1 = a new record).
+                if (_styles == null) _styles = new ScoreStyles(session.Visuals);
+                _wolvesStyle = report.WolvesTonight > 0 ? _styles.ForRecord(report.WolvesVsRecord) : null;
+            }
             if (wolvesTotal != null) wolvesTotal.text = UiText.Fill(texts.wolvesTotal, ("count", Numbers.Thousands(report.WolvesTotal)));
+        }
+
+        private void LateUpdate()
+        {
+            if (_wolvesStyle != null) TextColouring.Apply(wolvesTonight, _wolvesStyle, 0f, 0f, 1f);
         }
 
         private void ShowStone(StoneProgressRow stone, float delay)

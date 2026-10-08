@@ -43,15 +43,16 @@ namespace Piglings.Meta
         /// Tonight's bests go into the all-time records (each only if it beats the record). Returns which broke — the
         /// post-run's NEW RECORD tags. Called by the scene once the night is banked, before it saves.
         /// </summary>
-        public RecordsBroken RecordNight(int bestThrow, int longestChain, int deepestChain, int nightScore)
+        public RecordsBroken RecordNight(int bestThrow, int longestChain, int deepestChain, int nightScore, int wolves = 0)
         {
             var r = Profile.Records;
             var broken = new RecordsBroken(bestThrow > r.BestThrow, longestChain > r.LongestChain, deepestChain > r.DeepestChain,
-                                           nightScore > r.BestNightScore);
+                                           nightScore > r.BestNightScore, wolves > r.MostWolves);
             if (broken.BestThrow) r.BestThrow = bestThrow;
             if (broken.LongestChain) r.LongestChain = longestChain;
             if (broken.DeepestChain) r.DeepestChain = deepestChain;
             if (broken.BestNightScore) r.BestNightScore = nightScore;
+            if (broken.MostWolves) r.MostWolves = wolves;
             return broken;
         }
 
@@ -117,13 +118,14 @@ namespace Piglings.Meta
     /// <summary>Which all-time records a night broke (it beat them; a tie doesn't count).</summary>
     public readonly struct RecordsBroken
     {
-        public readonly bool BestThrow, LongestChain, DeepestChain, BestNightScore;
+        public readonly bool BestThrow, LongestChain, DeepestChain, BestNightScore, MostWolves;
 
-        public RecordsBroken(bool bestThrow, bool longestChain, bool deepestChain, bool bestNightScore)
+        public RecordsBroken(bool bestThrow, bool longestChain, bool deepestChain, bool bestNightScore, bool mostWolves = false)
         {
             BestThrow = bestThrow; LongestChain = longestChain; DeepestChain = deepestChain; BestNightScore = bestNightScore;
+            MostWolves = mostWolves;
         }
 
-        public bool Any => BestThrow || LongestChain || DeepestChain || BestNightScore;
+        public bool Any => BestThrow || LongestChain || DeepestChain || BestNightScore || MostWolves;
     }
 }

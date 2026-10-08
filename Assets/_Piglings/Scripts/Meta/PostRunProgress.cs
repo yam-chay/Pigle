@@ -67,6 +67,16 @@ namespace Piglings.Meta
         /// How close tonight came to the record (after tonight): tonight ÷ record, 0..1 — 1 when broken or tied. A record of 0
         /// (nothing yet) reads 1 if tonight had any, else 0.
         /// </summary>
+        /// <summary>
+        /// Tonight against the record as it stood BEFORE tonight (the colour rule "relative to your best"): tonight ÷ record,
+        /// unclamped — above 1 = a new record. No record yet: 1 if tonight had any (your first night is your record), else 0.
+        /// </summary>
+        public static float VsRecord(int tonight, int recordBefore)
+        {
+            if (tonight <= 0) return 0f;
+            return recordBefore <= 0 ? 1f : tonight / (float)recordBefore;
+        }
+
         public static float Closeness(int tonight, int record)
         {
             if (tonight <= 0) return 0f;
@@ -83,6 +93,8 @@ namespace Piglings.Meta
         public readonly List<PegProgressRow> Pegs = new List<PegProgressRow>();
         public int WolvesTonight;
         public int WolvesTotal;
+        /// <summary>Tonight's wolves ÷ the most-wolves record before tonight (RecordsReport.VsRecord) — what colours the "+N".</summary>
+        public float WolvesVsRecord;
         public RecordsReport Records;
     }
 
@@ -116,13 +128,14 @@ namespace Piglings.Meta
 
             report.WolvesTotal = after.TotalDropped();
             report.WolvesTonight = Math.Max(0, report.WolvesTotal - before.TotalDropped());
+            report.WolvesVsRecord = RecordsReport.VsRecord(report.WolvesTonight, before.Records.MostWolves);
 
             var b = before.Records; var a = after.Records;
             report.Records = new RecordsReport
             {
                 Before = b.Copy(), After = a.Copy(), Tonight = tonight != null ? tonight.Copy() : new NightRecords(),
                 New = new RecordsBroken(a.BestThrow > b.BestThrow, a.LongestChain > b.LongestChain, a.DeepestChain > b.DeepestChain,
-                                        a.BestNightScore > b.BestNightScore),
+                                        a.BestNightScore > b.BestNightScore, a.MostWolves > b.MostWolves),
             };
             return report;
         }

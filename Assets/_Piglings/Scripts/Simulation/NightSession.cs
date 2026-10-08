@@ -539,7 +539,9 @@ namespace Piglings.Simulation
         private void OnNightEnded(NightEnded e)
         {
             if (IsCampaign) _progression.RecordNightResult(_night.Id, e.Result == NightResult.Won);
-            var broken = _progression.RecordNight(State.BestThrowPoints, State.LongestChain, State.DeepestChain, e.Score);
+            int wolves = 0;
+            foreach (var dropped in State.Dropped.Values) wolves += dropped;   // the sweep too: the same "+N" the post-run shows
+            var broken = _progression.RecordNight(State.BestThrowPoints, State.LongestChain, State.DeepestChain, e.Score, wolves);
             Save($"night banked ({e.Reason}, {Tonight()}{(broken.Any ? ", a record broken" : "")})");
         }
 

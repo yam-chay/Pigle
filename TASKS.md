@@ -154,8 +154,11 @@ Every tunable value gets **one owner** (ARCHITECTURE.md ▸ "Who owns a tunable 
 - R5 New features (after the refactor, not part of it):
   - [ ] Waves: the night's spawn plan as a list of waves (delay between waves, robots per wave, spawn speed inside it, robot type per wave or a mix) on NightDefinition; RobotSpawner only plays it.
   - [ ] Right-click cancels a throw while aiming.
-  - [ ] Mult → colour mapping in the visual SO (which mult gets which colour and effect, like the other popups).
+  - [x] Mult → colour mapping in the visual SO (Visuals ▸ Mult Bands) — done early, with the post-run colour rules (below).
   - [ ] Stone refill by weapon level, not by unlock count.
+
+- [x] ☁ V1 Colour + effect by the rules everywhere (Yam, 2026-10-08): every popup's effect strength = its band's rank; the peg "+N mult" by Mult Bands; the post-run's hour rows by quality vs that hour's gap (no forced rainbow on the night's best), "4/6" in the last reached hour's colour (gold on a dawn), "+N wolves" by Record Bands vs a new most-wolves record (save `records.mostWolves`, additive). CoreCheck.
+  - [ ] 🖥 V1-b Play-check the post-run and popups (steps in the PR); set the quality bands' rainbow start if 100% of an hour is too hard (e.g. 0.95).
 
 ## Open design questions (from the GDD — don't implement until decided)
 - One robot line per run vs. mixed swarm.
