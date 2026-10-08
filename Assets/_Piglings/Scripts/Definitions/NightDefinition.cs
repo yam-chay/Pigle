@@ -4,9 +4,9 @@ using UnityEngine;
 namespace Piglings.Definitions
 {
     /// <summary>
-    /// What one night contains: its robots, wall, the hours until dawn and the pegs it brings. (The stones come from the
-    /// Throwable's progression, not from the night.)
-    /// NightSession turns it into the Rules' plain values (NightGoal, PegSetup).
+    /// One night's content (R3): its robots and spawn, its wall, the hours until dawn (score targets + hour multipliers) and
+    /// its tower's height. What the player has to play it with — slices, pegs, the weapon, peg throws — is the Campaign's
+    /// (progression); the stones come from the weapon's progression. NightSession turns it into the Rules' plain values.
     /// </summary>
     [CreateAssetMenu(menuName = "Piglings/Night Definition", fileName = "Night_")]
     public sealed class NightDefinition : ScriptableObject
@@ -14,7 +14,6 @@ namespace Piglings.Definitions
         [Tooltip("Save key (campaign): dawns and tower choices are saved by this id. Never rename it once players have a save.")]
         [SerializeField] private string id = "night_01";
         [SerializeField] private RobotDefinition robot;
-        [SerializeField] private ThrowableDefinition throwable;
         [SerializeField] private WallMaterialDefinition wall;
         [SerializeField, Min(0.1f)] private float spawnInterval = 1.6f;
 
@@ -34,36 +33,18 @@ namespace Piglings.Definitions
         [SerializeField, Min(0f)] private float refillPauseSeconds = 1f;
 
         [Header("Tower (TowerBuilder)")]
-        [Tooltip("The tower, bottom → top: one slice per 1.6 units above the bottom piece. The player can swap them in the day phase; " +
-                 "the count is the night's (more slices = a taller tower, a longer climb).")]
-        [SerializeField] private List<WallSliceDefinition> slices = new List<WallSliceDefinition>();
-
-        [Header("Pegs")]
-        [Tooltip("The peg shelf for this night (until the day phase chooses it): up to 5 types, one pile each. " +
-                 "Types past the 5th are ignored; the same type twice adds up.")]
-        [SerializeField] private List<PegLoadoutEntry> pegLoadout = new List<PegLoadoutEntry>();
-        [Tooltip("Pegs the player throws at each threshold. (Future: a skill-tree node adds +1.)")]
-        [SerializeField, Min(0)] private int pegThrowsPerThreshold = 1;
+        [Tooltip("How many slices tall tonight's tower is (one per 1.6 units above the bottom piece): more = a longer climb. " +
+                 "Which slices fill it is the player's choice in the day phase, from what the Campaign has unlocked.")]
+        [SerializeField, Min(1)] private int towerHeight = 2;
 
         public string Id => id;
-        public IReadOnlyList<WallSliceDefinition> Slices => slices;
+        public int TowerHeight => towerHeight;
         public RobotDefinition Robot => robot;
-        public ThrowableDefinition Throwable => throwable;
         public WallMaterialDefinition Wall => wall;
         public float SpawnInterval => spawnInterval;
         public IReadOnlyList<int> Thresholds => thresholds;
         public float FirstHourMultiplier => firstHourMultiplier;
         public float HourMultiplierStep => hourMultiplierStep;
         public float RefillPauseSeconds => refillPauseSeconds;
-        public IReadOnlyList<PegLoadoutEntry> PegLoadout => pegLoadout;
-        public int PegThrowsPerThreshold => pegThrowsPerThreshold;
-    }
-
-    /// <summary>One pile on the peg shelf: a peg type and how many of it the night starts with.</summary>
-    [System.Serializable]
-    public sealed class PegLoadoutEntry
-    {
-        public PegDefinition peg;
-        [Min(1)] public int count = 1;
     }
 }

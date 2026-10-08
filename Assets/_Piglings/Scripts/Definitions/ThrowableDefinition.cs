@@ -19,7 +19,7 @@ namespace Piglings.Definitions
         [Tooltip("The stone's evolutions, in order (entry 0 = evolution 1): from its At Level on, the stone has that look, " +
                  "radius, trail, base score and hourly Refill. At Level must rise (the first is usually 1). Empty = one evolution " +
                  "that looks like its prefab, refill 1.")]
-        [FormerlySerializedAs("levels")]
+        // (Was "levels" before R2; Throwable_Stone was re-saved as "evolutions" in R2-b, and "levels" is now the hit list.)
         [SerializeField] private List<ThrowableEvolution> evolutions = new List<ThrowableEvolution>();
 
         [Header("Stone progression (mastery from use)")]
@@ -27,10 +27,9 @@ namespace Piglings.Definitions
         [SerializeField, Min(0)] private int startStones = 10;
         [Tooltip("The LEVELS: total direct hits (saved, across nights) for each stone level after the first, cumulative and " +
                  "strictly rising. Each level is +1 stone; the last entry is the cap (most stones = Start Stones + entries). " +
-                 "Derived from the saved hits, never stored: retune any time. (Named Stone Levels so its saved values carry over " +
-                 "from Stone Thresholds; it can become plain \"Levels\" once the asset has been saved.)")]
-        [FormerlySerializedAs("stoneThresholds")]
-        [SerializeField] private int[] stoneLevels = { 10, 25, 45, 70, 100, 140, 190, 250, 320, 400 };
+                 "Derived from the saved hits, never stored: retune any time.")]
+        [FormerlySerializedAs("stoneLevels")]
+        [SerializeField] private int[] levels = { 10, 25, 45, 70, 100, 140, 190, 250, 320, 400 };
 
         public string Id => id;
         public float Radius => radius;
@@ -41,7 +40,7 @@ namespace Piglings.Definitions
         public int EvolutionCount => Mathf.Max(1, evolutions.Count);
 
         /// <summary>The Levels: hits for each stone level after the first (the last = the cap).</summary>
-        public IReadOnlyList<int> StoneLevels => stoneLevels;
+        public IReadOnlyList<int> Levels => levels;
         public int StartStones => startStones;
         /// <summary>The evolutions (entry 0 = evolution 1): look + At Level + Refill + Base Score. NightSession turns them into
         /// Meta's rule.</summary>

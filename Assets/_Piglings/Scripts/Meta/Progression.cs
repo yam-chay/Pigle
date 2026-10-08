@@ -62,12 +62,19 @@ namespace Piglings.Meta
         /// <summary>Where the player is in the campaign (0 = the first night). Retry keeps it; Next moves it on.</summary>
         public void SetCurrentNight(int index) => Profile.CurrentNight = index < 0 ? 0 : index;
 
-        /// <summary>The slices the player chose for a night's tower, bottom → top. Null or empty = the night's own slices.</summary>
-        public void SetTower(string nightId, IReadOnlyList<string> slices)
+        /// <summary>
+        /// The player's tower (R3: one tower for the whole campaign): tonight's slices, bottom → top, overwrite the bottom of
+        /// the saved tower. Slots above tonight's height are kept — a shorter night never forgets what was built higher up.
+        /// </summary>
+        public void SetTower(IReadOnlyList<string> bottom)
         {
-            if (string.IsNullOrEmpty(nightId)) return;
-            if (slices == null || slices.Count == 0) { Profile.Towers.Remove(nightId); return; }
-            Profile.Towers[nightId] = new List<string>(slices);
+            if (bottom == null) return;
+            for (int i = 0; i < bottom.Count; i++)
+            {
+                if (string.IsNullOrEmpty(bottom[i])) continue;
+                if (i < Profile.Tower.Count) Profile.Tower[i] = bottom[i];
+                else Profile.Tower.Add(bottom[i]);
+            }
         }
 
         private void Apply(NightBanked e)

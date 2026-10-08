@@ -163,7 +163,7 @@ namespace Piglings.Simulation
         {
             var stone = Instantiate(stonePrefab, transform.position, Quaternion.identity, transform);
             stone.Park();
-            stone.ApplyLevel(session.Night.Throwable, _shownLevel);
+            stone.ApplyLevel(session.Weapon, _shownLevel);
             return stone;
         }
 
@@ -174,7 +174,7 @@ namespace Piglings.Simulation
             int level = session.BankedWeaponLevel;
             if (level == _shownLevel) return;
             _shownLevel = level;
-            var def = session.Night.Throwable;
+            var def = session.Weapon;
             foreach (var stone in _pile.Items) if (stone != null) stone.ApplyLevel(def, level);
             if (_held != null) _held.ApplyLevel(def, level);
             _pile.Relayout();   // the slots spread with the new size
@@ -184,7 +184,7 @@ namespace Piglings.Simulation
         // Spacing and row height are for level-1 stones; they grow with the shown level's size so stones never overlap.
         private Vector3 SlotPosition(int index)
         {
-            var def = session.Night.Throwable;
+            var def = session.Weapon;
             float grow = def.RadiusAt(_shownLevel) / def.Radius;
             PileLayout.Pyramid(index, bottomRow, spacing * grow, rowHeight * grow, out float x, out float y);
             return transform.position + new Vector3(x, y, 0f);

@@ -13,8 +13,10 @@ namespace Piglings.Simulation
     ///  - drag it out and drop it on another slot: the two trade places;
     ///  - drag a slice from the tray beside the tower onto a slot: that slot becomes it;
     ///  - drop anywhere else: it slides back. The tower is always whole (SliceDrag.Resolve), so there's never a gap.
-    /// Every change rebuilds the tower and saves the night's choice (NightSession.SetSlice / SwapSlices). Only in the Tower
-    /// state, never while the camera moves, never through a UI button.
+    /// Every change rebuilds the tower and saves it as the player's tower (NightSession.SetSlice / SwapSlices). The tray holds
+    /// the Campaign's owned slices; ones not unlocked yet sit below them, dimmed under a lock, and can't be picked (R3).
+    /// NightFlow starts it (Begin, once the camera has reached the Tower frame) and stops it (End, when the Tower state is
+    /// left): the flow knows WHEN, this component owns HOW (all its settings are its own). Never through a UI button.
     ///
     /// The slices that move are the tower's own looks (TowerBuilder.SliceLook, holds included) — before the night begins
     /// nothing physical runs, and every look is put back exactly (TowerBuilder.ResetSlice) when placement ends. The tray
@@ -23,7 +25,6 @@ namespace Piglings.Simulation
     public sealed class SlicePicker : MonoBehaviour
     {
         [SerializeField] private NightSession session;
-        [SerializeField] private NightFlow flow;
         [SerializeField] private Camera cam;
         [Tooltip("How far from the tower's centre a slice can be grabbed or dropped on (the barn is 6 wide).")]
         [SerializeField, Min(0.1f)] private float slotHalfWidth = 2.6f;
@@ -54,13 +55,34 @@ namespace Piglings.Simulation
         [Tooltip("A hovered tray slice grows by this (0.08 = 8%).")]
         [SerializeField, Range(0f, 0.3f)] private float trayHoverGrow = 0.08f;
 
+        [Header("Locked slices (in the tray, below the owned ones)")]
+        [Tooltip("A locked slice is drawn in this tint (like the barn's locked pegs).")]
+        [SerializeField] private Color lockedTint = new Color(0.15f, 0.12f, 0.12f, 0.45f);
+        [Tooltip("Drawn over a locked slice's middle (icon_lock). Empty = the tint alone.")]
+        [SerializeField] private Sprite lockSprite;
+        [Tooltip("The lock's size × a tray slice's height.")]
+        [SerializeField, Min(0.05f)] private float lockScale = 0.6f;
+
+        /// <summary>Placing now: NightFlow began it and hasn't ended it.</summary>
+        public bool IsPlacing { get; private set; }
+
+        /// <summary>NightFlow: the camera has reached the Tower frame — slices can be picked.</summary>
+        public void Begin() => IsPlacing = true;
+
+        /// <summary>NightFlow: leaving the Tower state — every slice goes back exactly, the tray hides.</summary>
+        public void End()
+        {
+            IsPlacing = false;
+            StopPlacing(session != null ? session.Tower : null);
+        }
+
         /// <summary>The tower slot under the pointer (bottom = 0), -1 = none or not placing now.</summary>
         public int HoveredSlice { get; private set; } = -1;
 
         /// <summary>A slot changed (its index): the sound hook.</summary>
         public event System.Action<int> SliceChanged;
 
-        private sealed class TrayItem { public WallSliceDefinition Slice; public SpriteRenderer Renderer; public float Hover; }
+        private sealed class TrayItem { public WallSliceDefinition Slice; public SpriteRenderer Renderer; public float Hover; public bool Locked; }
 
         private readonly List<TrayItem> _tray = new List<TrayItem>();
         private Transform _trayRoot;
@@ -85,8 +107,7 @@ namespace Piglings.Simulation
         private void Update()
         {
             var tower = session != null ? session.Tower : null;
-            bool active = flow != null && flow.State == FlowState.Tower && !flow.CameraMoving && session.CanEditTower && !session.GameplayInputBlocked
-                          && cam != null && tower != null;
+            bool active = IsPlacing && session.CanEditTower && !session.GameplayInputBlocked && cam != null && tower != null;
             if (!active) { StopPlacing(tower); return; }
 
             EnsureSlots(tower);
@@ -286,13 +307,17 @@ namespace Piglings.Simulation
             _trayRoot = new GameObject("Slice tray").transform;
             _trayRoot.SetParent(transform, worldPositionStays: false);
             var first = tower.SliceLook(0);
+            // Owned first (pickable), then the locked ones (shown, not pickable).
             var choices = session.SlicesToChoose();
+            int owned = choices.Count;
+            choices.AddRange(session.LockedSlices());
             float itemHeight = tower.SliceHeight * trayScale;
             float step = itemHeight * traySpacing;
             float middle = (tower.SliceBottom(0) + tower.SliceBottom(n)) / 2f;
             for (int k = 0; k < choices.Count; k++)
             {
                 var slice = choices[k];
+                bool locked = k >= owned;
                 var sr = new GameObject($"Tray {slice.Id}").AddComponent<SpriteRenderer>();
                 sr.transform.SetParent(_trayRoot, worldPositionStays: false);
                 sr.sprite = slice.Sprite != null ? slice.Sprite : (first != null ? first.sprite : null);
@@ -301,8 +326,26 @@ namespace Piglings.Simulation
                 float centreY = middle + ((choices.Count - 1) / 2f - k) * step;
                 sr.transform.position = new Vector3(tower.CentreX + trayOffsetX, centreY - itemHeight / 2f, 0f);
                 sr.transform.localScale = Vector3.one * TrayItemScale();
-                _tray.Add(new TrayItem { Slice = slice, Renderer = sr });
+                if (locked) Lock(sr, itemHeight);
+                _tray.Add(new TrayItem { Slice = slice, Renderer = sr, Locked = locked });
             }
+        }
+
+        // A locked tray slice: tinted, with the lock over its middle (a child, so it scales and hides with it).
+        private void Lock(SpriteRenderer slice, float itemHeight)
+        {
+            slice.color = lockedTint;
+            if (lockSprite == null) return;
+            var icon = new GameObject("Lock").AddComponent<SpriteRenderer>();
+            icon.sprite = lockSprite;
+            icon.sortingLayerID = slice.sortingLayerID;
+            icon.sortingOrder = slice.sortingOrder + 1;
+            icon.transform.SetParent(slice.transform, worldPositionStays: false);
+            // The slice's pivot is its bottom edge: the lock sits at its centre, sized from the tray slice's height.
+            float local = Mathf.Max(0.0001f, Mathf.Abs(slice.transform.lossyScale.y));
+            icon.transform.localPosition = new Vector3(0f, itemHeight / 2f / local, 0f);
+            float size = lockSprite.bounds.size.y > 0f ? itemHeight * lockScale / lockSprite.bounds.size.y : 1f;
+            icon.transform.localScale = Vector3.one * size / local;
         }
 
         // The tower slices' world scale (the slice prefab's), so tray and ghost match them.
@@ -318,6 +361,7 @@ namespace Piglings.Simulation
         {
             for (int k = 0; k < _tray.Count; k++)
             {
+                if (_tray[k].Locked) continue;   // shown, never picked
                 var b = _tray[k].Renderer.bounds;
                 if (world.x >= b.min.x && world.x <= b.max.x && world.y >= b.min.y && world.y <= b.max.y) return k;
             }

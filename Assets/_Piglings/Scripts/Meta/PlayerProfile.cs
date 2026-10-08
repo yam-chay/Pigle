@@ -20,10 +20,12 @@ namespace Piglings.Meta
         public readonly SortedDictionary<string, PegRecord> Pegs = new SortedDictionary<string, PegRecord>(StringComparer.Ordinal);
 
         // The campaign (v2 scene). Night index: where the player is (navigation, not a result). Dawns: the cause behind
-        // unlocks — how many times each night (by NightDefinition id) was won. Towers: the slices chosen per night.
+        // unlocks — how many times each night (by NightDefinition id) was won. Tower (R3): THE player's tower, bottom → top,
+        // by slice id — one tower that carries over from night to night (a taller night adds slots on top; a shorter one
+        // uses the bottom part and keeps the rest). A choice, like CurrentNight, not a result.
         public int CurrentNight;
         public readonly SortedDictionary<string, int> Dawns = new SortedDictionary<string, int>(StringComparer.Ordinal);
-        public readonly SortedDictionary<string, List<string>> Towers = new SortedDictionary<string, List<string>>(StringComparer.Ordinal);
+        public readonly List<string> Tower = new List<string>();
 
         // Fast Retry (M10.E): the next scene load starts straight in the night — no barn room. Navigation like CurrentNight,
         // one-shot: the scene that reads it clears it (and saves) as it boots.
