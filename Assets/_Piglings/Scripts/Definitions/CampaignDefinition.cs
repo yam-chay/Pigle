@@ -15,6 +15,10 @@ namespace Piglings.Definitions
     {
         [Tooltip("In order: night 1 first. Each night's id is a save key. A dawn on a night unlocks what its entry lists.")]
         [SerializeField] private List<CampaignNight> nights = new List<CampaignNight>();
+        [Tooltip("The save this campaign plays on: piglings_<name>.json (and, in a browser build, its localStorage copy). The " +
+                 "title screen and the night read it here, so both use the same save. A different name = a separate save, for " +
+                 "testing without touching the real one. Letters, digits, - and _ only. Renaming it orphans players' saves.")]
+        [SerializeField] private string saveName = "campaign";
 
         [Header("Starting loadout")]
         [Tooltip("Peg types owned from the first night (Bouncy).")]
@@ -29,6 +33,7 @@ namespace Piglings.Definitions
         [SerializeField, Min(0)] private int pegThrowsPerRound = 1;
 
         public IReadOnlyList<CampaignNight> Nights => nights;
+        public string SaveName => saveName;
         public IReadOnlyList<PegDefinition> StartingPegs => startingPegs;
         public IReadOnlyList<WallSliceDefinition> StartingSlices => startingSlices;
         public ThrowableDefinition Weapon => weapon;

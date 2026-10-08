@@ -62,10 +62,7 @@ namespace Piglings.Simulation
         [Tooltip("Append every night's chains, hours and summary to persistentDataPath/BalanceLogs/balance_<profile>.csv.")]
         [SerializeField] private bool writeBalanceLog = true;
 
-        [Header("Save and start")]
-        [Tooltip("Which save this scene uses: piglings_<name>.json (\"campaign\" in TestNight). A different name = a separate " +
-                 "save, for testing without touching the real one. Letters, digits, - and _ only.")]
-        [SerializeField] private string profileName = "dev";
+        [Header("Start")]
         [Tooltip("Off (TestNight): the night waits in Dusk — the day phase, the camera rising — until BeginNight(). On: it is " +
                  "Running as soon as the scene loads (a scene without NightFlow).")]
         [SerializeField] private bool startImmediately = true;
@@ -144,7 +141,7 @@ namespace Piglings.Simulation
         private NightLog _log;
         private BalanceLog _balance;
         private Progression _progression;
-        private ProfileFile _profileFile;
+        private ProfileStore _store;               // the save (Campaign ▸ Save Name): the file + the browser copy (T8)
         private NightDefinition _night;            // tonight's (see Night)
         private readonly List<WallSliceDefinition> _tower = new List<WallSliceDefinition>();   // tonight's slices as built
         private readonly List<PegDefinition> _pegDefs = new List<PegDefinition>();   // tonight's shelf types, for FindPeg
@@ -311,7 +308,7 @@ namespace Piglings.Simulation
             _tally = new MasteryTally(Bus, State);
             _settle = new SettleTracker(Bus, _chains);
             _log = new NightLog(this);
-            if (writeBalanceLog) _balance = new BalanceLog(this, profileName);
+            if (writeBalanceLog) _balance = new BalanceLog(this, campaign.SaveName);
             CheckPalette();
             Bus.Subscribe<NightPhaseChanged>(OnPhaseChanged);
             Bus.Subscribe<NightEnded>(OnNightEnded);
@@ -541,9 +538,9 @@ namespace Piglings.Simulation
 
         private PlayerProfile LoadProfile()
         {
-            _profileFile = new ProfileFile(Application.persistentDataPath, profileName);
-            var load = _profileFile.Load();
-            string line = $"Piglings save: loaded ({load.Source}) — {load.Profile.Describe()}  ({_profileFile.MainPath})";
+            _store = new ProfileStore(campaign.SaveName);
+            var load = _store.Load();
+            string line = $"Piglings save: loaded ({load.Source}) — {load.Profile.Describe()}  ({_store.Where})";
             if (load.Problems.Count == 0 && load.SaveError == null) Debug.Log(line, this);
             else
             {
@@ -570,11 +567,11 @@ namespace Piglings.Simulation
 
         private void Save(string why)
         {
-            var error = _profileFile.Save(_progression.Profile);
+            var error = _store.Save(_progression.Profile);
             if (error == null) Debug.Log($"Piglings save: saved after {why} — {_progression.Profile.Describe()}; " +
                                          $"next night {Weapon.Id}: {_stones.For(_progression.Profile.DirectHits(Weapon.Id)).Stones} stones, " +
                                          $"level {BankedWeaponLevel}", this);
-            else Debug.LogError($"Piglings save: NOT saved after {why} — {error}. The previous save is untouched.", this);
+            else Debug.LogError($"Piglings save: a problem saving after {why} — {error}. Where it failed, the previous save is untouched.", this);
         }
 
         // "+12 stone hits tonight", for the save log.

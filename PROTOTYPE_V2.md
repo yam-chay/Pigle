@@ -505,7 +505,7 @@ Inspector); Yam rebalances after it lands. Keeps PR P's follow-up rule as it is.
 | T6 | Progress bars (hour gap + score) move with the chain-close popup, not during the chain | ✔ merged (#56) |
 | — | Post-run real total; screen-space scoreboard + NightHudFade (delays); post-run slides; F1 Lose / Win night | ✔ merged (#57–#61) |
 | T7 | Pitched SFX hooks, placeholder clips | |
-| T8 | Minimal start screen (Play / Continue / Reset save), 2 tip cards (depth, peg placement), fixed aspect; the save survives a page reload in WebGL | |
+| T8 | Minimal start screen (Play / Continue / Reset save), 2 tip cards (depth, peg placement), fixed aspect; the save survives a page reload in WebGL | ☁ code done (TitleScreen, ProfileStore + localStorage, FixedAspect); editor steps T8-b |
 
 ### T1 — end-of-night flow
 What's already in place (checked 2026-10-06):
@@ -577,6 +577,8 @@ barn room's materials pile in the playtest build. Small — may ride along with 
   so **a new upload may reset every tester's save**. Test with two uploads, not just a page reload. Fix if needed: a fixed
   save path or PlayerPrefs, plus an explicit IndexedDB sync after writing.
 - Fixed aspect: Player Settings (editor) + letterboxing in code if the browser resizes the canvas.
+- *As built (2026-10-08):* the fix went in up front rather than waiting to see whether the upload resets the save — a
+  localStorage copy (`ProfileStore`), adopted over the file on every load. Still test it with two uploads.
 - *Recommendation:* make a first WebGL build right after T1 (URP 2D, physics speed, the save) — problems found on day 6
   can't be fixed by day 7.
 

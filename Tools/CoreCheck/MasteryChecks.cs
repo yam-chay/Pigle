@@ -185,6 +185,33 @@ static void SaveChecks(){
   var blocker=Path.Combine(dir,"not-a-folder"); File.WriteAllText(blocker,"x");
   Check(new ProfileFile(Path.Combine(blocker,"sub")).Save(p)!=null,"a save that can't be written returns the error, never throws");
 
+  // --- T8: the browser's copy (Adopt) and the title screen's Reset ---
+  { var tdir=Path.Combine(dir,"t8"); var tf=new ProfileFile(tdir,"campaign");
+    var copy=new PlayerProfile(); copy.Weapon("stone").DirectHits=42; copy.CurrentNight=2; var copyJson=ProfileJson.Write(copy);
+    // A new upload: no file, but the browser has the save → adopted, then loaded as normal
+    Check(tf.Adopt(copyJson)==null && tf.Load() is var a1 && a1.Source==ProfileSource.Main && a1.Profile.DirectHits("stone")==42 && a1.Profile.CurrentNight==2,
+          "Adopt: no file (a new itch upload) + the browser's copy → the copy loads");
+    // The file is older than the copy (the page closed before the file reached disk) → the copy wins, the file becomes .prev
+    var older=new PlayerProfile(); older.Weapon("stone").DirectHits=40; tf.Save(older);
+    Check(tf.Adopt(copyJson)==null && tf.Load().Profile.DirectHits("stone")==42 && ProfileJson.Read(File.ReadAllText(tf.PrevPath),out var pv,out _)==ProfileReadResult.Ok && pv.DirectHits("stone")==40,
+          "Adopt: a file older than the copy → the copy wins, the file kept as .prev");
+    // The same content → nothing written (the .prev stays what it was)
+    var prevBefore=File.ReadAllText(tf.PrevPath);
+    Check(tf.Adopt(copyJson)==null && File.ReadAllText(tf.PrevPath)==prevBefore,"Adopt: the same save → nothing rewritten");
+    // An unreadable copy never replaces a good file
+    Check(tf.Adopt("{ broken")!=null && tf.Load().Profile.DirectHits("stone")==42,"Adopt: an unreadable copy is reported and ignored — the file stays");
+    Check(tf.Adopt(null)==null && tf.Adopt("")==null,"Adopt: no copy → nothing to do");
+    // Reset: the save copied aside, save + .prev gone, the next load is a first launch
+    Check(tf.Reset()==null && !File.Exists(tf.MainPath) && !File.Exists(tf.PrevPath) && Directory.GetFiles(tdir,"piglings_campaign.reset-*").Length==1,
+          "Reset: the save copied aside as .reset-*, then the save and .prev removed");
+    { var fresh=tf.Load(); Check(fresh.Source==ProfileSource.New && !fresh.Profile.HasProgress,"...and the next load is a first launch, with no progress"); }
+    Check(tf.Reset()==null && Directory.GetFiles(tdir,"piglings_campaign.reset-*").Length==2,"Reset twice: each reset keeps its own copy (unique names)");
+    Check(copy.HasProgress && !new PlayerProfile().HasProgress,"HasProgress: a banked weapon / a moved night = progress; a new profile has none");
+    var towerOnly=new PlayerProfile(); towerOnly.Tower.Add("barn");
+    var recordOnly=new PlayerProfile(); recordOnly.Records.MostWolves=3;
+    Check(towerOnly.HasProgress && recordOnly.HasProgress,"HasProgress: a tower choice or a record alone counts too");
+  }
+
   // --- End to end: two nights, one won, one lost; Play Again = a new session loading from disk ---
   Directory.Delete(dir,true);
   for(int night=0;night<2;night++){

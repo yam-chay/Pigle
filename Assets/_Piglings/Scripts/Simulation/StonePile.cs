@@ -69,6 +69,9 @@ namespace Piglings.Simulation
         /// <summary>The stone in the hand or hopping there; null when none.</summary>
         public Throwable Held => _held;
 
+        /// <summary>Pile → hand, in seconds. ThrowController warns when it isn't shorter than its throw cooldown.</summary>
+        public float HopSeconds => hopSeconds;
+
         /// <summary>A stone is waiting in the hand (not still hopping). ThrowController won't aim without one.</summary>
         public bool HasStoneInHand => _held != null && !_hops.IsHopping(_held.transform);
 

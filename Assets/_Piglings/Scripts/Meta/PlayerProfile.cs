@@ -47,6 +47,14 @@ namespace Piglings.Meta
             return sum > int.MaxValue ? int.MaxValue : (int)sum;
         }
 
+        /// <summary>
+        /// Something worth continuing (the title screen: Continue + Reset save instead of Play): a banked night or a choice
+        /// made. A tower picked or a night moved to counts too — resetting them is still a loss the player should confirm.
+        /// </summary>
+        public bool HasProgress =>
+            Weapons.Count > 0 || Robots.Count > 0 || Pegs.Count > 0 || CurrentNight > 0 || Dawns.Count > 0 || Tower.Count > 0 ||
+            Records.Any;
+
         /// <summary>How many times this night was won (reached dawn). 0 = never.</summary>
         public int DawnsOn(string nightId) => nightId != null && Dawns.TryGetValue(nightId, out int n) ? n : 0;
 
