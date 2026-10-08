@@ -11,7 +11,7 @@ namespace Piglings.Presentation
     /// result (DAWN in the Visuals' gold, or OUT OF STONES); a dot per hour of the night in its colour, faded past what was
     /// reached; "6 / 6" (hours reached / hours, in the last reached hour's colour — gold on a dawn); the score
     /// ("Total Score: X" — what the night keeps; the hours show in the dots); numbers with thousands separators; BEST THROW EACH HOUR — a row per hour reached: "Hn" in its colour, a bar
-    /// against the night's best throw, the points coloured by their quality band (points ÷ that hour's gap — the rule every score
+    /// = the hour's best throw ÷ that hour's target (its gap; full = a whole hour in one throw), the points coloured by their quality band (points ÷ that hour's gap — the rule every score
     /// follows: solid, pulse or rainbow); the biggest chain, avg per stone, stones
     /// thrown · stolen ("26 · 2"). Yam lays out the labels ("biggest chain"…), one hour dot and one hour row; this fills the values.
     /// Every field is optional. Filled once, by PostRunView. Reads only.
@@ -38,7 +38,7 @@ namespace Piglings.Presentation
 
         [Header("Best throw each hour")]
         [Tooltip("One row, cloned per hour reached under a Vertical Layout Group: label = \"H2\" (hour colour), detail = the " +
-                 "points, bar = against the night's best throw (its gain tinted with the hour colour), marker = tinted too.")]
+                 "points, bar = the best throw ÷ that hour's target (its gain tinted with the hour colour), marker = tinted too.")]
         [SerializeField] private TemplateSlot hourRow;
         [Tooltip("Seconds between one row's bar and the next.")]
         [SerializeField, Min(0f)] private float rowDelay = 0.08f;
@@ -100,7 +100,6 @@ namespace Piglings.Presentation
                 score.text = UiText.Fill(texts.totalScore, ("score", Numbers.Thousands(s.Score)), ("banked", Numbers.Thousands(s.BankedScore)));
 
             if (_rows.Count == 0) _rows = TemplateList.Build(hourRow, null, reached);
-            int best = s.BestThrowPoints;
             _painted.Clear();
             for (int i = 0; i < _rows.Count; i++)
             {
@@ -115,7 +114,9 @@ namespace Piglings.Presentation
                 if (row.Bar != null)
                 {
                     row.Bar.TintGain(colour);
-                    row.Bar.Show(0f, best > 0 ? points / (float)best : 0f, false, delay + i * rowDelay);
+                    // How much of THAT hour's target its best throw was worth (points ÷ the hour's gap): a throw worth the whole
+                    // hour fills it. The same ratio the colour comes from, so the bar and the colour tell one story.
+                    row.Bar.Show(0f, Mathf.Clamp01(session.ThrowQuality(points, hour)), false, delay + i * rowDelay);
                 }
                 // The points by the rule every score follows: the throw's quality against ITS hour's gap (what that hour
                 // needed), not the night's total — so any hour can be a rainbow. No special case for the night's best.
