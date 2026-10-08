@@ -83,6 +83,13 @@ namespace Piglings.Presentation
             return Mathf.Clamp01(band / (float)(count - 1));
         }
 
+        /// <summary>A special peg's level (1, 2, 3…): its peg level band's look.</summary>
+        public PopupColor ForPegLevel(int level) => Cached(_pegLevelBands, _colours != null ? _colours.PegLevelBandIndex(level) : -1,
+                                                           i => _colours.PegLevelBandAt(i));
+        /// <summary>The peg level band's rank, 0..1.</summary>
+        public float PegLevelIntensity(int level) => _colours != null ? Rank(_colours.PegLevelBandIndex(level), _colours.PegLevelBandCount) : 0f;
+
+        private readonly Dictionary<int, PopupColor> _pegLevelBands = new Dictionary<int, PopupColor>();
         private readonly Dictionary<int, PopupColor> _recordBands = new Dictionary<int, PopupColor>();
         private readonly Dictionary<int, PopupColor> _multBands = new Dictionary<int, PopupColor>();
 

@@ -102,11 +102,15 @@ namespace Piglings.Presentation
             {
                 if (board == null || e.Socket < 0 || e.Socket >= board.SocketCount) return;
                 var at = board.Position(e.Socket);
-                // What a special peg adds when it triggers, like any other gain: its score (coloured by the depth of what hit
-                // it — the stone 0, a ball its own — the plain hold's rule) and, above it, its mult bonus.
+                // What a special peg adds when it triggers: its score — coloured by the peg's LEVEL (Visuals ▸ Peg Level Bands),
+                // since the level is what the score comes from — and, above it, its mult bonus (Mult Bands). The bus is
+                // synchronous, so the socket still holds the level that scored.
                 if (e.ScoreAdded > 0)
+                {
+                    int level = Mathf.Max(1, session.State.Sockets[e.Socket].Level);
                     Spawn(at, UiText.Fill(session.Texts.popupPegScore, ("score", Numbers.Thousands(e.ScoreAdded))),
-                          _styles.ForDepthBand(e.Depth), plainHoldScale, _styles.DepthIntensity(e.Depth));
+                          _styles.ForPegLevel(level), plainHoldScale, _styles.PegLevelIntensity(level));
+                }
                 if (e.MultAdded > 0f)
                     Spawn(at + (e.ScoreAdded > 0 ? pegMultOffset : Vector3.zero),
                           UiText.Fill(session.Texts.popupPegMult, ("mult", Numbers.Mult(e.MultAdded))), _styles.ForMult(e.MultAdded),

@@ -84,6 +84,16 @@ namespace Piglings.Definitions
             new QualityBand { minQuality = 1f,    colour = Color.white, look = QualityLook.Rainbow },               // a new record
         };
 
+        [Header("Peg level bands")]
+        [Tooltip("Rising Min Quality = a special peg's level (1, 2, 3). Colours the \"+score\" it adds when it triggers — the score " +
+                 "comes from its level, so does the look.")]
+        [SerializeField] private List<QualityBand> pegLevelBands = new List<QualityBand>
+        {
+            new QualityBand { minQuality = 1f, colour = new Color(1f, 0.76f, 0.25f) },                              // level 1 amber
+            new QualityBand { minQuality = 2f, colour = new Color(1f, 0.3f, 0.85f), look = QualityLook.Pulse },     // level 2 magenta, pulsing
+            new QualityBand { minQuality = 3f, colour = Color.white, look = QualityLook.Rainbow },                  // level 3 and up
+        };
+
         [Header("Mult bands")]
         [Tooltip("Rising Min Quality = the mult value a special peg adds (+1, +2…). Colours its \"+N mult\" popup.")]
         [SerializeField] private List<QualityBand> multBands = new List<QualityBand>
@@ -137,6 +147,7 @@ namespace Piglings.Definitions
         private Color StopAt(int i) => i < hourColours.Count ? hourColours[i] : gold;
         public int BandCount => qualityBands.Count;
         public int MultBandCount => multBands.Count;
+        public int PegLevelBandCount => pegLevelBands.Count;
 
         /// <summary>Depth d's colour; past the list → the last; an empty list → white.</summary>
         public Color DepthColour(int depth)
@@ -157,6 +168,11 @@ namespace Piglings.Definitions
         public int MultBandIndex(float mult) => IndexIn(multBands, mult);
         /// <summary>Mult band i; a plain white band when there are none.</summary>
         public QualityBand MultBandAt(int index) => At(multBands, index);
+
+        /// <summary>The peg level band for a special peg's level (index), or -1 with none.</summary>
+        public int PegLevelBandIndex(int level) => IndexIn(pegLevelBands, level);
+        /// <summary>Peg level band i; a plain white band when there are none.</summary>
+        public QualityBand PegLevelBandAt(int index) => At(pegLevelBands, index);
 
         // Every band list works the same: a value takes the last band whose start it reaches; below the first → the first.
         private static int IndexIn(List<QualityBand> bands, float value)

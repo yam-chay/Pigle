@@ -156,6 +156,7 @@ Every tunable value gets **one owner** (ARCHITECTURE.md ▸ "Who owns a tunable 
 - [x] ☁ R4 Pegs: one `[Serializable]` effect class per effect via `[SerializeReference]` (`PegEffectSettings.cs`), each with its own fields and levels; a clean peg Inspector (pick Effect → only its settings); a migration from the old fields (hidden, read once) + the values exported in the PR. *(PegBoard had no per-peg settings — the per-effect VISUALS sit on PegBoardView; where they go is open, see R4c.)*
   - [x] 🖥 R4-b Editor: let Unity import; open each Peg_ asset (Plain, Bouncy, Splitter, Bomb) and check its Effect settings against the PR's export; File ▸ Save Project; play-check. Steps in the PR.
   - [x] ☁ R4.1 Special pegs show the score they add (`+N`, UI Texts ▸ Popup Peg Score) with the `+N mult` above it — Splitter / Bomb (mult 0) showed nothing, Bouncy only its mult (Yam, 2026-10-08).
+  - [x] ☁ R4.2 A special peg's `+score` is coloured by its level (Visuals ▸ Peg Level Bands), not its hitter's depth (Yam, 2026-10-08).
   - [ ] ☁ R4b Delete the hidden legacy fields + `PegLevel` once R4-b has saved every peg.
   - [ ] R4c Decide: PegBoardView's per-effect visuals (split flash / sparkles, bomb star / ring / colour, recharge sparkles, spent tint) → Visuals per effect (the ownership rule), or into each effect class.
 - R5 New features (after the refactor, not part of it):
