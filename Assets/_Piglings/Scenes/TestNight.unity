@@ -3092,7 +3092,7 @@ BoxCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: 0, y: 2.1}
+  m_Offset: {x: 0, y: 0.5}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0, y: 0}
@@ -3102,7 +3102,7 @@ BoxCollider2D:
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
-  m_Size: {x: 0.1, y: 10.9}
+  m_Size: {x: 0.1, y: 7.7}
   m_EdgeRadius: 0
 --- !u!1 &332941721
 GameObject:
@@ -3865,7 +3865,7 @@ BoxCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: 0, y: 2.1}
+  m_Offset: {x: 0, y: 0.5}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0, y: 0}
@@ -3875,7 +3875,7 @@ BoxCollider2D:
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
-  m_Size: {x: 0.1, y: 10.9}
+  m_Size: {x: 0.1, y: 7.7}
   m_EdgeRadius: 0
 --- !u!1 &519420028
 GameObject:
@@ -5697,6 +5697,7 @@ MonoBehaviour:
   session: {fileID: 1068153025}
   director: {fileID: 519420034}
   spawner: {fileID: 1317582554}
+  picker: {fileID: 0}
   towerSeconds: 1
   doorsCloseSeconds: 0.2
   riseSeconds: 2.5
@@ -5733,7 +5734,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Piglings.Simulation::Piglings.Simulation.SlicePicker
   session: {fileID: 1068153025}
-  flow: {fileID: 769251738}
   cam: {fileID: 519420031}
   slotHalfWidth: 2.6
   jiggleDegrees: 2.5
@@ -5748,6 +5748,9 @@ MonoBehaviour:
   trayScale: 0.9
   traySpacing: 1.2
   trayHoverGrow: 0.08
+  lockedTint: {r: 0.15, g: 0.12, b: 0.12, a: 0.45}
+  lockSprite: {fileID: 21300000, guid: 89ece36a66f91df4a941a0ccbb552a97, type: 3}
+  lockScale: 0.6
 --- !u!114 &769251741
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7317,7 +7320,7 @@ Transform:
   m_GameObject: {fileID: 1045436432}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 9.4, z: 0}
+  m_LocalPosition: {x: 0, y: 6.2, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -7608,7 +7611,8 @@ MonoBehaviour:
   - {fileID: 501042157}
   wallBottom: -0.25
   wallAboveTop: 1.25
-  previewNight: {fileID: 11400000, guid: bcf66cc91d28abd458002fdb12723e19, type: 2}
+  previewNight: {fileID: 11400000, guid: 3f672aa5176394a47ab6bce1dd0f859c, type: 2}
+  previewSlice: {fileID: 11400000, guid: 292b3171ccd44c04cada7a3373800aa0, type: 2}
 --- !u!1 &1068153024
 GameObject:
   m_ObjectHideFlags: 0
@@ -7638,7 +7642,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9368f07989a285241b0e6a436c85de9e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Piglings.Simulation::Piglings.Simulation.NightSession
-  night: {fileID: 11400000, guid: 3f672aa5176394a47ab6bce1dd0f859c, type: 2}
   scoring: {fileID: 11400000, guid: fa51ede7d84858d4b928e1018f74218c, type: 2}
   plainPeg: {fileID: 11400000, guid: b80a14b5d419add45884af4520021e9a, type: 2}
   board: {fileID: 1064185511}
@@ -15713,6 +15716,7 @@ SceneRoots:
   m_Roots:
   - {fileID: 519420032}
   - {fileID: 619394802}
+  - {fileID: 769251739}
   - {fileID: 1068153026}
   - {fileID: 599349780}
   - {fileID: 1527724723}
@@ -15728,7 +15732,6 @@ SceneRoots:
   - {fileID: 99004604}
   - {fileID: 1599771213}
   - {fileID: 248366451}
-  - {fileID: 769251739}
   - {fileID: 1416934856}
   - {fileID: 577540937}
   - {fileID: 810653560}
