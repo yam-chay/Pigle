@@ -126,12 +126,14 @@ namespace Piglings.Meta
         public int LongestChain;     // the most robots one throw dropped
         public int DeepestChain;     // the deepest depth one chain reached
         public int BestNightScore;   // the highest score a night ended with (the live score: dawn with its sweep)
+        public int MostWolves;       // the most wolves one night dropped (any cause, the sweep too — the post-run's "+N")
 
-        public bool Any => BestThrow > 0 || LongestChain > 0 || DeepestChain > 0 || BestNightScore > 0;
+        public bool Any => BestThrow > 0 || LongestChain > 0 || DeepestChain > 0 || BestNightScore > 0 || MostWolves > 0;
 
         public NightRecords Copy() => new NightRecords
         {
             BestThrow = BestThrow, LongestChain = LongestChain, DeepestChain = DeepestChain, BestNightScore = BestNightScore,
+            MostWolves = MostWolves,
         };
     }
 }

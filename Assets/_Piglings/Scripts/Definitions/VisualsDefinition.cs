@@ -6,11 +6,15 @@ namespace Piglings.Definitions
     /// <summary>How a band of throw quality looks: a plain colour, the colour pulsing, or an animated rainbow.</summary>
     public enum QualityLook { Solid, Pulse, Rainbow }
 
-    /// <summary>One band of throw quality: from <see cref="minQuality"/> up to the next band's.</summary>
+    /// <summary>
+    /// One colour band: from <see cref="minQuality"/> up to the next band's. The same shape serves every band list in Visuals —
+    /// throw quality, closeness to a record, a mult — so every number in the game is coloured by one kind of rule.
+    /// </summary>
     [System.Serializable]
     public sealed class QualityBand
     {
-        [Tooltip("Points ÷ the gap of the hour the throw was thrown in, where this band starts (0.05 = 5% of the hour).")]
+        [Tooltip("Where this band starts. Quality bands: points ÷ the hour's gap (0.05 = 5% of the hour). Record bands: tonight ÷ " +
+                 "your record (1 = a new record). Mult bands: the mult value (2 = +2).")]
         [Min(0f)] public float minQuality;
         public Color colour = Color.white;
         public QualityLook look = QualityLook.Solid;
@@ -64,9 +68,30 @@ namespace Piglings.Definitions
         [Tooltip("A chain result this big counts as a full-size chain: the chain popup's growth and the camera shake both scale " +
                  "up to it.")]
         [SerializeField, Min(1)] private int bigChainTotal = 300;
-        [Tooltip("A special peg's \"+1 mult\" popup: its colour and size.")]
-        [SerializeField] private Color pegMultColour = new Color(1f, 0.35f, 0.75f, 1f);
+        [Tooltip("A special peg's \"+1 mult\" popup: its size (its colour and look come from the Mult Bands).")]
         [SerializeField, Min(0.01f)] private float pegMultScale = 0.7f;
+
+        [Header("Record bands (relative to your best)")]
+        [Tooltip("Rising Min Quality = tonight ÷ your record before tonight (1 = matched or beaten). A value takes the last band " +
+                 "it reaches. Colours the post-run's wolves dropped against your most-wolves night.")]
+        [SerializeField] private List<QualityBand> recordBands = new List<QualityBand>
+        {
+            new QualityBand { minQuality = 0f,    colour = new Color(1f, 0.95f, 0.82f) },                           // < 50% cream
+            new QualityBand { minQuality = 0.5f,  colour = new Color(1f, 0.76f, 0.25f) },                           // amber
+            new QualityBand { minQuality = 0.7f,  colour = new Color(1f, 0.52f, 0.15f) },                           // orange
+            new QualityBand { minQuality = 0.85f, colour = new Color(1f, 0.25f, 0.2f) },                            // red
+            new QualityBand { minQuality = 0.95f, colour = new Color(1f, 0.3f, 0.85f), look = QualityLook.Pulse },  // magenta, pulsing
+            new QualityBand { minQuality = 1f,    colour = Color.white, look = QualityLook.Rainbow },               // a new record
+        };
+
+        [Header("Mult bands")]
+        [Tooltip("Rising Min Quality = the mult value a special peg adds (+1, +2…). Colours its \"+N mult\" popup.")]
+        [SerializeField] private List<QualityBand> multBands = new List<QualityBand>
+        {
+            new QualityBand { minQuality = 0f, colour = new Color(1f, 0.35f, 0.75f) },                              // +1 pink
+            new QualityBand { minQuality = 2f, colour = new Color(1f, 0.3f, 0.85f), look = QualityLook.Pulse },     // +2 magenta, pulsing
+            new QualityBand { minQuality = 3f, colour = Color.white, look = QualityLook.Rainbow },                  // +3 and up
+        };
 
         [Header("Animated looks")]
         [Tooltip("Pulse: how far the colour swings toward white (0..1), and how many pulses per second.")]
@@ -82,7 +107,6 @@ namespace Piglings.Definitions
         public float RainbowSpread => rainbowSpread;
         public Color Gold => gold;
         public int BigChainTotal => bigChainTotal;
-        public Color PegMultColour => pegMultColour;
         public float PegMultScale => pegMultScale;
         public int DepthCount => depthColours.Count;
 
@@ -112,6 +136,7 @@ namespace Piglings.Definitions
 
         private Color StopAt(int i) => i < hourColours.Count ? hourColours[i] : gold;
         public int BandCount => qualityBands.Count;
+        public int MultBandCount => multBands.Count;
 
         /// <summary>Depth d's colour; past the list → the last; an empty list → white.</summary>
         public Color DepthColour(int depth)
@@ -121,12 +146,31 @@ namespace Piglings.Definitions
         }
 
         /// <summary>The band a quality falls in (index into the list), or -1 with no bands.</summary>
-        public int BandIndex(float quality)
+        public int BandIndex(float quality) => IndexIn(qualityBands, quality);
+
+        /// <summary>The record band for tonight ÷ your record before tonight (index), or -1 with none.</summary>
+        public int RecordBandIndex(float vsRecord) => IndexIn(recordBands, vsRecord);
+        /// <summary>Record band i; a plain white band when there are none.</summary>
+        public QualityBand RecordBandAt(int index) => At(recordBands, index);
+
+        /// <summary>The mult band for a mult value (index), or -1 with none.</summary>
+        public int MultBandIndex(float mult) => IndexIn(multBands, mult);
+        /// <summary>Mult band i; a plain white band when there are none.</summary>
+        public QualityBand MultBandAt(int index) => At(multBands, index);
+
+        // Every band list works the same: a value takes the last band whose start it reaches; below the first → the first.
+        private static int IndexIn(List<QualityBand> bands, float value)
         {
-            int found = qualityBands.Count > 0 ? 0 : -1;
-            for (int i = 0; i < qualityBands.Count; i++)
-                if (qualityBands[i] != null && quality >= qualityBands[i].minQuality) found = i;
+            int found = bands.Count > 0 ? 0 : -1;
+            for (int i = 0; i < bands.Count; i++)
+                if (bands[i] != null && value >= bands[i].minQuality) found = i;
             return found;
+        }
+
+        private static QualityBand At(List<QualityBand> bands, int index)
+        {
+            if (index < 0 || bands.Count == 0) return new QualityBand();
+            return bands[Mathf.Clamp(index, 0, bands.Count - 1)] ?? new QualityBand();
         }
 
         /// <summary>Band i (past the list → the last); a plain white band when there are none.</summary>

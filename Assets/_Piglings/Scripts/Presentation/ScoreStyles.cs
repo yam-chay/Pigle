@@ -58,6 +58,45 @@ namespace Piglings.Presentation
             return style;
         }
 
+        /// <summary>A value against your record before tonight (tonight ÷ record; ≥ 1 = a new record): its record band's look.</summary>
+        public PopupColor ForRecord(float vsRecord) => Cached(_recordBands, _colours != null ? _colours.RecordBandIndex(vsRecord) : -1,
+                                                              i => _colours.RecordBandAt(i));
+
+        /// <summary>A mult value (+1, +2…): its mult band's look.</summary>
+        public PopupColor ForMult(float mult) => Cached(_multBands, _colours != null ? _colours.MultBandIndex(mult) : -1,
+                                                        i => _colours.MultBandAt(i));
+
+        // ---- Effect strength by the same rule as the colour: a band's rank, 0 (the first band) → 1 (the top band). ----
+        // A popup's life and shake follow it, so the look and the effect never disagree.
+
+        /// <summary>The quality band's rank, 0..1.</summary>
+        public float QualityIntensity(float quality) => _colours != null ? Rank(_colours.BandIndex(quality), _colours.BandCount) : 0f;
+        /// <summary>Depth d's band rank (band i for depth i, like ForDepthBand), 0..1.</summary>
+        public float DepthIntensity(int depth) => _colours != null ? Rank(depth, _colours.BandCount) : 0f;
+        /// <summary>The mult band's rank, 0..1.</summary>
+        public float MultIntensity(float mult) => _colours != null ? Rank(_colours.MultBandIndex(mult), _colours.MultBandCount) : 0f;
+
+        private static float Rank(int band, int count)
+        {
+            if (band < 0 || count <= 0) return 0f;
+            if (count == 1) return 1f;
+            return Mathf.Clamp01(band / (float)(count - 1));
+        }
+
+        private readonly Dictionary<int, PopupColor> _recordBands = new Dictionary<int, PopupColor>();
+        private readonly Dictionary<int, PopupColor> _multBands = new Dictionary<int, PopupColor>();
+
+        // One style per band, built once (the animated ones keep their own clock, so popups don't allocate per frame).
+        private PopupColor Cached(Dictionary<int, PopupColor> cache, int band, System.Func<int, QualityBand> bandAt)
+        {
+            if (band < 0) return _plain;
+            if (cache.TryGetValue(band, out var style)) return style;
+            var b = bandAt(band);
+            style = Build(b.look, b.colour);
+            cache[band] = style;
+            return style;
+        }
+
         /// <summary>The animated rainbow, whatever the quality (the post-run's best throw of the night). Same speed / spread as the bands'.</summary>
         public PopupColor Rainbow
         {

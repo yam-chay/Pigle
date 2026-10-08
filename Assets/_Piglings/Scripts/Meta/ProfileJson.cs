@@ -21,7 +21,7 @@ namespace Piglings.Meta
     ///   "pegs":    { "peg_bomb":      { "knocks": 12, "triggers": [9, 2, 0] } },
     ///   "campaign": { "night": 1, "dawns": { "night_01": 3 }, "startInNight": false },
     ///   "towers":  { "night_02": ["slice_barn", "slice_wood", "slice_barn"] },
-    ///   "records": { "bestThrow": 620, "longestChain": 9, "deepestChain": 3, "bestNightScore": 4100 },
+    ///   "records": { "bestThrow": 620, "longestChain": 9, "deepestChain": 3, "bestNightScore": 4100, "mostWolves": 94 },
     ///   "debug":   { "origin": "scenario Scenario_Night3" }
     /// }
     /// ("debug" — M11.T3, written only when the save came from the debug panel — is one more of those additions.)
@@ -80,6 +80,7 @@ namespace Piglings.Meta
                 {
                     ["bestThrow"] = profile.Records.BestThrow, ["longestChain"] = profile.Records.LongestChain,
                     ["deepestChain"] = profile.Records.DeepestChain, ["bestNightScore"] = profile.Records.BestNightScore,
+                    ["mostWolves"] = profile.Records.MostWolves,
                 },
             };
             if (!string.IsNullOrEmpty(profile.Origin)) root["debug"] = new JObject { ["origin"] = profile.Origin };
@@ -178,6 +179,7 @@ namespace Piglings.Meta
                 if (!ReadField(records, "records", "longestChain", ref rec.LongestChain, ref problem)) return ProfileReadResult.Corrupt;
                 if (!ReadField(records, "records", "deepestChain", ref rec.DeepestChain, ref problem)) return ProfileReadResult.Corrupt;
                 if (!ReadField(records, "records", "bestNightScore", ref rec.BestNightScore, ref problem)) return ProfileReadResult.Corrupt;
+                if (!ReadField(records, "records", "mostWolves", ref rec.MostWolves, ref problem)) return ProfileReadResult.Corrupt;
             }
 
             if (!ReadSection(root, "debug", out var debug, ref problem)) return ProfileReadResult.Corrupt;

@@ -92,15 +92,23 @@ static void PostRunChecks(){
    var r=prog.Profile.Records;
    Check(r.BestThrow==620 && r.LongestChain==10 && r.DeepestChain==2 && r.BestNightScore==4100,"records keep the best of each (620, 10, 2, 4100)");
    Check(!prog.RecordNight(0,0,0,0).Any,"an empty night breaks nothing");
+   // The most wolves in one night (the post-run's "+N", the sweep included): the base of its record colour.
+   var w1=prog.RecordNight(0,0,0,0,50); var w2=prog.RecordNight(0,0,0,0,40); var w3=prog.RecordNight(0,0,0,0,51);
+   Check(w1.MostWolves && !w2.MostWolves && w3.MostWolves && prog.Profile.Records.MostWolves==51,"most wolves: 50 NEW, 40 not, 51 NEW → 51 kept");
    prog.Dispose(); }
+ // --- "Relative to your record" (the post-run's wolves colour): tonight ÷ the record before tonight ---
+ Check(RecordsReport.VsRecord(25,50)==0.5f && RecordsReport.VsRecord(60,50)==1.2f && RecordsReport.VsRecord(50,50)==1f,
+       "vs record: half of it = 0.5; past it > 1 (a new record); a tie = 1");
+ Check(RecordsReport.VsRecord(12,0)==1f && RecordsReport.VsRecord(0,50)==0f && RecordsReport.VsRecord(0,0)==0f,
+       "no record yet: tonight is the record (1); none tonight = 0");
 
  // --- The save: dropped, records, startInNight (additive, v1) ---
  { var p=new PlayerProfile(); p.Robot("wolf").Dropped=950; p.Robot("wolf").Swept=210; p.Records.BestThrow=620; p.Records.LongestChain=9; p.Records.DeepestChain=3;
-   p.Records.BestNightScore=4100; p.StartInNight=true;
+   p.Records.BestNightScore=4100; p.Records.MostWolves=94; p.StartInNight=true;
    var text=ProfileJson.Write(p);
    var ok=ProfileJson.Read(text,out var back,out var problem)==ProfileReadResult.Ok;
    Check(ok && back.Robots["wolf"].Dropped==950 && back.Robots["wolf"].Swept==210 && back.Records.BestThrow==620 && back.Records.LongestChain==9 && back.Records.DeepestChain==3
-         && back.Records.BestNightScore==4100 && back.StartInNight,"save round trip: dropped, swept, the four records and startInNight come back");
+         && back.Records.BestNightScore==4100 && back.Records.MostWolves==94 && back.StartInNight,"save round trip: dropped, swept, the five records and startInNight come back");
    ok=ProfileJson.Read("{\"version\":1,\"robots\":{\"wolf\":{\"ballKnocks\":3}},\"campaign\":{\"night\":1}}",out var old,out problem)==ProfileReadResult.Ok;
    Check(ok && old.Robots["wolf"].Dropped==0 && old.Robots["wolf"].Swept==0 && !old.Records.Any && !old.StartInNight,"an older save (no dropped / records / startInNight) reads as 0 / none / false");
    Check(ProfileJson.Read("{\"version\":1,\"records\":{\"bestThrow\":-5}}",out _,out problem)==ProfileReadResult.Corrupt,"a negative record is corrupt");
@@ -120,7 +128,7 @@ static void PostRunChecks(){
    Func<string,PegProgression> rule=id=>id=="peg_unknown"?null:new PegProgression(new[]{4,10,20},null,1,10,3);
    var stones=new StoneProgression(new[]{10,20,30,40},10);
    var before=new PlayerProfile(); before.Weapon("stone").DirectHits=15; before.Peg("peg_bouncy").Triggers.Add(2);
-   before.Robot("wolf").Dropped=100; before.Records.BestThrow=500;
+   before.Robot("wolf").Dropped=100; before.Records.BestThrow=500; before.Records.MostWolves=24;
    // Tonight: 7 stone hits (15 -> 22: a stone earned), Bouncy fired twice (2 -> 4: a copy earned), the dawn on night 1 unlocked the
    // Bomb (never fired), 12 wolves dropped, a new best throw.
    var after=ProfileJson.Copy(before); after.Weapon("stone").DirectHits=22; after.Peg("peg_bouncy").Triggers[0]=4;
@@ -137,7 +145,7 @@ static void PostRunChecks(){
    Check(bomb.UnlockedTonight && bomb.UnlockedByNight==1 && bomb.CopiesBefore==0 && bomb.CopiesAfter==1 && !bomb.Bar.Ready && bomb.Bar.After==0f,
      "Bomb: NEW (unlocked by dawn on night 1), copies 0 -> 1, an empty bar, not READY");
    Check(bouncy.After.NextFollowUpAt==3 && bouncy.InARowAtNext==2,"the next follow-up step: at 3 copies, 2 in a row");
-   Check(rep.WolvesTonight==12 && rep.WolvesTotal==112,"wolves: +12 tonight (any type), 112 all-time");
+   Check(rep.WolvesTonight==12 && rep.WolvesTotal==112 && rep.WolvesVsRecord==0.5f,"wolves: +12 tonight (any type), 112 all-time; half the 24 record");
    Check(rep.Records.New.BestThrow && rep.Records.New.DeepestChain && !rep.Records.New.LongestChain && !rep.Records.New.BestNightScore
          && rep.Records.Before.BestThrow==500 && rep.Records.After.BestThrow==620,"records: NEW where tonight beat the record from before tonight (best throw, deepest chain)");
    // A night where nothing moved: no peg rows, the stone's bar doesn't grow, nothing READY.

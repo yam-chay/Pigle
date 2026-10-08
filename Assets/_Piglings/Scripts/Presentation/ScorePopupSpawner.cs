@@ -55,7 +55,6 @@ namespace Piglings.Presentation
 
         private readonly Dictionary<GameId, Transform> _robots = new Dictionary<GameId, Transform>();
         private ScoreStyles _styles;
-        private PopupColor _mult;
 
         private void OnEnable() => spawner.Spawned += OnSpawned;
         private void OnDisable() => spawner.Spawned -= OnSpawned;
@@ -64,8 +63,6 @@ namespace Piglings.Presentation
         private void Start()
         {
             _styles = new ScoreStyles(session.Visuals);
-            // The special peg's "+1 mult" look and "a big chain" live in the Visuals (one visual SO, R2).
-            _mult = new PopupColor { mode = PopupColorMode.Solid, gradient = PopupColor.Flat(session.Visuals.PegMultColour) };
             session.Bus.Subscribe<ChainGained>(OnGained);
             session.Bus.Subscribe<ChainScored>(OnChainScored);
             session.Bus.Subscribe<RobotRemoved>(OnRobotRemoved);
@@ -96,19 +93,20 @@ namespace Piglings.Presentation
                 float quality = session.ThrowQuality(worth, e.Hour);
                 float scale = robotScale * (1f + scalePerDepth * Mathf.Max(0f, e.Mult - 1f));
                 string text = UiText.Fill(session.Texts.popupRobot, ("score", Numbers.Thousands(e.Score)), ("mult", Numbers.Mult(e.Mult)));
-                Spawn(t.position + robotOffset, text, StyleFor(worth, e.Hour), scale, Mathf.Clamp01(quality));
+                Spawn(t.position + robotOffset, text, StyleFor(worth, e.Hour), scale, _styles.QualityIntensity(quality));
             }
             else if (e.Cause == ChainGainCause.Peg && e.MultAdded > 0f)
             {
                 if (board == null || e.Socket < 0 || e.Socket >= board.SocketCount) return;
-                Spawn(board.Position(e.Socket), UiText.Fill(session.Texts.popupPegMult, ("mult", Numbers.Mult(e.MultAdded))), _mult, session.Visuals.PegMultScale, 0.4f);
+                Spawn(board.Position(e.Socket), UiText.Fill(session.Texts.popupPegMult, ("mult", Numbers.Mult(e.MultAdded))), _styles.ForMult(e.MultAdded),
+                      session.Visuals.PegMultScale, _styles.MultIntensity(e.MultAdded));
             }
             else if (e.Cause == ChainGainCause.PlainPeg && e.ScoreAdded > 0)
             {
                 if (board == null || e.Socket < 0 || e.Socket >= board.SocketCount) return;
                 // Coloured by its hitter's depth (the stone 0, a ball its own), with the bands' looks: the deepest pulse / rainbow.
                 Spawn(board.Position(e.Socket), UiText.Fill(session.Texts.popupPlainHold, ("score", Numbers.Thousands(e.ScoreAdded))),
-                      _styles.ForDepthBand(e.Depth), plainHoldScale, 0f);
+                      _styles.ForDepthBand(e.Depth), plainHoldScale, _styles.DepthIntensity(e.Depth));
             }
             // The stone's base: no popup (the board's live row shows it).
         }
@@ -118,8 +116,9 @@ namespace Piglings.Presentation
             if (!showChainResult || e.RobotsDropped < minRobotsForChainPopup || chainAnchor == null) return;
             string sum = UiText.Fill(session.Texts.popupChain, ("score", Numbers.Thousands(e.Score)), ("mult", Numbers.Mult(e.Mult)),
                                      ("hour", e.Hour.ToString()), ("hourMult", Numbers.Mult(e.HourMultiplier)), ("total", Numbers.Thousands(e.Total)));
-            float size = Mathf.Clamp01(e.Total / (float)session.Visuals.BigChainTotal);
-            var popup = Spawn(chainAnchor.position, sum, StyleFor(e.Total, e.Hour), chainScale, size);
+            // Its effect follows its colour: the quality band's rank (points ÷ its hour's gap), like every other popup.
+            float intensity = _styles.QualityIntensity(session.ThrowQuality(e.Total, e.Hour));
+            var popup = Spawn(chainAnchor.position, sum, StyleFor(e.Total, e.Hour), chainScale, intensity);
             popup.FitInto(chainArea, chainMinFontSize);
         }
 
@@ -139,10 +138,11 @@ namespace Piglings.Presentation
             for (int i = 0; i < qualities.Length; i++)
             {
                 int points = Mathf.Max(1, Mathf.RoundToInt(qualities[i] * gap));
-                Spawn(origin + new Vector3(-2.5f + i, -1.2f, 0f), $"{points} ×2", StyleFor(points, 1), robotScale, qualities[i]);
-                Spawn(origin + new Vector3(-2.5f + i, 0f, 0f), $"= {points}", StyleFor(points, 1), chainScale * 0.6f, qualities[i]);
+                Spawn(origin + new Vector3(-2.5f + i, -1.2f, 0f), $"{points} ×2", StyleFor(points, 1), robotScale, _styles.QualityIntensity(qualities[i]));
+                Spawn(origin + new Vector3(-2.5f + i, 0f, 0f), $"= {points}", StyleFor(points, 1), chainScale * 0.6f, _styles.QualityIntensity(qualities[i]));
             }
-            Spawn(origin + new Vector3(3.5f, -1.2f, 0f), "+1 mult", _mult, session.Visuals.PegMultScale, 0.4f);
+            for (int m = 1; m <= 3; m++)
+                Spawn(origin + new Vector3(3.5f, -1.2f + (m - 1) * 0.5f, 0f), $"+{m} mult", _styles.ForMult(m), session.Visuals.PegMultScale, _styles.MultIntensity(m));
         }
 
         private ScorePopup Spawn(Vector3 position, string text, PopupColor color, float scale, float intensity)

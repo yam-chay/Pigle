@@ -8,10 +8,11 @@ namespace Piglings.Presentation
 {
     /// <summary>
     /// The post-run's THE NIGHT panel (M10.E, PROTOTYPE_V2.md ▸ PR E; mockup Docs/Mockups/post_run_v5.png): "NIGHT n"; the
-    /// result (DAWN in the dawn gold — the palette's last colour — or OUT OF STONES); a dot per hour of the night in its
-    /// colour plus a last one for dawn (gold), faded past what was reached; "6 / 6" (hours reached / hours); the score
+    /// result (DAWN in the Visuals' gold, or OUT OF STONES); a dot per hour of the night in its colour, faded past what was
+    /// reached; "6 / 6" (hours reached / hours, in the last reached hour's colour — gold on a dawn); the score
     /// ("Total Score: X" — what the night keeps; the hours show in the dots); numbers with thousands separators; BEST THROW EACH HOUR — a row per hour reached: "Hn" in its colour, a bar
-    /// against the night's best throw, the points, the night's best in rainbow; the biggest chain, avg per stone, stones
+    /// against the night's best throw, the points coloured by their quality band (points ÷ that hour's gap — the rule every score
+    /// follows: solid, pulse or rainbow); the biggest chain, avg per stone, stones
     /// thrown · stolen ("26 · 2"). Yam lays out the labels ("biggest chain"…), one hour dot and one hour row; this fills the values.
     /// Every field is optional. Filled once, by PostRunView. Reads only.
     /// </summary>
@@ -51,7 +52,8 @@ namespace Piglings.Presentation
         [SerializeField] private TMP_Text stones;
 
         private ScoreStyles _styles;
-        private TemplateSlot _bestRow;   // the row holding the night's best throw: its points are painted rainbow
+        // Each hour row's points and its style (its quality band): painted every frame, so pulses and rainbows animate.
+        private readonly List<(TMP_Text text, PopupColor style)> _painted = new List<(TMP_Text, PopupColor)>();
         private List<TemplateSlot> _dots = new List<TemplateSlot>();
         private List<TemplateSlot> _rows = new List<TemplateSlot>();
 
@@ -85,7 +87,12 @@ namespace Piglings.Presentation
                 _dots[i].Tint(session.HourColour(hour));
                 _dots[i].SetAlpha(hour <= reached ? 1f : unreachedAlpha);
             }
-            if (hoursReached != null) hoursReached.text = UiText.Fill(texts.hoursReached, ("reached", reached.ToString()), ("hours", hours.ToString()));
+            if (hoursReached != null)
+            {
+                hoursReached.text = UiText.Fill(texts.hoursReached, ("reached", reached.ToString()), ("hours", hours.ToString()));
+                // In the night's own colours: the last hour reached, or the gold on a dawn (like DAWN on the board).
+                hoursReached.color = dawn ? session.DawnColour : session.HourColour(reached);
+            }
 
             if (score != null)
                 // The night's real total (Yam, M11): what was scored, a loss included — not the last threshold the bank keeps.
@@ -94,7 +101,7 @@ namespace Piglings.Presentation
 
             if (_rows.Count == 0) _rows = TemplateList.Build(hourRow, null, reached);
             int best = s.BestThrowPoints;
-            _bestRow = null;
+            _painted.Clear();
             for (int i = 0; i < _rows.Count; i++)
             {
                 int hour = i + 1;
@@ -110,8 +117,9 @@ namespace Piglings.Presentation
                     row.Bar.TintGain(colour);
                     row.Bar.Show(0f, best > 0 ? points / (float)best : 0f, false, delay + i * rowDelay);
                 }
-                // The night's best (the first hour holding it, like BestThrowPoints keeps the first on a tie).
-                if (_bestRow == null && best > 0 && points == best) _bestRow = row;
+                // The points by the rule every score follows: the throw's quality against ITS hour's gap (what that hour
+                // needed), not the night's total — so any hour can be a rainbow. No special case for the night's best.
+                if (points > 0 && row.Detail != null) _painted.Add((row.Detail, _styles.ForQuality(session.ThrowQuality(points, hour))));
             }
 
             if (biggestChain != null)
@@ -130,10 +138,10 @@ namespace Piglings.Presentation
             if (stones != null) stones.text = UiText.Fill(texts.stones, ("thrown", s.ThrowsUsed.ToString()), ("stolen", s.StonesStolen.ToString()));
         }
 
-        // The rainbow animates letter by letter: repainted every frame.
+        // Pulses and rainbows animate: repainted every frame.
         private void LateUpdate()
         {
-            if (_bestRow != null && _styles != null) TextColouring.Apply(_bestRow.Detail, _styles.Rainbow, 0f, 0f, 1f);
+            foreach (var (text, style) in _painted) TextColouring.Apply(text, style, 0f, 0f, 1f);
         }
     }
 }
