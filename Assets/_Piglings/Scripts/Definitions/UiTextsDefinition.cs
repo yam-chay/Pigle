@@ -47,6 +47,8 @@ namespace Piglings.Definitions
         public string popupRobot = "{score} ×{mult}";
         [Tooltip("At a special peg: {mult} (its bonus)")]
         public string popupPegMult = "+{mult} mult";
+        [Tooltip("At a special peg that triggers: {score} (its Score Value at its level)")]
+        public string popupPegScore = "+{score}";
         [Tooltip("At a plain hold: {score}")]
         public string popupPlainHold = "+{score}";
         [Tooltip("The chain's close, above the pig: {score} {mult} {hour} {hourMult} {total}")]

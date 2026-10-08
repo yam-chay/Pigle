@@ -36,6 +36,9 @@ namespace Piglings.Presentation
         [Tooltip("Each depth step makes the popup this much bigger (0.2 = +20%), so deeper hits read as bigger.")]
         [SerializeField, Min(0f)] private float scalePerDepth = 0.15f;
 
+        [Tooltip("A special peg's \"+N mult\" sits this far above its \"+score\" when it adds both.")]
+        [SerializeField] private Vector3 pegMultOffset = new Vector3(0f, 0.3f, 0f);
+
         [Header("Plain hold \"+1\" (always shown)")]
         [Tooltip("The hold's \"+1\": small (they come in showers).")]
         [SerializeField, Min(0.01f)] private float plainHoldScale = 0.5f;
@@ -95,11 +98,19 @@ namespace Piglings.Presentation
                 string text = UiText.Fill(session.Texts.popupRobot, ("score", Numbers.Thousands(e.Score)), ("mult", Numbers.Mult(e.Mult)));
                 Spawn(t.position + robotOffset, text, StyleFor(worth, e.Hour), scale, _styles.QualityIntensity(quality));
             }
-            else if (e.Cause == ChainGainCause.Peg && e.MultAdded > 0f)
+            else if (e.Cause == ChainGainCause.Peg && (e.ScoreAdded > 0 || e.MultAdded > 0f))
             {
                 if (board == null || e.Socket < 0 || e.Socket >= board.SocketCount) return;
-                Spawn(board.Position(e.Socket), UiText.Fill(session.Texts.popupPegMult, ("mult", Numbers.Mult(e.MultAdded))), _styles.ForMult(e.MultAdded),
-                      session.Visuals.PegMultScale, _styles.MultIntensity(e.MultAdded));
+                var at = board.Position(e.Socket);
+                // What a special peg adds when it triggers, like any other gain: its score (coloured by the depth of what hit
+                // it — the stone 0, a ball its own — the plain hold's rule) and, above it, its mult bonus.
+                if (e.ScoreAdded > 0)
+                    Spawn(at, UiText.Fill(session.Texts.popupPegScore, ("score", Numbers.Thousands(e.ScoreAdded))),
+                          _styles.ForDepthBand(e.Depth), plainHoldScale, _styles.DepthIntensity(e.Depth));
+                if (e.MultAdded > 0f)
+                    Spawn(at + (e.ScoreAdded > 0 ? pegMultOffset : Vector3.zero),
+                          UiText.Fill(session.Texts.popupPegMult, ("mult", Numbers.Mult(e.MultAdded))), _styles.ForMult(e.MultAdded),
+                          session.Visuals.PegMultScale, _styles.MultIntensity(e.MultAdded));
             }
             else if (e.Cause == ChainGainCause.PlainPeg && e.ScoreAdded > 0)
             {
