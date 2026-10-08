@@ -1,3 +1,4 @@
+using Piglings.Definitions;
 using Piglings.Events;
 using Piglings.Simulation;
 using UnityEngine;
@@ -36,44 +37,8 @@ namespace Piglings.Presentation
         [Tooltip("Opacity of placed pegs the held peg can't go on (it can be thrown past them).")]
         [SerializeField, Range(0f, 1f)] private float blockedOpacity = 0.3f;
 
-        [Header("Bouncy")]
-        [Tooltip("How long the squash-stretch lasts after a hit.")]
-        [SerializeField, Min(0.01f)] private float popSeconds = 0.3f;
-        [Tooltip("How far it squashes: 0.3 = 30% wider, then 30% taller.")]
-        [SerializeField, Range(0f, 1f)] private float popAmount = 0.3f;
-        [Tooltip("fx_burst_ring: the small gold ring when a ball gets the bonus. Empty = no ring.")]
-        [SerializeField] private Sprite bonusRing;
-        [SerializeField] private FxMotion bonusRingMotion = new FxMotion { seconds = 0.35f, startScale = 0.2f, endScale = 0.9f };
-
-        [Header("Splitter")]
-        [Tooltip("The needle's colour at the moment it splits a stone, fading back.")]
-        [SerializeField] private Color splitFlashColour = new Color(1f, 1f, 0.6f, 1f);
-        [SerializeField, Min(0.01f)] private float splitFlashSeconds = 0.25f;
-        [Tooltip("fx_sparkle: the burst out of the needle when it splits. Empty = no burst.")]
-        [SerializeField] private Sprite splitSparkle;
-        [SerializeField, Min(0)] private int splitSparkles = 6;
-        [Tooltip("How far (world units) the burst's sparkles fly out.")]
-        [SerializeField, Min(0f)] private float splitSpread = 0.35f;
-        [SerializeField] private Color splitSparkleColour = new Color(1f, 0.95f, 0.7f, 1f);
-        [SerializeField] private FxMotion splitSparkleMotion = new FxMotion { seconds = 0.4f, startScale = 0.35f, endScale = 0.1f, spin = 200f };
-
-        [Header("Bomb")]
-        [Tooltip("fx_hit_star at the bomb when it goes off. Empty = none.")]
-        [SerializeField] private Sprite bombStar;
-        [Tooltip("fx_burst_ring: grows to the bomb's radius, so you see exactly what it reached. Empty = none.")]
-        [SerializeField] private Sprite bombRing;
-        [SerializeField] private Color bombColour = new Color(1f, 0.55f, 0.15f, 1f);
-        [SerializeField] private FxMotion bombStarMotion = new FxMotion { seconds = 0.3f, startScale = 0.8f, endScale = 1.6f, spin = 60f };
-        [Tooltip("The ring's end size is set from the radius; Seconds and Start Scale are used as is.")]
-        [SerializeField] private FxMotion bombRingMotion = new FxMotion { seconds = 0.45f, startScale = 0.2f, endScale = 1f };
-        [Tooltip("A spent bomb without a Spent Sprite is tinted this instead.")]
-        [SerializeField] private Color spentTint = new Color(0.45f, 0.45f, 0.45f, 1f);
-        [Tooltip("fx_sparkle: fizzes on the fuse when a bomb recharges. Empty = none.")]
-        [SerializeField] private Sprite rechargeSparkle;
-        [Tooltip("Where the fuse is, from the peg's centre (world units).")]
-        [SerializeField] private Vector2 fuseOffset = new Vector2(0.05f, 0.12f);
-        [SerializeField, Min(0)] private int rechargeSparkles = 4;
-        [SerializeField] private FxMotion rechargeSparkleMotion = new FxMotion { seconds = 0.5f, startScale = 0.25f, endScale = 0.05f, rise = 0.15f, spin = 240f };
+        // R4c: each effect's own look (the Bouncy pop and ring, the Splitter flash and burst, the Bomb star, ring, spent tint
+        // and recharge fizz) lives on its PegDefinition's effect class — tuned per peg, played here.
 
         private sealed class Socket
         {
@@ -85,10 +50,19 @@ namespace Piglings.Presentation
             public SpriteRenderer Level;    // child of Peg: pops with it
             public SpriteRenderer Highlight;
             public float PopAge = -1f;      // seconds since the last Bouncy hit; < 0 = not popping
+            public BouncyEffect Popping;    // whose pop it is (its seconds and amount)
             public float FlashAge = -1f;    // seconds since the last split; < 0 = not flashing
+            public SplitterEffect Flashing; // whose flash it is (its colour and seconds)
         }
 
         private Socket[] _sockets = new Socket[0];
+
+        // The effect settings of the peg placed in socket i, if it's that effect (else null).
+        private T EffectAt<T>(int socket) where T : PegEffectSettings
+        {
+            var state = session.State.Sockets[socket];
+            return state.IsEmpty ? null : session.FindPeg(state.PegId)?.Settings as T;
+        }
         private FxSprites _fx;
 
         private void Awake() => _fx = new FxSprites(transform);
@@ -153,14 +127,20 @@ namespace Piglings.Presentation
         // Every hit on a Bouncy peg pops it (the bonus — stones and balls, M10.S — is once per peg per hitter: the ring).
         private void OnPegHit(PegHit e)
         {
-            if (e.Effect == PegEffect.Bouncy && e.Socket < _sockets.Length && _sockets[e.Socket].Peg != null) _sockets[e.Socket].PopAge = 0f;
+            if (e.Effect != PegEffect.Bouncy || e.Socket >= _sockets.Length || _sockets[e.Socket].Peg == null) return;
+            var bouncy = EffectAt<BouncyEffect>(e.Socket);
+            if (bouncy == null) return;
+            _sockets[e.Socket].Popping = bouncy;
+            _sockets[e.Socket].PopAge = 0f;
         }
 
         private void OnPegBounced(PegBounced e)
         {
             if (e.Socket >= _sockets.Length || _sockets[e.Socket].Peg == null) return;
             var peg = _sockets[e.Socket].Peg;
-            _fx.Spawn(bonusRing, peg.transform.position, session.Visuals.Gold, bonusRingMotion, peg.sortingLayerID, peg.sortingOrder + 3);
+            var bouncy = EffectAt<BouncyEffect>(e.Socket);
+            if (bouncy == null) return;
+            _fx.Spawn(bouncy.bonusRing, peg.transform.position, session.Visuals.Gold, bouncy.bonusRingMotion, peg.sortingLayerID, peg.sortingOrder + 3);
         }
 
         private void OnBombExploded(BombExploded e)
@@ -168,14 +148,17 @@ namespace Piglings.Presentation
             if (e.Socket >= _sockets.Length || _sockets[e.Socket].Peg == null) return;
             var peg = _sockets[e.Socket].Peg;
             var at = peg.transform.position;
-            _fx.Spawn(bombStar, at, bombColour, bombStarMotion, peg.sortingLayerID, peg.sortingOrder + 3);
-            if (bombRing != null && bombRing.bounds.size.x > 0f)
+            var def = session.FindPeg(e.PegId);
+            var bomb = def != null ? def.Settings as BombEffect : null;
+            if (bomb != null)
             {
-                var def = session.FindPeg(e.PegId);
-                float radius = def != null ? def.BombRadiusAt(e.Level) : 0f;
-                var ring = bombRingMotion;
-                ring.endScale = 2f * radius / bombRing.bounds.size.x;   // the ring's outer edge ends on the radius
-                _fx.Spawn(bombRing, at, bombColour, ring, peg.sortingLayerID, peg.sortingOrder + 3);
+                _fx.Spawn(bomb.star, at, bomb.colour, bomb.starMotion, peg.sortingLayerID, peg.sortingOrder + 3);
+                if (bomb.ring != null && bomb.ring.bounds.size.x > 0f)
+                {
+                    var ring = bomb.ringMotion;
+                    ring.endScale = 2f * def.BombRadiusAt(e.Level) / bomb.ring.bounds.size.x;   // the ring's outer edge ends on the radius
+                    _fx.Spawn(bomb.ring, at, bomb.colour, ring, peg.sortingLayerID, peg.sortingOrder + 3);
+                }
             }
             Refresh(e.Socket);   // spent look
         }
@@ -184,10 +167,14 @@ namespace Piglings.Presentation
         {
             if (e.Socket >= _sockets.Length || _sockets[e.Socket].Peg == null) return;
             var peg = _sockets[e.Socket].Peg;
-            var fuse = peg.transform.position + (Vector3)fuseOffset;
-            for (int i = 0; i < rechargeSparkles; i++)
-                _fx.Spawn(rechargeSparkle, fuse, bombColour, rechargeSparkleMotion, peg.sortingLayerID, peg.sortingOrder + 3,
-                          Random.insideUnitCircle * 0.08f);
+            var bomb = EffectAt<BombEffect>(e.Socket);
+            if (bomb != null)
+            {
+                var fuse = peg.transform.position + (Vector3)bomb.fuseOffset;
+                for (int i = 0; i < bomb.rechargeSparkles; i++)
+                    _fx.Spawn(bomb.rechargeSparkle, fuse, bomb.colour, bomb.rechargeSparkleMotion, peg.sortingLayerID, peg.sortingOrder + 3,
+                              Random.insideUnitCircle * 0.08f);
+            }
             Refresh(e.Socket);
         }
 
@@ -195,14 +182,17 @@ namespace Piglings.Presentation
         {
             if (e.Socket >= _sockets.Length || _sockets[e.Socket].Peg == null) return;
             var s = _sockets[e.Socket];
+            var splitter = EffectAt<SplitterEffect>(e.Socket);
+            if (splitter == null) return;
+            s.Flashing = splitter;
             s.FlashAge = 0f;
             // Evenly round the needle, with a little jitter so two bursts never look the same.
             float start = Random.Range(0f, 360f);
-            for (int i = 0; i < splitSparkles; i++)
+            for (int i = 0; i < splitter.sparkles; i++)
             {
-                float angle = (start + 360f * i / splitSparkles) * Mathf.Deg2Rad;
-                var drift = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * (splitSpread * Random.Range(0.7f, 1.1f));
-                _fx.Spawn(splitSparkle, s.Peg.transform.position, splitSparkleColour, splitSparkleMotion,
+                float angle = (start + 360f * i / splitter.sparkles) * Mathf.Deg2Rad;
+                var drift = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * (splitter.sparkleSpread * Random.Range(0.7f, 1.1f));
+                _fx.Spawn(splitter.sparkle, s.Peg.transform.position, splitter.sparkleColour, splitter.sparkleMotion,
                           s.Peg.sortingLayerID, s.Peg.sortingOrder + 3, drift);
             }
         }
@@ -228,7 +218,7 @@ namespace Piglings.Presentation
                 if (state.IsSpent && def != null)
                 {
                     if (def.SpentSprite != null) s.Peg.sprite = def.SpentSprite;
-                    else s.BaseColor *= spentTint;
+                    else if (def.Settings is BombEffect bomb) s.BaseColor *= bomb.spentTint;
                 }
             }
             s.Body.color = s.BaseColor;
@@ -266,20 +256,20 @@ namespace Piglings.Presentation
         // The split flash: the needle jumps to the flash colour and fades back to what it was.
         private Color Flash(Socket s, Color normal)
         {
-            if (s.FlashAge < 0f) return normal;
+            if (s.FlashAge < 0f || s.Flashing == null) return normal;
             s.FlashAge += Time.deltaTime;
-            float t = Mathf.Clamp01(s.FlashAge / splitFlashSeconds);
+            float t = Mathf.Clamp01(s.FlashAge / s.Flashing.flashSeconds);
             if (t >= 1f) s.FlashAge = -1f;
-            return Color.Lerp(splitFlashColour, normal, t);
+            return Color.Lerp(s.Flashing.flashColour, normal, t);
         }
 
         // Squash, then stretch, settling: wide-and-short first (the impact), then tall-and-thin, fading out.
         private void Pop(Socket s)
         {
-            if (s.PopAge < 0f) return;
+            if (s.PopAge < 0f || s.Popping == null) return;
             s.PopAge += Time.deltaTime;
-            float t = Mathf.Clamp01(s.PopAge / popSeconds);
-            float wobble = Mathf.Sin(t * 2f * Mathf.PI) * (1f - t) * popAmount;
+            float t = Mathf.Clamp01(s.PopAge / s.Popping.popSeconds);
+            float wobble = Mathf.Sin(t * 2f * Mathf.PI) * (1f - t) * s.Popping.popAmount;
             s.Peg.transform.localScale = new Vector3(1f + wobble, 1f - wobble, 1f);
             if (t >= 1f) { s.PopAge = -1f; s.Peg.transform.localScale = Vector3.one; }
         }

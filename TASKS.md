@@ -157,8 +157,9 @@ Every tunable value gets **one owner** (ARCHITECTURE.md ▸ "Who owns a tunable 
   - [x] 🖥 R4-b Editor: let Unity import; open each Peg_ asset (Plain, Bouncy, Splitter, Bomb) and check its Effect settings against the PR's export; File ▸ Save Project; play-check. Steps in the PR.
   - [x] ☁ R4.1 Special pegs show the score they add (`+N`, UI Texts ▸ Popup Peg Score) with the `+N mult` above it — Splitter / Bomb (mult 0) showed nothing, Bouncy only its mult (Yam, 2026-10-08).
   - [x] ☁ R4.2 A special peg's `+score` is coloured by its level (Visuals ▸ Peg Level Bands), not its hitter's depth (Yam, 2026-10-08).
-  - [ ] ☁ R4b Delete the hidden legacy fields + `PegLevel` once R4-b has saved every peg.
-  - [ ] R4c Decide: PegBoardView's per-effect visuals (split flash / sparkles, bomb star / ring / colour, recharge sparkles, spent tint) → Visuals per effect (the ownership rule), or into each effect class.
+  - [x] ☁ R4b Deleted the hidden legacy peg fields + `PegLevel` (every peg was saved with its effect class).
+  - [x] ☁ R4c Each effect class owns its own look (Yam: tune one peg in one place): Bouncy pop / ring, Splitter flash / burst, Bomb star / ring / colour / spent tint / recharge; `FxMotion` → Definitions; PegBoardView keeps board-wide settings only.
+  - [ ] 🖥 R4c-b Editor: enter the PR's look table on Peg_Bouncy / Peg_Splitter / Peg_Bomb (sprites at least); Save Project; play-check.
 - R5 New features (after the refactor, not part of it):
   - [ ] Waves: the night's spawn plan as a list of waves (delay between waves, robots per wave, spawn speed inside it, robot type per wave or a mix) on NightDefinition; RobotSpawner only plays it.
   - [ ] Right-click cancels a throw while aiming.

@@ -7,7 +7,9 @@ namespace Piglings.Definitions
     /// <summary>
     /// A peg's effect and ONLY its own settings (R4): one class per effect, held by the PegDefinition through
     /// [SerializeReference], so the Inspector shows just the picked effect's fields — no Splitter numbers on a Bomb. Each
-    /// effect keeps its own levels list (entry 0 = level 1; a level past the list uses the last entry).
+    /// effect keeps its own levels list (entry 0 = level 1; a level past the list uses the last entry) and its own LOOK — the
+    /// effects only it plays (R4c, Yam: tuning one peg shouldn't mean hunting through a shared view). Colours shared by the
+    /// whole game (the gold) stay in Visuals. PegBoardView plays these; it keeps only board-wide settings.
     /// Plain [Serializable] types, so they may share this file (only MonoBehaviours / ScriptableObjects need their own).
     /// </summary>
     [System.Serializable]
@@ -95,6 +97,15 @@ namespace Piglings.Definitions
     {
         public List<BouncyLevel> levels = new List<BouncyLevel> { new BouncyLevel() };
 
+        [Header("Look")]
+        [Tooltip("How long the squash-stretch lasts after every hit.")]
+        [Min(0.01f)] public float popSeconds = 0.3f;
+        [Tooltip("How far it squashes: 0.3 = 30% wider, then 30% taller.")]
+        [Range(0f, 1f)] public float popAmount = 0.4f;
+        [Tooltip("fx_burst_ring: the small ring (in the Visuals' gold) when a stone / ball gets the bonus. Empty = no ring.")]
+        public Sprite bonusRing;
+        public FxMotion bonusRingMotion = new FxMotion { seconds = 0.5f, startScale = 0.2f, endScale = 1.2f };
+
         public override PegEffect Kind => PegEffect.Bouncy;
         public override int LevelCount => levels.Count;
         public override PegEffectLevel LevelAt(int level) => At(levels, level);
@@ -124,6 +135,18 @@ namespace Piglings.Definitions
         public bool countSplitHitsForMastery = true;
         public List<SplitterLevel> levels = new List<SplitterLevel> { new SplitterLevel() };
 
+        [Header("Look")]
+        [Tooltip("The needle's colour at the moment it splits a stone, fading back.")]
+        public Color flashColour = new Color(1f, 1f, 0.6f, 1f);
+        [Min(0.01f)] public float flashSeconds = 0.4f;
+        [Tooltip("fx_sparkle: the burst out of the needle when it splits. Empty = no burst.")]
+        public Sprite sparkle;
+        [Min(0)] public int sparkles = 6;
+        [Tooltip("How far (world units) the burst's sparkles fly out.")]
+        [Min(0f)] public float sparkleSpread = 0.5f;
+        public Color sparkleColour = new Color(1f, 0.95f, 0.7f, 1f);
+        public FxMotion sparkleMotion = new FxMotion { seconds = 0.4f, startScale = 0.35f, endScale = 0.15f, spin = 200f };
+
         public override PegEffect Kind => PegEffect.Splitter;
         public override int LevelCount => levels.Count;
         public override PegEffectLevel LevelAt(int level) => At(levels, level);
@@ -147,9 +170,28 @@ namespace Piglings.Definitions
     [System.Serializable]
     public sealed class BombEffect : PegEffectSettings
     {
-        [Tooltip("How it looks while spent (after going off, until it recharges). Empty = its sprite, greyed.")]
+        [Tooltip("How it looks while spent (after going off, until it recharges). Empty = its sprite, tinted Spent Tint.")]
         public Sprite spentSprite;
         public List<BombLevel> levels = new List<BombLevel> { new BombLevel() };
+
+        [Header("Look")]
+        [Tooltip("The explosion's colour: its star, its ring and the recharge sparkles.")]
+        public Color colour = new Color(1f, 0.55f, 0.15f, 1f);
+        [Tooltip("fx_hit_star at the bomb when it goes off. Empty = none.")]
+        public Sprite star;
+        public FxMotion starMotion = new FxMotion { seconds = 0.3f, startScale = 0.8f, endScale = 1.6f, spin = 60f };
+        [Tooltip("fx_burst_ring: grows to the bomb's radius, so you see exactly what it reached. Empty = none.")]
+        public Sprite ring;
+        [Tooltip("The ring's end size is set from the radius; Seconds and Start Scale are used as is.")]
+        public FxMotion ringMotion = new FxMotion { seconds = 0.45f, startScale = 0.2f, endScale = 1f };
+        [Tooltip("A spent bomb without a Spent Sprite is tinted this instead.")]
+        public Color spentTint = new Color(0.45f, 0.45f, 0.45f, 1f);
+        [Tooltip("fx_sparkle: fizzes on the fuse when it recharges. Empty = none.")]
+        public Sprite rechargeSparkle;
+        [Tooltip("Where the fuse is, from the peg's centre (world units).")]
+        public Vector2 fuseOffset = new Vector2(0.05f, 0.12f);
+        [Min(0)] public int rechargeSparkles = 4;
+        public FxMotion rechargeSparkleMotion = new FxMotion { seconds = 0.5f, startScale = 0.25f, endScale = 0.05f, rise = 0.15f, spin = 240f };
 
         public override PegEffect Kind => PegEffect.Bomb;
         public override int LevelCount => levels.Count;
