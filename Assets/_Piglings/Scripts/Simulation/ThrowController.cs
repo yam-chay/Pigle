@@ -128,5 +128,20 @@ namespace Piglings.Simulation
         [SerializeField, Min(0f)] private float throwCooldown = 0.4f;
 
         private float readyAt;   // Time.time when the next aim is allowed
+
+        private void Start() => CheckHop();
+
+        // The hidden coupling (audit): the next stone hops to the hand after a throw; a hop as long as the cooldown or
+        // longer means the cooldown ends with an empty hand, and the wait reads as input lag. Warned in the editor (on
+        // this component's edit — the hop lives on the StonePile) and once at play start.
+        private void OnValidate() => CheckHop();
+
+        private void CheckHop()
+        {
+            if (pile != null && pile.HopSeconds >= throwCooldown)
+                Debug.LogWarning($"{name}: the Stone Pile's Hop Seconds ({pile.HopSeconds:0.##} s) should be shorter than Throw " +
+                                 $"Cooldown ({throwCooldown:0.##} s) — otherwise the pig waits for the next stone after every " +
+                                 "throw, which reads as input lag.", this);
+        }
     }
 }

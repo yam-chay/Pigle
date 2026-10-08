@@ -85,9 +85,23 @@ namespace Piglings.Presentation
                 }
                 if (!unlocked && lockIcon != null) Place(lockIcon, firstRowCentre / firstRow, Color.white, lockScale, 4, "Lock");
             }
+            CheckCopies();
             if (types.Count * slotsPerType > _holes.Length)
                 Debug.LogWarning($"BarnPegboardView: the campaign has {types.Count} peg types but the board has holes for only " +
                                  $"{_holes.Length / slotsPerType} ({_holes.Length} holes, {slotsPerType} per type) — the rest aren't shown.", this);
+        }
+
+        // A copy past Slots Per Type has no hole to hang on, so the board would show fewer copies than the player owns.
+        // Warned in the editor (on this component's edit — Max Copies lives on each peg) and once at play start.
+        private void OnValidate() => CheckCopies();
+
+        private void CheckCopies()
+        {
+            if (session == null) return;
+            foreach (var peg in session.CampaignPegTypes())
+                if (peg.MaxCopies > slotsPerType)
+                    Debug.LogWarning($"BarnPegboardView: {peg.name} ▸ Max Copies is {peg.MaxCopies} but the pegboard has {slotsPerType} " +
+                                     "slots per type — copies past the slots won't show. Lower Max Copies or raise Slots Per Type.", this);
         }
 
         // "x,y" per line (spaces, tabs or ';' also separate); blank and unreadable lines are skipped.

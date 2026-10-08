@@ -33,6 +33,7 @@ namespace Piglings.Simulation
     ///   piglings_<name>.prev.json   the save before the last one (the fallback)
     ///   piglings_<name>.json.tmp    a save being written; ignored on load
     ///   piglings_<name>.corrupt-*   copies of bad files, kept for us to look at
+    ///   piglings_<name>.reset-*     the save as it was when the player reset it (the title screen's Reset save)
     /// Separate profiles are separate files: a test profile never advances the real campaign.
     ///
     /// Save never leaves a half-written file: it writes the .tmp, flushes it to disk, then swaps it in with File.Replace
@@ -110,6 +111,45 @@ namespace Piglings.Simulation
         /// <summary>Writes the profile. Null on success, else what went wrong (the old save is still intact).</summary>
         public string Save(PlayerProfile profile) => _blocked ?? Write(profile, keepPrevious: true);
 
+        /// <summary>
+        /// Another copy of the save wins over the file (T8: the browser's copy, which survives a new itch upload when the
+        /// file doesn't). A readable copy that differs from the file is written as the save (the file becomes .prev); an
+        /// unreadable one is ignored, so a bad copy never replaces a good file. Call before Load. Null = nothing to report.
+        /// </summary>
+        public string Adopt(string json)
+        {
+            if (string.IsNullOrEmpty(json)) return null;
+            if (ProfileJson.Read(json, out var profile, out var problem) != ProfileReadResult.Ok)
+                return "the other copy is unreadable (" + problem + "); the file is used";
+            try
+            {
+                if (File.Exists(MainPath) && File.ReadAllText(MainPath, Utf8) == ProfileJson.Write(profile)) return null;
+            }
+            catch (Exception e) when (e is IOException || e is UnauthorizedAccessException) { }
+            return _blocked ?? Write(profile, keepPrevious: File.Exists(MainPath));
+        }
+
+        /// <summary>
+        /// Starts over (the title screen's Reset save): the save is copied aside as .reset-*, then the save and .prev are
+        /// removed — the next Load is a first launch. Null on success; on an error nothing is removed.
+        /// </summary>
+        public string Reset()
+        {
+            if (_blocked != null) return _blocked;
+            if (File.Exists(MainPath) && BackUp(MainPath, "reset") == null)
+                return "couldn't copy the save aside, so it's left untouched";
+            try
+            {
+                if (File.Exists(MainPath)) File.Delete(MainPath);
+                if (File.Exists(PrevPath)) File.Delete(PrevPath);
+                return null;
+            }
+            catch (Exception e) when (e is IOException || e is UnauthorizedAccessException)
+            {
+                return e.GetType().Name + ": " + e.Message;
+            }
+        }
+
         private string Write(PlayerProfile profile, bool keepPrevious)
         {
             try
@@ -152,7 +192,7 @@ namespace Piglings.Simulation
             }
 
             load.Problems.Add(Path.GetFileName(path) + ": " + problem);
-            var backup = BackUp(path);
+            var backup = BackUp(path, "corrupt");
             if (backup != null) load.BackedUp.Add(backup);
             else
             {
@@ -177,16 +217,17 @@ namespace Piglings.Simulation
             catch (Exception e) when (e is IOException || e is UnauthorizedAccessException) { }
         }
 
-        private string BackUp(string path)
+        // why = "corrupt" or "reset": the copy's name says why it was made.
+        private string BackUp(string path, string why)
         {
             try
             {
                 // piglings_<name>.corrupt-20261003-142501.json (or .prev.json), -2, -3… if that second is taken.
                 string kind = path == PrevPath ? ".prev" : "";
                 string stamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss", System.Globalization.CultureInfo.InvariantCulture);
-                string name = $"piglings_{ProfileName}.corrupt-{stamp}{kind}.json";
+                string name = $"piglings_{ProfileName}.{why}-{stamp}{kind}.json";
                 for (int n = 2; File.Exists(Path.Combine(_directory, name)); n++)
-                    name = $"piglings_{ProfileName}.corrupt-{stamp}-{n}{kind}.json";
+                    name = $"piglings_{ProfileName}.{why}-{stamp}-{n}{kind}.json";
                 var target = Path.Combine(_directory, name);
                 File.Copy(path, target);
                 return target;
