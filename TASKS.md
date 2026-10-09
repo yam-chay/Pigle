@@ -166,7 +166,7 @@ Every tunable value gets **one owner** (ARCHITECTURE.md ▸ "Who owns a tunable 
   - [ ] Waves: the night's spawn plan as a list of waves (delay between waves, robots per wave, spawn speed inside it, robot type per wave or a mix) on NightDefinition; RobotSpawner only plays it.
   - [x] Right-click cancels a throw while aiming (stone and peg; the peg's right-click still swaps when not aiming) — 2026-10-09, before the playtest build.
   - [x] Hold right-click (not aiming, not in a placement round) to fast-forward the game ×3 (ThrowController ▸ Fast Forward Speed) — 2026-10-09.
-  - [x] The debug panel moved F1 → F2 (DebugPanel ▸ Toggle Key; browsers take F1 for help); ChainDebugHUD → F3 (field renamed so the scene's F2 resets) — 2026-10-09.
+  - [x] The debug panel moved F1 → F2 (DebugPanel ▸ Toggle Key; browsers take F1 for help); ChainDebugHUD deleted (Yam removed it from TestNight; the scoreboard and the F2 panel cover it) — 2026-10-09.
   - [x] Mult → colour mapping in the visual SO (Visuals ▸ Mult Bands) — done early, with the post-run colour rules (below).
   - [ ] Stone refill by weapon level, not by unlock count.
 
