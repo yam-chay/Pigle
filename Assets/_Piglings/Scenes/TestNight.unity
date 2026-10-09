@@ -3250,7 +3250,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 397069837}
-  - component: {fileID: 397069838}
   - component: {fileID: 397069839}
   m_Layer: 0
   m_Name: Debug
@@ -3274,21 +3273,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &397069838
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 397069836}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 53dd09a544ce3e34a968202c9f2ce137, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Piglings.Presentation::Piglings.Presentation.ChainDebugHUD
-  session: {fileID: 1068153025}
-  toggleKey: 94
-  visibleAtStart: 0
 --- !u!114 &397069839
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3307,6 +3291,8 @@ MonoBehaviour:
   scenarios:
   - {fileID: 11400000, guid: 003f6df073a788b48a4ff462b5eeb44a, type: 2}
   - {fileID: 11400000, guid: fd682d6b2e457584a8b70b6adbfcac94, type: 2}
+  toggleKey: 95
+  inReleaseBuilds: 1
   pauseWhileOpen: 1
   socketPickRadius: 0.4
   scale: 1.5
@@ -3798,6 +3784,7 @@ MonoBehaviour:
   cam: {fileID: 519420031}
   pile: {fileID: 1333078232}
   throwSpeed: 8
+  fastForwardSpeed: 3
   throwCooldown: 0.3
 --- !u!1 &501042155
 GameObject:
@@ -5321,9 +5308,9 @@ RectTransform:
   - {fileID: 1959402900}
   m_Father: {fileID: 564938646}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 90, y: -80}
+  m_AnchorMin: {x: 0, y: 0.5}
+  m_AnchorMax: {x: 0, y: 0.5}
+  m_AnchoredPosition: {x: 90, y: 460}
   m_SizeDelta: {x: 407.7743, y: 840.9463}
   m_Pivot: {x: 0, y: 1}
 --- !u!225 &723223246
@@ -7528,52 +7515,6 @@ MonoBehaviour:
   highlightColor: {r: 1, g: 1, b: 1, a: 0.9}
   highlightPulse: 2.5
   blockedOpacity: 0.3
-  popSeconds: 0.3
-  popAmount: 0.4
-  bonusRing: {fileID: 21300000, guid: a47aa05c22925d145a3deb34bad83512, type: 3}
-  bonusRingMotion:
-    seconds: 0.5
-    startScale: 0.2
-    endScale: 1.2
-    rise: 0
-    spin: 0
-  splitFlashColour: {r: 1, g: 1, b: 0.6, a: 1}
-  splitFlashSeconds: 0.4
-  splitSparkle: {fileID: 21300000, guid: e752cc49ff5a006428d440b8dc7832ae, type: 3}
-  splitSparkles: 6
-  splitSpread: 0.5
-  splitSparkleColour: {r: 1, g: 0.95, b: 0.7, a: 1}
-  splitSparkleMotion:
-    seconds: 0.4
-    startScale: 0.35
-    endScale: 0.15
-    rise: 0
-    spin: 200
-  bombStar: {fileID: 21300000, guid: b082a797dbf35f9468158263d0235eca, type: 3}
-  bombRing: {fileID: 21300000, guid: a47aa05c22925d145a3deb34bad83512, type: 3}
-  bombColour: {r: 1, g: 0.55, b: 0.15, a: 1}
-  bombStarMotion:
-    seconds: 0.3
-    startScale: 0.8
-    endScale: 1.6
-    rise: 0
-    spin: 60
-  bombRingMotion:
-    seconds: 0.45
-    startScale: 0.2
-    endScale: 1
-    rise: 0
-    spin: 0
-  spentTint: {r: 0.45, g: 0.45, b: 0.45, a: 1}
-  rechargeSparkle: {fileID: 21300000, guid: e752cc49ff5a006428d440b8dc7832ae, type: 3}
-  fuseOffset: {x: 0.05, y: 0.12}
-  rechargeSparkles: 4
-  rechargeSparkleMotion:
-    seconds: 0.5
-    startScale: 0.25
-    endScale: 0.05
-    rise: 0.15
-    spin: 240
 --- !u!114 &1064185511
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7651,7 +7592,6 @@ MonoBehaviour:
   uiTexts: {fileID: 11400000, guid: 15e852b6b98aaad489d45f2bb41c0591, type: 2}
   balanceKnobs: {fileID: 11400000, guid: 2f768f4542d17914b92bbf55edac84e1, type: 2}
   writeBalanceLog: 1
-  profileName: campaign
   startImmediately: 0
 --- !u!4 &1068153026
 Transform:
@@ -14225,6 +14165,7 @@ MonoBehaviour:
   robotOffset: {x: 0, y: 0.25, z: 0}
   robotScale: 1
   scalePerDepth: 0.15
+  pegMultOffset: {x: 0, y: 0.3, z: 0}
   plainHoldScale: 1
   showChainResult: 1
   chainAnchor: {fileID: 315329951}
