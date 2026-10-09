@@ -8,8 +8,9 @@ using UnityEngine.InputSystem;
 namespace Piglings.Simulation
 {
     /// <summary>
-    /// The developer's debug panel (M11.T2): F1 opens it, in the editor and in Development builds only (a release build turns
-    /// it off at start — players never see it). IMGUI, so it needs no Canvas and works in WebGL.
+    /// The developer's debug panel (M11.T2): F1 opens it, in the editor and in Development builds — and in release builds
+    /// while In Release Builds is on (on for the first playtest, Yam 2026-10-09: testers may need it to get past a stuck
+    /// state; turn it off when players shouldn't see it). IMGUI, so it needs no Canvas and works in WebGL.
     ///  - SAVE: stones (and so the stone's level, reverting too), copies per peg type, nights won (unlocks follow), the night
     ///    to play. "Apply & reload" writes them as causes (ProfileEdits), saves and reloads — the night is rebuilt from the
     ///    save like any other load. Reset save starts over.
@@ -27,6 +28,8 @@ namespace Piglings.Simulation
         [SerializeField] private Camera cam;
         [Tooltip("One-click states: Create ▸ Piglings ▸ Debug Scenario.")]
         [SerializeField] private List<DebugScenarioDefinition> scenarios = new List<DebugScenarioDefinition>();
+        [Tooltip("On: F1 works in release builds too (the playtest build). Off: the editor and Development builds only.")]
+        [SerializeField] private bool inReleaseBuilds = true;
         [Tooltip("Freeze the game (Time.timeScale 0) while the panel is open.")]
         [SerializeField] private bool pauseWhileOpen = true;
         [Tooltip("Board edit: how far from a socket a click still picks it (world units).")]
@@ -50,8 +53,8 @@ namespace Piglings.Simulation
 
         private void Awake()
         {
-            // Development builds and the editor only: a release build never shows (or listens for) the panel.
-            if (!Debug.isDebugBuild) enabled = false;
+            // The editor and Development builds always; a release build only while In Release Builds is on.
+            if (!Debug.isDebugBuild && !inReleaseBuilds) enabled = false;
         }
 
         private void OnDisable() => SetOpen(false);

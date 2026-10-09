@@ -1,3 +1,4 @@
+using Piglings.Events;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -40,6 +41,13 @@ namespace Piglings.Simulation
     /// still throws exactly where you tapped.
     ///
     /// Input is read from Pointer.current, which covers mouse and touch with the same code.
+    ///
+    /// The right mouse button (Yam, 2026-10-09) — read here because what it means depends on the aim:
+    ///  - while aiming: cancels the throw. The stone stays in the hand; let go of the left button and aim again.
+    ///  - otherwise, held: fast-forward — Time.timeScale = Fast Forward Speed, so waiting on the wolves goes quicker. Game
+    ///    time, so every rule, timer and the balance log stay as they are (only the wall gets there sooner). Not in a peg
+    ///    placement round (there the right button swaps the peg in the hand — PegThrower), and never while the F1 panel is
+    ///    open (it pauses with the time scale). Outside those, this is the time scale's one owner.
     /// </summary>
     public sealed class ThrowController : MonoBehaviour
     {
@@ -57,7 +65,13 @@ namespace Piglings.Simulation
                  "Too low and the far corners of the wall can't be reached on the direct arc (the stone lobs at 45° instead).")]
         [SerializeField, Min(0.1f)] private float throwSpeed = 7f;
 
+        [Tooltip("Hold the right mouse button (not aiming) to run the game this many times faster. 1 = off.")]
+        [SerializeField, Range(1f, 5f)] private float fastForwardSpeed = 3f;
+
         public event System.Action<Vector2> Thrown;       // Presentation hooks the pig's throw anim here
+
+        private bool _cancelled;        // this left press was cancelled: no aim, no throw until it's released
+        private bool _rightCancelled;   // this right press cancelled a throw: it doesn't also fast-forward
 
         /// <summary>The current aim, for TrajectoryView. Default (IsAiming false) when not aiming.</summary>
         public ThrowAim CurrentAim { get; private set; }
@@ -67,6 +81,7 @@ namespace Piglings.Simulation
             CurrentAim = default;
 
             var pointer = Pointer.current;
+            UpdateRightButton(pointer);
             if (pointer == null || cam == null) return;
             if (!session.State.CanThrow) return;   // out of stones, target reached, or night over (NightReferee)
             if (session.GameplayInputBlocked) return;   // the F1 debug panel is open: its clicks aren't throws
@@ -80,6 +95,7 @@ namespace Piglings.Simulation
             // player saw on the last frame of the drag.
             bool released = pointer.press.wasReleasedThisFrame;
             if (!pointer.press.isPressed && !released) return;
+            if (_cancelled) return;   // cancelled with the right button: nothing until the left one is let go
 
             Vector2 target = cam.ScreenToWorldPoint(pointer.position.ReadValue());
             CurrentAim = Solve(origin.position, target);
@@ -104,6 +120,38 @@ namespace Piglings.Simulation
             readyAt = Time.time + throwCooldown;
 
             CurrentAim = default;
+        }
+
+        // The right button: cancel while aiming, fast-forward while held otherwise (see the class comment).
+        private void UpdateRightButton(Pointer pointer)
+        {
+            bool leftHeld = pointer != null && pointer.press.isPressed;
+            // Cleared the frame AFTER the release: on the release frame itself it must still block the throw.
+            if (_cancelled && !leftHeld && !(pointer != null && pointer.press.wasReleasedThisFrame)) _cancelled = false;
+
+            var mouse = Mouse.current;
+            bool rightHeld = mouse != null && mouse.rightButton.isPressed;
+            if (!rightHeld) _rightCancelled = false;
+            // Aiming = the left button is down and an aim would show (the checks Update makes before drawing it).
+            if (mouse != null && mouse.rightButton.wasPressedThisFrame && leftHeld && !_cancelled && IsAimAllowed())
+            {
+                _cancelled = true;
+                _rightCancelled = true;
+            }
+
+            if (session.GameplayInputBlocked) return;   // the F1 panel pauses through the time scale: leave it alone
+            bool fast = rightHeld && !_rightCancelled && !leftHeld && session.State.Phase != NightPhase.PegPlacement;
+            float scale = fast ? fastForwardSpeed : 1f;
+            if (Time.timeScale != scale) Time.timeScale = scale;
+        }
+
+        private bool IsAimAllowed() =>
+            session.State.CanThrow && Time.time >= readyAt && (pile == null || pile.HasStoneInHand);
+
+        // The time scale outlives the scene: a reload (Retry, Next night) mid fast-forward must not start fast.
+        private void OnDestroy()
+        {
+            if (Time.timeScale > 1f) Time.timeScale = 1f;
         }
 
         private ThrowAim Solve(Vector2 from, Vector2 target)

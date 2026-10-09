@@ -125,7 +125,7 @@ Mastery from use: the stone levels up from the robots it knocks loose itself (50
   - [ ] 🖥 M11.T1-b Editor (TestNight): NightFlow ▸ Spawner + Loss Beat Seconds; a `WolfChimneyPlaceholder` with any wolf sprite, Start / End points. Steps in the PR.
 - [x] ☁ M11.u UI texts as templates: `UiTextsDefinition` (Create ▸ Piglings ▸ UI Texts) on NightSession ▸ Ui Texts — every scoreboard / popup / post-run / night-sign text with `{name}` tokens and TMP rich text.
   - [x] 🖥 M11.u-b Create the asset, assign it on NightSession (TestNight), edit the texts. *(Night.unity: defaults.)*
-- [x] ☁ M11.T2 Developer debug panel (`DebugPanel`, F1, IMGUI, editor + Development builds only): edit the save (stones / evolution incl. reverting, peg copies, nights won, the night) via `ProfileEdits` (CoreCheck) and reload; board edit (click a socket: cycle type / level / empty — `NightReferee.SetSocket`, `PegSocketSet`); scenario presets (`DebugScenarioDefinition`, one click replaces the save).
+- [x] ☁ M11.T2 Developer debug panel (`DebugPanel`, F1, IMGUI, editor + Development builds; release builds too while `In Release Builds` is on — on for the playtest, 2026-10-09): edit the save (stones / evolution incl. reverting, peg copies, nights won, the night) via `ProfileEdits` (CoreCheck) and reload; board edit (click a socket: cycle type / level / empty — `NightReferee.SetSocket`, `PegSocketSet`); scenario presets (`DebugScenarioDefinition`, one click replaces the save).
   - [x] 🖥 M11.T2-b Editor (TestNight): a `DebugPanel` (Session, Board, Cam, Scenarios); a scenario asset or two; play-check F1. Steps in the PR.
 - [x] ☁ M11.T3 Balance log: every night appends to `persistentDataPath/BalanceLogs/balance_<profile>.csv` (history kept) — a row per chain (score, mult, hour mult, total, wolves, depth, miss, wall density at the throw, stones left), per hour (seconds, chains, wolves, miss share, breaches) and a night summary; every row carries the save's origin (normal flow / scenario / debug edit, `PlayerProfile.Origin`, saved) and the knobs. F1 ▸ Open the log folder. `BalanceKnobsDefinition` (climb speed, spawn rate). CoreCheck. *(Miss = 0 and Splitter half mult dropped, 2026-10-07.)*
   - [ ] 🖥 M11.T3-b Throwable_Stone ▸ Levels ▸ Base Score = 10 / 20 / 40 / 80; a Balance Knobs asset on NightSession (optional); play a night, open the CSV. Steps in the PR.
@@ -164,7 +164,8 @@ Every tunable value gets **one owner** (ARCHITECTURE.md ▸ "Who owns a tunable 
   - [x] 🖥 R4c-b Editor: enter the PR's look table on Peg_Bouncy / Peg_Splitter / Peg_Bomb (sprites at least); Save Project; play-check.
 - R5 New features (after the refactor, not part of it):
   - [ ] Waves: the night's spawn plan as a list of waves (delay between waves, robots per wave, spawn speed inside it, robot type per wave or a mix) on NightDefinition; RobotSpawner only plays it.
-  - [ ] Right-click cancels a throw while aiming.
+  - [x] Right-click cancels a throw while aiming (stone and peg; the peg's right-click still swaps when not aiming) — 2026-10-09, before the playtest build.
+  - [x] Hold right-click (not aiming, not in a placement round) to fast-forward the game ×3 (ThrowController ▸ Fast Forward Speed) — 2026-10-09.
   - [x] Mult → colour mapping in the visual SO (Visuals ▸ Mult Bands) — done early, with the post-run colour rules (below).
   - [ ] Stone refill by weapon level, not by unlock count.
 

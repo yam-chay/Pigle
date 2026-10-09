@@ -490,7 +490,7 @@ Inspector); Yam rebalances after it lands. Keeps PR P's follow-up rule as it is.
 - ~~A miss scores 0.~~ *Dropped (2026-10-07): a miss keeps its base; Yam makes it not worth it through balance.*
 - **Stone base by level = 10 / 20 / 40 / 80** (asset values; Throwable_Stone ▸ Levels ▸ Base Score is 10/20/30/40 now).
 - ~~Splitter pieces at half mult.~~ *Dropped (2026-10-07) until playtesters break it.*
-- **The debug panel is development-only** (editor + Development builds). The itch build waits; Yam playtests his own build first.
+- **The debug panel is development-only** (editor + Development builds). The itch build waits; Yam playtests his own build first. *Changed 2026-10-09: on in the playtest build too (DebugPanel ▸ In Release Builds), off later.*
 - **Logging before tuning:** the M5.2 balance pass runs on T3's numbers, not on feel.
 
 ### PR order and status

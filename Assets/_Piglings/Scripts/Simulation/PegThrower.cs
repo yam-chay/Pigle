@@ -46,6 +46,7 @@ namespace Piglings.Simulation
         public SpriteRenderer HoveredShelfPeg { get; private set; }
 
         private bool _pressOnShelf;   // this press began on a shelf peg: a pick, never an aim
+        private bool _cancelled;      // this press was cancelled with the right button: no aim, no throw until it's released
 
         // The peg in the air.
         private SpriteRenderer _flying;
@@ -69,8 +70,17 @@ namespace Piglings.Simulation
 
             HoveredShelfPeg = session.State.PegThrowsLeft > 0 ? shelf.ItemAt(world) : null;
 
+            // The right button: while aiming it cancels the throw (the peg stays in the hand — Yam, 2026-10-09, like the
+            // stone); otherwise it swaps the peg in the hand.
+            // Cleared the frame AFTER the release: on the release frame itself it must still block the throw.
+            if (_cancelled && !pointer.press.isPressed && !pointer.press.wasReleasedThisFrame) _cancelled = false;
             var mouse = Mouse.current;
-            if (mouse != null && mouse.rightButton.wasPressedThisFrame) shelf.SwapNext();
+            if (mouse != null && mouse.rightButton.wasPressedThisFrame)
+            {
+                bool aiming = pointer.press.isPressed && !_pressOnShelf && shelf.HasPegInHand && !_cancelled;
+                if (aiming) _cancelled = true;
+                else shelf.SwapNext();
+            }
 
             if (pointer.press.wasPressedThisFrame)
             {
@@ -86,6 +96,7 @@ namespace Piglings.Simulation
             if (!shelf.HasPegInHand) return;
             bool released = pointer.press.wasReleasedThisFrame;
             if (!pointer.press.isPressed && !released) return;
+            if (_cancelled) return;
 
             int socket = board.NearestValid(world, shelf.HeldPegId, snapRadius, session);
             CurrentAim = socket >= 0 ? Solve(origin.position, board.Position(socket), true) : Solve(origin.position, world, false);
