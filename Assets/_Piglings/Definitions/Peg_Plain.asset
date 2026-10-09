@@ -21,24 +21,9 @@ MonoBehaviour:
   effect: 0
   settings:
     rid: 7123189532910682407
-  copyThresholds: 0a0000001e0000003c0000006400000096000000d200000018010000
+  copyThresholds: 1400000064000000f4010000
   maxCopies: 3
   followUpEveryCopies: 4
-  levels:
-  - masteryWeight: 0
-    multBonus: 0
-    scoreValue: 1
-    bounciness: 0
-    pieces: 0
-    fanAngle: 0
-    bombRadius: 0
-    cooldownSeconds: 0
-    impulse: 0
-  spentSprite: {fileID: 0}
-  contactCooldown: 0.15
-  maxStonesPerThrow: 4
-  pieceScale: 0.8
-  countSplitHitsForMastery: 1
   references:
     version: 2
     RefIds:
@@ -49,3 +34,7 @@ MonoBehaviour:
         levels:
         - masteryWeight: 0
           scoreValue: 1
+        - masteryWeight: 0
+          scoreValue: 5
+        - masteryWeight: 0
+          scoreValue: 10

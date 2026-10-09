@@ -24,39 +24,6 @@ MonoBehaviour:
   copyThresholds: 0a0000001e0000003c0000006400000096000000d200000018010000
   maxCopies: 8
   followUpEveryCopies: 3
-  levels:
-  - masteryWeight: 0
-    multBonus: 1
-    scoreValue: 1
-    bounciness: 0.8
-    pieces: 2
-    fanAngle: 30
-    bombRadius: 1
-    cooldownSeconds: 8
-    impulse: 0.5
-  - masteryWeight: 0
-    multBonus: 2
-    scoreValue: 10
-    bounciness: 1
-    pieces: 2
-    fanAngle: 30
-    bombRadius: 1
-    cooldownSeconds: 8
-    impulse: 0.5
-  - masteryWeight: 0
-    multBonus: 3
-    scoreValue: 20
-    bounciness: 1.2
-    pieces: 2
-    fanAngle: 30
-    bombRadius: 1
-    cooldownSeconds: 8
-    impulse: 0.5
-  spentSprite: {fileID: 0}
-  contactCooldown: 0.2
-  maxStonesPerThrow: 4
-  pieceScale: 0.8
-  countSplitHitsForMastery: 1
   references:
     version: 2
     RefIds:
@@ -76,3 +43,12 @@ MonoBehaviour:
           scoreValue: 20
           multBonus: 3
           bounciness: 1.2
+        popSeconds: 0.3
+        popAmount: 0.4
+        bonusRing: {fileID: 21300000, guid: a47aa05c22925d145a3deb34bad83512, type: 3}
+        bonusRingMotion:
+          seconds: 0.5
+          startScale: 0.2
+          endScale: 1.2
+          rise: 0
+          spin: 0
