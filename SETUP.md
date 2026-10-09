@@ -96,7 +96,7 @@ ChainPopupAnchor        (0, 7.8) — where chain results pop up
 ScorePopups             ScorePopupSpawner (session, spawner, ScorePopup prefab, container + anchor = ChainPopupAnchor)
 NightChoice             NightChoice (session) — Stay / Leave
 PlayAgain               PlayAgain (session)
-Debug                   ChainDebugHUD + NightEndView (session)
+Debug                   (none — ChainDebugHUD and NightEndView were removed; the F2 debug panel is DebugPanel)
 Robots / Throwables     empty containers
 ```
 **Hold local positions** (per slice, pivot bottom-center): row 1 y 1.12 → x −1.1, 0, 1.1 · row 2 y 0.54 → x −1.7, −0.55, 0.55, 1.7
