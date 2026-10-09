@@ -46,7 +46,7 @@ namespace Piglings.Simulation
     ///  - while aiming: cancels the throw. The stone stays in the hand; let go of the left button and aim again.
     ///  - otherwise, held: fast-forward — Time.timeScale = Fast Forward Speed, so waiting on the wolves goes quicker. Game
     ///    time, so every rule, timer and the balance log stay as they are (only the wall gets there sooner). Not in a peg
-    ///    placement round (there the right button swaps the peg in the hand — PegThrower), and never while the F1 panel is
+    ///    placement round (there the right button swaps the peg in the hand — PegThrower), and never while the F2 panel is
     ///    open (it pauses with the time scale). Outside those, this is the time scale's one owner.
     /// </summary>
     public sealed class ThrowController : MonoBehaviour
@@ -84,7 +84,7 @@ namespace Piglings.Simulation
             UpdateRightButton(pointer);
             if (pointer == null || cam == null) return;
             if (!session.State.CanThrow) return;   // out of stones, target reached, or night over (NightReferee)
-            if (session.GameplayInputBlocked) return;   // the F1 debug panel is open: its clicks aren't throws
+            if (session.GameplayInputBlocked) return;   // the F2 debug panel is open: its clicks aren't throws
             // Cooling down: no aim, so no line and no raised arm. Holding the button through the
             // cooldown still works — the aim appears the moment it ends and release throws as usual.
             if (Time.time < readyAt) return;
@@ -139,7 +139,7 @@ namespace Piglings.Simulation
                 _rightCancelled = true;
             }
 
-            if (session.GameplayInputBlocked) return;   // the F1 panel pauses through the time scale: leave it alone
+            if (session.GameplayInputBlocked) return;   // the F2 panel pauses through the time scale: leave it alone
             bool fast = rightHeld && !_rightCancelled && !leftHeld && session.State.Phase != NightPhase.PegPlacement;
             float scale = fast ? fastForwardSpeed : 1f;
             if (Time.timeScale != scale) Time.timeScale = scale;

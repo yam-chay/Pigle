@@ -13,7 +13,10 @@ namespace Piglings.Presentation
     {
         [SerializeField] private NightSession session;
         [Tooltip("Shows / hides this HUD in play.")]
-        [SerializeField] private Key toggleKey = Key.F1;
+        // Renamed on purpose WITHOUT FormerlySerializedAs (2026-10-09): the scene's F2 must not survive — F2 is the debug
+        // panel's now, so this starts at its new default. None = no key (the readout never shows).
+        [Tooltip("Shows / hides the readout. F2 is taken by the debug panel.")]
+        [SerializeField] private Key hudToggleKey = Key.F3;
         [SerializeField] private bool visibleAtStart = false;
         private string _last = "—";
         private bool _visible;
@@ -23,7 +26,7 @@ namespace Piglings.Presentation
         private void Update()
         {
             var keyboard = Keyboard.current;
-            if (keyboard != null && toggleKey != Key.None && keyboard[toggleKey].wasPressedThisFrame) _visible = !_visible;
+            if (keyboard != null && hudToggleKey != Key.None && keyboard[hudToggleKey].wasPressedThisFrame) _visible = !_visible;
         }
 
         private void Start() => session.Bus.Subscribe<ChainClosed>(OnChain);

@@ -62,7 +62,7 @@ namespace Piglings.Simulation
 
             if (_flying != null) { Fly(); return; }
             if (session.State.Phase != NightPhase.PegPlacement || cam == null) { _pressOnShelf = false; return; }
-            if (session.GameplayInputBlocked) { _pressOnShelf = false; return; }   // the F1 debug panel is open
+            if (session.GameplayInputBlocked) { _pressOnShelf = false; return; }   // the F2 debug panel is open
 
             var pointer = Pointer.current;
             if (pointer == null) return;

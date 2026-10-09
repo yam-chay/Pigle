@@ -204,7 +204,7 @@ namespace Piglings.Events
     }
 
     /// <summary>
-    /// Debug (M11.T2, the F1 panel's board edit): a socket was set directly — this peg type at this level, or emptied
+    /// Debug (M11.T2, the F2 panel's board edit): a socket was set directly — this peg type at this level, or emptied
     /// (PegId null, Level 0). Not a placement: no shelf, no throw, no follow-up. Views redraw the socket.
     /// </summary>
     public readonly struct PegSocketSet

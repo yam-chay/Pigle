@@ -3,7 +3,7 @@ using System;
 namespace Piglings.Meta
 {
     /// <summary>
-    /// Debug edits to a save (M11.T2, the F1 panel and scenario presets). The save keeps causes only, so a result the
+    /// Debug edits to a save (M11.T2, the F2 panel and scenario presets). The save keeps causes only, so a result the
     /// developer asks for ("12 stones", "3 Bouncy copies", "nights 1–2 won") is written as the smallest cause that gives
     /// it: the hits of that stone's threshold, the triggers of that copy's threshold, one dawn per night. Everything
     /// derived (level, refill, copies, follow-ups, unlocks) then follows from the rules, as for a real save — and lowering
