@@ -14,7 +14,7 @@ namespace Piglings.Definitions
     }
 
     /// <summary>
-    /// A debug scenario (M11.T2): a whole player state + the night to play, loaded in one click from the F1 panel — "night 3
+    /// A debug scenario (M11.T2): a whole player state + the night to play, loaded in one click from the F2 panel — "night 3
     /// with 18 stones and 4 Bouncy" without playing there. Loading REPLACES the save (records and every count start from
     /// empty), then saves and reloads. Developer only; nothing in the game reads it.
     /// </summary>

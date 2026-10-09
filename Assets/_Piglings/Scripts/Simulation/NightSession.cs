@@ -596,7 +596,7 @@ namespace Piglings.Simulation
             SceneManager.LoadScene(index);
         }
 
-        // ---------- the F1 debug panel (M11.T2; DebugPanel — developer builds only) ----------
+        // ---------- the F2 debug panel (M11.T2; DebugPanel — developer builds only) ----------
 
         /// <summary>The panel is open: the night's own pointer input (throwing, placing pegs, the tower) stands down.</summary>
         public bool GameplayInputBlocked { get; set; }

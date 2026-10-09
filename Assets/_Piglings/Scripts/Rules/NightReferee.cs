@@ -219,7 +219,7 @@ namespace Piglings.Rules
         }
 
         /// <summary>
-        /// Debug (the F1 panel): end the night now — a loss (out of stones) or a dawn — so the end sequence and the post-run
+        /// Debug (the F2 panel): end the night now — a loss (out of stones) or a dawn — so the end sequence and the post-run
         /// can be checked without playing there. Only while the night is on (Running or a placement round). A dawn counts
         /// every hour as reached (DawnReached published). Chains still falling just finish; the night ends as usual
         /// (the sweep, banking, NightEnded). False = refused.

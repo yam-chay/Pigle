@@ -49,7 +49,7 @@ namespace Piglings.Presentation
             if (wanted != _wanted) { _wanted = wanted; _wantedSince = Time.unscaledTime; }
             float target = _wanted ? 1f : 0f;
             if (Mathf.Approximately(_group.alpha, target)) return;
-            // Unscaled: the F1 panel's pause doesn't hold the HUD.
+            // Unscaled: the F2 panel's pause doesn't hold the HUD.
             if (Time.unscaledTime - _wantedSince < (_wanted ? fadeInDelay : fadeOutDelay)) return;
             Apply(fadeSeconds > 0f ? Mathf.MoveTowards(_group.alpha, target, Time.unscaledDeltaTime / fadeSeconds) : target);
         }

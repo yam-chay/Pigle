@@ -8,7 +8,7 @@ using UnityEngine.InputSystem;
 namespace Piglings.Simulation
 {
     /// <summary>
-    /// The developer's debug panel (M11.T2): F1 opens it, in the editor and in Development builds — and in release builds
+    /// The developer's debug panel (M11.T2): F2 opens it (Toggle Key; F1 until 2026-10-09 — browsers take F1 for help), in the editor and in Development builds — and in release builds
     /// while In Release Builds is on (on for the first playtest, Yam 2026-10-09: testers may need it to get past a stuck
     /// state; turn it off when players shouldn't see it). IMGUI, so it needs no Canvas and works in WebGL.
     ///  - SAVE: stones (and so the stone's level, reverting too), copies per peg type, nights won (unlocks follow), the night
@@ -28,7 +28,9 @@ namespace Piglings.Simulation
         [SerializeField] private Camera cam;
         [Tooltip("One-click states: Create ▸ Piglings ▸ Debug Scenario.")]
         [SerializeField] private List<DebugScenarioDefinition> scenarios = new List<DebugScenarioDefinition>();
-        [Tooltip("On: F1 works in release builds too (the playtest build). Off: the editor and Development builds only.")]
+        [Tooltip("Opens / closes the panel.")]
+        [SerializeField] private Key toggleKey = Key.F2;
+        [Tooltip("On: the panel works in release builds too (the playtest build). Off: the editor and Development builds only.")]
         [SerializeField] private bool inReleaseBuilds = true;
         [Tooltip("Freeze the game (Time.timeScale 0) while the panel is open.")]
         [SerializeField] private bool pauseWhileOpen = true;
@@ -62,7 +64,7 @@ namespace Piglings.Simulation
         private void Update()
         {
             var keyboard = Keyboard.current;
-            if (keyboard != null && keyboard.f1Key.wasPressedThisFrame) SetOpen(!_open);
+            if (keyboard != null && toggleKey != Key.None && keyboard[toggleKey].wasPressedThisFrame) SetOpen(!_open);
             if (_open && _boardEdit) EditBoard();
         }
 
@@ -137,7 +139,7 @@ namespace Piglings.Simulation
         {
             if (!_open || session == null) return;
             GUI.matrix = Matrix4x4.Scale(new Vector3(scale, scale, 1f));
-            _window = GUILayout.Window(WindowId, _window, DrawWindow, "Debug (F1)");
+            _window = GUILayout.Window(WindowId, _window, DrawWindow, $"Debug ({toggleKey})");
         }
 
         private void DrawWindow(int id)
